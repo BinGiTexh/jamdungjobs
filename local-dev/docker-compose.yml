@@ -1,0 +1,71 @@
+# docker-compose.yml
+
+version: '3.8'
+
+services:
+  # LocalStack - AWS services emulator
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"  # LocalStack edge port
+    environment:
+      - SERVICES=s3,dynamodb,lambda,apigateway,cloudfront,route53,acm,ses,cloudwatch
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DEFAULT_REGION=us-east-1
+      - DATA_DIR=/tmp/localstack/data
+    volumes:
+      - ./local-dev/localstack:/tmp/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./local-dev/init-aws.sh:/docker-entrypoint-initaws.d/init-aws.sh
+
+  # MongoDB - replacement for DynamoDB in local environment
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=jobboard
+      - MONGO_INITDB_ROOT_PASSWORD=jobboard
+    volumes:
+      - ./local-dev/mongodb:/data/db
+
+  # Express API Server - running backend code locally
+  api:
+    build:
+      context: ./local-dev
+      dockerfile: Dockerfile.api
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://jobboard:jobboard@mongodb:27017/jobboard?authSource=admin
+      - JWT_SECRET=local_development_secret
+      - NODE_ENV=development
+      - S3_ENDPOINT=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - localstack
+
+  # Frontend development server  
+  frontend:
+    build:
+      context: ./local-dev
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+      - REACT_APP_ENVIRONMENT=local
+      - WDS_SOCKET_PORT=0
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
