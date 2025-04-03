@@ -1,0 +1,216 @@
+# .github/workflows/terraform-deploy.yml
+
+name: Deploy BingiTech Job Board with Terraform
+
+on:
+  push:
+    branches:
+      - main          # Production deployment
+      - staging       # Staging deployment
+      - develop       # Development deployment
+  workflow_dispatch:  # Manual trigger option
+
+jobs:
+  terraform:
+    name: 'Terraform Deploy'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+      
+      - name: Set Environment Variables
+        id: env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+            echo "DOMAIN=jobs.bingitech.com" >> $GITHUB_ENV
+            echo "WORKSPACE=prod" >> $GITHUB_ENV
+          elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
+            echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+            echo "DOMAIN=staging-jobs.bingitech.com" >> $GITHUB_ENV
+            echo "WORKSPACE=staging" >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+            echo "DOMAIN=dev-jobs.bingitech.com" >> $GITHUB_ENV
+            echo "WORKSPACE=dev" >> $GITHUB_ENV
+          fi
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      # Create Lambda placeholder files for initial deployment
+      - name: Create Lambda Placeholder
+        run: |
+          mkdir -p terraform/lambda
+          echo '{"status":"placeholder"}' > terraform/lambda/placeholder.json
+          cd terraform/lambda && zip -r ../lambda_placeholder.zip placeholder.json
+      
+      # Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.0.0
+      
+      # Initialize Terraform
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.ENVIRONMENT }}/terraform.tfstate" \
+            -backend-config="region=us-east-1"
+      
+      # Select Terraform workspace
+      - name: Terraform Workspace
+        run: |
+          cd terraform
+          terraform workspace select ${{ env.WORKSPACE }} || terraform workspace new ${{ env.WORKSPACE }}
+      
+      # Validate terraform configuration
+      - name: Terraform Validate
+        run: |
+          cd terraform
+          terraform validate
+      
+      # Terraform plan
+      - name: Terraform Plan
+        run: |
+          cd terraform
+          terraform plan \
+            -var="environment=${{ env.ENVIRONMENT }}" \
+            -var="domain_name=${{ env.DOMAIN }}" \
+            -var="admin_email=${{ secrets.ADMIN_EMAIL }}" \
+            -var="aws_region=us-east-1" \
+            -out=tfplan
+      
+      # Apply terraform configuration
+      - name: Terraform Apply
+        run: |
+          cd terraform
+          terraform apply -auto-approve tfplan
+      
+      # Build Frontend
+      - name: Install Frontend Dependencies
+        run: npm ci
+        working-directory: ./frontend
+      
+      - name: Build Frontend
+        env:
+          REACT_APP_API_URL: https://api.${{ env.DOMAIN }}
+          REACT_APP_ENVIRONMENT: ${{ env.ENVIRONMENT }}
+        run: npm run build
+        working-directory: ./frontend
+      
+      # Deploy Frontend to S3
+      - name: Get S3 Bucket Name
+        id: s3
+        run: |
+          cd terraform
+          BUCKET_NAME=$(terraform output -raw s3_website_bucket)
+          echo "BUCKET_NAME=${BUCKET_NAME}" >> $GITHUB_ENV
+      
+      - name: Deploy Frontend to S3
+        run: |
+          aws s3 sync ./frontend/build/ s3://${{ env.BUCKET_NAME }}/ \
+            --delete \
+            --cache-control "max-age=31536000,public,immutable" \
+            --exclude "*.html" \
+            --exclude "asset-manifest.json"
+          
+          # Deploy HTML files with shorter cache time
+          aws s3 sync ./frontend/build/ s3://${{ env.BUCKET_NAME }}/ \
+            --delete \
+            --cache-control "max-age=60,public" \
+            --exclude "*" \
+            --include "*.html" \
+            --include "asset-manifest.json"
+      
+      # Build and deploy Lambda functions
+      - name: Install Backend Dependencies
+        run: npm ci
+        working-directory: ./backend
+      
+      - name: Create API Lambda Deployment Package
+        run: |
+          mkdir -p deployment
+          cp -r node_modules *.js package.json ./deployment/
+          cd deployment && zip -r ../api-lambda.zip *
+        working-directory: ./backend
+      
+      - name: Create Analytics Lambda Deployment Package
+        run: |
+          mkdir -p deployment
+          cp analytics.js ./deployment/index.js
+          cd deployment && zip -r ../analytics-lambda.zip *
+        working-directory: ./backend
+      
+      - name: Get Lambda Function Names
+        id: lambda
+        run: |
+          cd terraform
+          API_FUNCTION=$(terraform output -raw api_lambda_function_name || echo "${ENVIRONMENT}-jobboard-api")
+          ANALYTICS_FUNCTION=$(terraform output -raw analytics_lambda_function_name || echo "${ENVIRONMENT}-jobboard-analytics")
+          
+          echo "API_FUNCTION=${API_FUNCTION}" >> $GITHUB_ENV
+          echo "ANALYTICS_FUNCTION=${ANALYTICS_FUNCTION}" >> $GITHUB_ENV
+      
+      - name: Update Lambda Functions
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.API_FUNCTION }} \
+            --zip-file fileb://backend/api-lambda.zip
+          
+          aws lambda update-function-code \
+            --function-name ${{ env.ANALYTICS_FUNCTION }} \
+            --zip-file fileb://backend/analytics-lambda.zip
+      
+      - name: Update Lambda Environment Variables
+        run: |
+          aws lambda update-function-configuration \
+            --function-name ${{ env.API_FUNCTION }} \
+            --environment "Variables={
+              ENVIRONMENT='${{ env.ENVIRONMENT }}',
+              USERS_TABLE='${{ env.ENVIRONMENT }}_Users',
+              JOBS_TABLE='${{ env.ENVIRONMENT }}_Jobs',
+              APPLICATIONS_TABLE='${{ env.ENVIRONMENT }}_Applications',
+              ANALYTICS_TABLE='${{ env.ENVIRONMENT }}_Analytics',
+              FILES_BUCKET='${{ env.ENVIRONMENT }}-${{ env.DOMAIN }}-files',
+              JWT_SECRET='${{ secrets.JWT_SECRET }}',
+              SES_EMAIL_FROM='${{ secrets.ADMIN_EMAIL }}'
+            }"
+      
+      # Invalidate CloudFront Cache
+      - name: Get CloudFront Distribution ID
+        id: cloudfront
+        run: |
+          cd terraform
+          DISTRIBUTION_ID=$(terraform output -raw cloudfront_distribution_id)
+          echo "DISTRIBUTION_ID=${DISTRIBUTION_ID}" >> $GITHUB_ENV
+      
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ env.DISTRIBUTION_ID }} \
+            --paths "/*.html" "/asset-manifest.json" "/index.html"
+      
+      # Deployment Notification
+      - name: Deployment notification
+        if: always()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: deployments
+          SLACK_TITLE: Job Board Terraform Deployment
+          SLACK_MESSAGE: "Terraform deployment to ${{ env.ENVIRONMENT }} environment ${{ job.status == 'success' && 'completed successfully! 🚀' || 'failed ❌' }}"
+          SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}
