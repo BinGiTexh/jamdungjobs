@@ -1,0 +1,70 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+*.log
+logs/
+coverage/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+
+# Docker
+docker-volumes/
+.docker/
+*.dockerfile.dev
+docker-compose.override.yml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build and cache
+dist/
+build/
+.cache/
+.next/
+.nuxt/
+.temp/
+.tmp/
+.docz/
+.gatsby/
+public/
+.babel-cache/
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Misc
+*.log
+*.pid
+*.seed
+*.pid.lock
+.eslintcache
+.node_repl_history
+

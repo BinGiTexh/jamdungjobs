@@ -86,15 +86,17 @@ async function connectToMongo() {
 }
 
 // Import Lambda handlers
+let lambdaHandlers;
 try {
-  const lambdaHandlers = require('../index');
+  lambdaHandlers = require('../../backend/index');
   if (lambdaHandlers && typeof lambdaHandlers.handler === 'function') {
-    console.log('Lambda handlers imported successfully');
+    console.log('Lambda handlers imported successfully from backend directory');
   } else {
-    console.log('Lambda handlers found but handler function not available, using adapter');
+    console.log('Lambda handlers found but handler function not available, using local adapter implementation');
   }
 } catch (error) {
-  console.log('Lambda handlers not found, using adapter:', error.message);
+  console.log('Using local adapter implementation (Lambda handlers not required for local development)');
+  lambdaHandlers = null;
 }
 
 // Authentication middleware for local development

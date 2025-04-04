@@ -1,6 +1,9 @@
 import React, { createContext, useState, useContext, useCallback, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
+// Base URL for API requests
+const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const AuthContext = createContext(undefined);
 
 // Constants for localStorage keys
@@ -45,7 +48,7 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const response = await fetch('/api/auth/validate', {
+        const response = await fetch(`${baseUrl}/api/auth/validate`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -76,7 +79,7 @@ export function AuthProvider({ children }) {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -108,7 +111,7 @@ export function AuthProvider({ children }) {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(`${baseUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -148,7 +151,7 @@ export function AuthProvider({ children }) {
 
     try {
       const token = storage.getToken();
-      const response = await fetch('/api/auth/profile', {
+      const response = await fetch(`${baseUrl}/api/auth/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
