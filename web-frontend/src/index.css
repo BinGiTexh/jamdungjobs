@@ -1,67 +1,13 @@
-/* Add these styles to your existing CSS */
-.signin-container {
-  max-width: 400px;
-  margin: 2rem auto;
-  padding: 2rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.signin-container h2 {
-  text-align: center;
-  margin-bottom: 2rem;
-  color: #333;
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #666;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.form-group input.error {
-  border-color: #ff4444;
-}
-
-.error-message {
-  color: #ff4444;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-  display: block;
-}
-
-button {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #0066cc;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  margin-top: 1rem;
-}
-
-button:hover {
-  background-color: #0052a3;
-}
-
-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
+/* Reset and base styles */
+:root {
+  --primary-color: #009B3A; /* Jamaican Green */
+  --secondary-color: #FED100; /* Jamaican Gold */
+  --text-color: #000000; /* Jamaican Black */
+  --border-color: #e4e2e0;
+  --success-color: #009B3A; /* Using Jamaican Green */
+  --accent-color: #FED100; /* Jamaican Gold for accents */
+  --light-gold: #fff5cc; /* Lighter version of gold for backgrounds */
+  --light-green: #e6f4ea; /* Lighter version of green for backgrounds */
 }
 
 body {
@@ -71,29 +17,196 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: var(--text-color);
+  background-color: #fff;
 }
 
-.App {
-  text-align: center;
+/* Navigation styles */
+.nav-container {
+  background-color: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 20vh;
+.nav-content {
+  max-width: 1200px;
+  margin: 0 auto;
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
+  padding: 1rem;
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.nav-links a {
+  color: var(--text-color);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.nav-links a:hover {
+  background-color: var(--light-gold);
+}
+
+/* Hero section styles */
+.hero-section {
+  background: linear-gradient(135deg, var(--light-green), var(--light-gold));
+  padding: 3rem 1rem;
+  text-align: center;
+  border-bottom: 4px solid var(--primary-color);
+}
+
+.search-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-input {
+  flex: 1;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.search-button {
+  padding: 1rem 2rem;
+  background-color: var(--primary-color);
   color: white;
-  padding: 20px;
+  border: 2px solid var(--primary-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
 }
 
-h1 {
-  margin: 0;
-  font-size: 2.5em;
+.search-button:hover {
+  background-color: #008032;
+  border-color: #008032;
 }
 
-main {
-  padding: 20px;
+/* Job card styles */
+.job-card {
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background-color: white;
+  transition: box-shadow 0.2s;
+}
+
+.job-card {
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background-color: white;
+  transition: all 0.2s;
+  border-left: 4px solid transparent;
+}
+
+.job-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid var(--secondary-color);
+}
+
+.job-title {
+  color: var(--primary-color);
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.company-name {
+  font-weight: 500;
+  margin: 0 0 0.5rem 0;
+}
+
+.job-location {
+  color: #666;
+  margin: 0 0 1rem 0;
+}
+
+.job-salary {
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+/* Auth forms */
+.auth-container {
+  max-width: 400px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.auth-container h2 {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: var(--text-color);
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.auth-button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: 2px solid var(--primary-color);
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: all 0.2s;
+}
+
+.auth-button:hover {
+  background-color: #008032;
+  border-color: #008032;
+}
+
+.auth-button:hover {
+  background-color: #1a4b8f;
+}
+
+.auth-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 

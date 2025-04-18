@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, us
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
+import { FaSearch, FaMapMarkerAlt, FaBriefcase, FaBuilding, FaRegClock } from 'react-icons/fa';
 
 // Inline component definitions to avoid missing module errors
 const LoginPage = () => {
@@ -16,7 +17,6 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       await login(email, password);
-      // Redirect to the protected route or dashboard
       const redirectTo = location.state?.from || '/dashboard';
       navigate(redirectTo, { replace: true });
     } catch (err) {
@@ -25,46 +25,43 @@ const LoginPage = () => {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '40px auto', padding: '20px' }}>
-      <h2>Login</h2>
-      {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
+    <div className="auth-container">
+      <h2>Sign In</h2>
+      {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+      
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
+        <div className="form-group">
+          <label>Email address</label>
           <input
             type="email"
-            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ width: '100%', padding: '8px' }}
             required
           />
         </div>
-        <div style={{ marginBottom: '15px' }}>
+        
+        <div className="form-group">
+          <label>Password</label>
           <input
             type="password"
-            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ width: '100%', padding: '8px' }}
             required
           />
         </div>
+        
         <button
           type="submit"
           disabled={loading}
-          style={{
-            width: '100%',
-            padding: '10px',
-            backgroundColor: '#1e88e5',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
+          className="auth-button"
         >
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
+      
+      <p style={{ textAlign: 'center', marginTop: '1rem' }}>
+        Don't have an account? <Link to="/register" style={{ color: 'var(--primary-color)' }}>Register</Link>
+      </p>
     </div>
   );
 };
@@ -101,12 +98,103 @@ const JobSearchPage = () => (
   </div>
 );
 
-const HomePage = () => (
-  <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-    <h1>Welcome to JamDung Jobs</h1>
-    <p>Find your next opportunity in Jamaica's tech industry</p>
-  </div>
-);
+const HomePage = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [location, setLocation] = useState('');
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    // TODO: Implement search functionality
+    console.log('Searching for:', searchTerm, 'in', location);
+  };
+
+  // Sample job data
+  const featuredJobs = [
+    {
+      id: 1,
+      title: 'Senior Software Engineer',
+      company: 'Tech Solutions Jamaica',
+      location: 'Kingston, Jamaica',
+      salary: '$80,000 - $120,000 per year',
+      type: 'Full-time',
+      posted: '2 days ago'
+    },
+    {
+      id: 2,
+      title: 'Frontend Developer',
+      company: 'Caribbean Digital',
+      location: 'Montego Bay, Jamaica',
+      salary: '$50,000 - $70,000 per year',
+      type: 'Full-time',
+      posted: '3 days ago'
+    },
+    {
+      id: 3,
+      title: 'DevOps Engineer',
+      company: 'Island Tech Solutions',
+      location: 'Kingston, Jamaica',
+      salary: '$70,000 - $90,000 per year',
+      type: 'Full-time',
+      posted: '1 week ago'
+    }
+  ];
+
+  return (
+    <div>
+      <section className="hero-section">
+        <h1>Find Your Next Tech Job in Jamaica</h1>
+        <p>Search through thousands of job listings</p>
+        
+        <form onSubmit={handleSearch} className="search-container">
+          <div style={{ flex: 1, position: 'relative' }}>
+            <FaSearch style={{ position: 'absolute', left: '1rem', top: '1.2rem', color: '#666' }} />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Job title, keywords, or company"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ paddingLeft: '2.5rem' }}
+            />
+          </div>
+          
+          <div style={{ flex: 1, position: 'relative' }}>
+            <FaMapMarkerAlt style={{ position: 'absolute', left: '1rem', top: '1.2rem', color: '#666' }} />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="City or parish"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              style={{ paddingLeft: '2.5rem' }}
+            />
+          </div>
+          
+          <button type="submit" className="search-button">
+            Find Jobs
+          </button>
+        </form>
+      </section>
+
+      <div style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 1rem' }}>
+        <h2>Featured Jobs</h2>
+        <div>
+          {featuredJobs.map(job => (
+            <div key={job.id} className="job-card">
+              <h3 className="job-title">{job.title}</h3>
+              <p className="company-name"><FaBuilding style={{ marginRight: '0.5rem' }} />{job.company}</p>
+              <p className="job-location"><FaMapMarkerAlt style={{ marginRight: '0.5rem' }} />{job.location}</p>
+              <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem' }}>
+                <p className="job-salary"><FaBriefcase style={{ marginRight: '0.5rem' }} />{job.salary}</p>
+                <p style={{ color: '#666' }}><FaRegClock style={{ marginRight: '0.5rem' }} />{job.posted}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const RegisterPage = () => (
   <div style={{ maxWidth: '400px', margin: '40px auto', padding: '20px' }}>
@@ -122,54 +210,37 @@ const ProfilePage = () => (
   </div>
 );
 
-// Navigation component
 function Navigation() {
   const { isAuthenticated, logout } = useAuth();
 
   return (
-    <nav style={{
-      backgroundColor: '#1e88e5',
-      padding: '1rem',
-      marginBottom: '2rem'
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <Link to="/" style={{
-          color: 'white',
-          textDecoration: 'none',
-          fontSize: '1.5rem',
-          fontWeight: 'bold'
-        }}>
-          JamDung Jobs
+    <nav className="nav-container">
+      <div className="nav-content">
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.5rem' }}>JamDung Jobs</h1>
         </Link>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        
+        <div className="nav-links">
+          <Link to="/jobs">Find Jobs</Link>
+          <Link to="/companies">Companies</Link>
+          <Link to="/salaries">Salaries</Link>
+          
           {isAuthenticated ? (
             <>
-              <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</Link>
-              <Link to="/profile" style={{ color: 'white', textDecoration: 'none' }}>Profile</Link>
+              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/profile">Profile</Link>
               <button
                 onClick={logout}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: '1px solid white',
-                  color: 'white',
-                  padding: '0.5rem 1rem',
-                  cursor: 'pointer',
-                  borderRadius: '4px'
-                }}
+                className="auth-button"
+                style={{ margin: 0, padding: '0.5rem 1rem' }}
               >
                 Logout
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" style={{ color: 'white', textDecoration: 'none' }}>Login</Link>
-              <Link to="/register" style={{ color: 'white', textDecoration: 'none' }}>Register</Link>
+              <Link to="/login">Sign In</Link>
+              <Link to="/register" className="auth-button" style={{ margin: 0, padding: '0.5rem 1rem', textDecoration: 'none' }}>Register</Link>
             </>
           )}
         </div>
