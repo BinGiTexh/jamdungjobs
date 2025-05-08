@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { FaSearch, FaMapMarkerAlt, FaBriefcase, FaBuilding, FaRegClock } from 'react-icons/fa';
+import { EmployerDashboard } from './components/employer/EmployerDashboard';
+import Register from './components/Register';
 
 // Inline component definitions to avoid missing module errors
 const LoginPage = () => {
@@ -108,6 +111,9 @@ const HomePage = () => {
     console.log('Searching for:', searchTerm, 'in', location);
   };
 
+  // Note: You need to copy the replicate-prediction-xh4f4f3m6srme0cpnm0bjeq0c0.png image
+  // to the /src/assets directory for this to work
+
   // Sample job data
   const featuredJobs = [
     {
@@ -141,11 +147,43 @@ const HomePage = () => {
 
   return (
     <div>
-      <section className="hero-section">
-        <h1>Find Your Next Tech Job in Jamaica</h1>
-        <p>Search through thousands of job listings</p>
+      <section 
+        className="hero-section"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url('/images/replicate-prediction-xh4f4f3m6srme0cpnm0bjeq0c0.png')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          color: 'white',
+          minHeight: '600px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: '2rem'
+        }}
+      >
+        <h1 style={{ 
+          fontSize: '3rem',
+          marginBottom: '1rem',
+          textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
+        }}>
+          Find Your Next Tech Job in Jamaica
+        </h1>
+        <p style={{
+          fontSize: '1.5rem',
+          marginBottom: '2rem',
+          textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+        }}>
+          Search through thousands of job listings
+        </p>
         
-        <form onSubmit={handleSearch} className="search-container">
+        <form onSubmit={handleSearch} className="search-container" style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          padding: '2rem',
+          borderRadius: '8px',
+          maxWidth: '800px',
+          margin: '0 auto',
+          width: '100%'
+        }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <FaSearch style={{ position: 'absolute', left: '1rem', top: '1.2rem', color: '#666' }} />
             <input
@@ -177,8 +215,13 @@ const HomePage = () => {
       </section>
 
       <div style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 1rem' }}>
-        <h2>Featured Jobs</h2>
-        <div>
+        <div className="featured-jobs-header">
+          <h2>Featured Jobs</h2>
+          <Link to="/jobs" style={{ color: 'var(--primary-color)', textDecoration: 'none' }}>
+            View all jobs →
+          </Link>
+        </div>
+        <div className="featured-jobs">
           {featuredJobs.map(job => (
             <div key={job.id} className="job-card">
               <h3 className="job-title">{job.title}</h3>
@@ -196,36 +239,41 @@ const HomePage = () => {
   );
 };
 
-const RegisterPage = () => (
-  <div style={{ maxWidth: '400px', margin: '40px auto', padding: '20px' }}>
-    <h2>Register</h2>
-    <p>Registration form coming soon...</p>
-  </div>
-);
+const RegisterPage = () => {
+  const { isAuthenticated } = useAuth();
+  
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <Register />;
+};
 
-const ProfilePage = () => (
-  <div style={{ padding: '20px' }}>
-    <h2>Profile</h2>
-    <p>Your profile information will appear here.</p>
-  </div>
-);
-
-function Navigation() {
-  const { isAuthenticated, logout } = useAuth();
-
+const Navigation = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+  
   return (
     <nav className="nav-container">
       <div className="nav-content">
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.5rem' }}>JamDung Jobs</h1>
+          <h1 style={{ margin: 0, color: 'var(--primary-color)' }}>JamDung Jobs</h1>
         </Link>
         
         <div className="nav-links">
           <Link to="/jobs">Find Jobs</Link>
-          <Link to="/companies">Companies</Link>
-          <Link to="/salaries">Salaries</Link>
-          
-          {isAuthenticated ? (
+          {isAuthenticated && user?.role === 'employer' ? (
+            <>
+              <Link to="/employer/dashboard">Company Dashboard</Link>
+              <Link to="/profile">Profile</Link>
+              <button
+                onClick={logout}
+                className="auth-button"
+                style={{ margin: 0, padding: '0.5rem 1rem' }}
+              >
+                Logout
+              </button>
+            </>
+          ) : isAuthenticated ? (
             <>
               <Link to="/dashboard">Dashboard</Link>
               <Link to="/profile">Profile</Link>
@@ -240,14 +288,32 @@ function Navigation() {
           ) : (
             <>
               <Link to="/login">Sign In</Link>
-              <Link to="/register" className="auth-button" style={{ margin: 0, padding: '0.5rem 1rem', textDecoration: 'none' }}>Register</Link>
+              <Link 
+                to="/register" 
+                className="auth-button"
+                style={{ margin: 0, padding: '0.5rem 1rem', textDecoration: 'none' }}
+              >
+                Register
+              </Link>
             </>
           )}
         </div>
       </div>
     </nav>
   );
-}
+};
+
+const ProfilePage = () => {
+  const { user } = useAuth();
+  
+  return (
+    <div style={{ padding: '20px' }}>
+      <h2>Profile</h2>
+      <p>Email: {user?.email}</p>
+      <p>Role: {user?.role}</p>
+    </div>
+  );
+};
 
 function App() {
   return (
@@ -261,6 +327,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/jobs" element={<JobSearchPage />} />
 
               {/* Protected Routes */}
               <Route
@@ -271,6 +338,17 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Employer Routes */}
+              <Route
+                path="/employer/dashboard"
+                element={
+                  <RoleProtectedRoute role="employer">
+                    <EmployerDashboard />
+                  </RoleProtectedRoute>
+                }
+              />
+
               <Route
                 path="/profile"
                 element={
@@ -279,15 +357,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/jobs"
-                element={
-                  <ProtectedRoute>
-                    <JobSearchPage />
-                  </ProtectedRoute>
-                }
-              />
-
+              
               {/* Catch-all route - redirect to home */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

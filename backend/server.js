@@ -4,51 +4,69 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
-const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
-const multerS3 = require('multer-s3');
 const path = require('path');
+const { MongoClient, ObjectId } = require('mongodb');
+const fs = require('fs');
 require('dotenv').config();
 
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Configure AWS
-AWS.config.update({
-  region: process.env.AWS_REGION || 'us-east-1',
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-});
+// MongoDB Connection
+const mongoUri = process.env.MONGO_URI || 'mongodb://jobboard:jobboard@mongodb:27017/jobboard?authSource=admin';
+let db;
 
-// Initialize AWS services
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
-const s3 = new AWS.S3();
-const ses = new AWS.SES({ apiVersion: '2010-12-01' });
+const connectToMongoDB = async () => {
+  try {
+    const client = new MongoClient(mongoUri);
+    await client.connect();
+    console.log('Connected to MongoDB');
+    db = client.db('jobboard');
+
+    // Create indexes
+    await db.collection('users').createIndex({ email: 1 }, { unique: true });
+    await db.collection('jobs').createIndex({ employerId: 1 });
+    await db.collection('applications').createIndex({ jobId: 1 });
+    await db.collection('applications').createIndex({ userId: 1 });
+    
+    return db;
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    process.exit(1);
+  }
+};
+
+// Setup file storage for local development
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Ensure upload directory exists
+    if (!fs.existsSync(UPLOAD_DIR)) {
+      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    }
+    cb(null, UPLOAD_DIR);
+  },
+  filename: function (req, file, cb) {
+    const fileExtension = path.extname(file.originalname);
+    cb(null, `${Date.now().toString()}-${uuidv4()}${fileExtension}`);
+  }
+});
 
 // Setup middleware
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+app.use(express.json({limit: '50mb'}));
 app.use(morgan('dev'));
 
 // File upload configuration
 const upload = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.S3_BUCKET || 'bingitech-job-board-files',
-    acl: 'private',
-    metadata: function (req, file, cb) {
-      cb(null, { fieldName: file.fieldname });
-    },
-    key: function (req, file, cb) {
-      const fileExtension = path.extname(file.originalname);
-      cb(null, `${Date.now().toString()}-${uuidv4()}${fileExtension}`);
-    }
-  }),
+  storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB file size limit
+    fileSize: 100 * 1024 * 1024 // 50MB file size limit
   },
   fileFilter: function (req, file, cb) {
     // Accept only certain file types
@@ -69,12 +87,16 @@ const authenticateJWT = (req, res, next) => {
 
   if (authHeader) {
     const token = authHeader.split(' ')[1];
+    console.log('Received token:', token);
+    console.log('Using JWT_SECRET:', process.env.JWT_SECRET || 'local_development_secret');
 
-    jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret', (err, user) => {
+    jwt.verify(token, process.env.JWT_SECRET || 'local_development_secret', (err, user) => {
       if (err) {
-        return res.status(403).json({ message: 'Invalid or expired token' });
+        console.log('JWT verification error:', err);
+        return res.status(403).json({ message: 'Invalid or expired token', error: err.message });
       }
 
+      console.log('Decoded JWT user:', user);
       req.user = user;
       next();
     });
@@ -102,44 +124,34 @@ app.post('/api/auth/register', async (req, res) => {
     const { name, email, password, role } = req.body;
 
     // Check if user already exists
-    const checkParams = {
-      TableName: 'Users',
-      IndexName: 'EmailIndex',
-      KeyConditionExpression: 'email = :email',
-      ExpressionAttributeValues: {
-        ':email': email
-      }
-    };
-
-    const checkResult = await dynamoDB.query(checkParams).promise();
+    const existingUser = await db.collection('users').findOne({ email });
     
-    if (checkResult.Items && checkResult.Items.length > 0) {
+    if (existingUser) {
       return res.status(400).json({ message: 'User with that email already exists' });
     }
 
     // Create new user
-    const userId = uuidv4();
     const timestamp = new Date().toISOString();
-
-    const params = {
-      TableName: 'Users',
-      Item: {
-        id: userId,
-        name,
-        email,
-        password, // In production, hash this password!
-        role: role || 'candidate', // Default to candidate if role not specified
-        createdAt: timestamp,
-        updatedAt: timestamp
-      }
+    const newUser = {
+      name,
+      email,
+      password, // In production, hash this password!
+      role: role || 'candidate', // Default to candidate if role not specified
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
-    await dynamoDB.put(params).promise();
+    const result = await db.collection('users').insertOne(newUser);
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: userId, email, role: role || 'candidate' },
-      process.env.JWT_SECRET || 'your_jwt_secret',
+      { 
+        id: result.insertedId.toString(), // Use MongoDB's ObjectId
+        email,
+        role: role || 'candidate',
+        name 
+      },
+      process.env.JWT_SECRET || 'local_development_secret',
       { expiresIn: '7d' }
     );
 
@@ -147,7 +159,7 @@ app.post('/api/auth/register', async (req, res) => {
       message: 'User registered successfully',
       token,
       user: {
-        id: userId,
+        id: result.insertedId.toString(),
         name,
         email,
         role: role || 'candidate'
@@ -162,42 +174,43 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt for:', email);
 
-    // Find user by email
-    const params = {
-      TableName: 'Users',
-      IndexName: 'EmailIndex',
-      KeyConditionExpression: 'email = :email',
-      ExpressionAttributeValues: {
-        ':email': email
-      }
-    };
-
-    const result = await dynamoDB.query(params).promise();
+    // Use MongoDB for authentication
+    const user = await db.collection('users').findOne({ email });
+    console.log('Found user:', user ? 'Yes' : 'No');
     
-    if (!result.Items || result.Items.length === 0) {
+    if (!user) {
+      console.log('User not found:', email);
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const user = result.Items[0];
-
-    // Check password (in production, compare hashed passwords)
+    // Simple password check (in production, use bcrypt)
     if (user.password !== password) {
+      console.log('Invalid password for user:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'your_jwt_secret',
+      { 
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        name: user.name 
+      },
+      process.env.JWT_SECRET || 'local_development_secret',
       { expiresIn: '7d' }
     );
 
+    console.log('Login successful for:', email);
+    
+    // Send response
     res.json({
       message: 'Login successful',
       token,
       user: {
-        id: user.id,
+        id: user._id.toString(),
         name: user.name,
         email: user.email,
         role: user.role
@@ -205,28 +218,30 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Error during login', error: error.message });
+    res.status(500).json({ 
+      message: 'Error during login', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
 // User Routes
 app.get('/api/users/me', authenticateJWT, async (req, res) => {
   try {
-    const params = {
-      TableName: 'Users',
-      Key: {
-        id: req.user.id
-      }
-    };
-
-    const result = await dynamoDB.get(params).promise();
+    const user = await db.collection('users').findOne({ 
+      $or: [
+        { _id: req.user.id },
+        { id: req.user.id }
+      ]
+    });
     
-    if (!result.Item) {
+    if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Remove sensitive information
-    const { password, ...userWithoutPassword } = result.Item;
+    const { password, ...userWithoutPassword } = user;
 
     res.json(userWithoutPassword);
   } catch (error) {
@@ -240,30 +255,35 @@ app.put('/api/users/me', authenticateJWT, async (req, res) => {
     const { name, phone, address, bio } = req.body;
     const timestamp = new Date().toISOString();
 
-    // Update user information
-    const params = {
-      TableName: 'Users',
-      Key: {
-        id: req.user.id
-      },
-      UpdateExpression: 'set #name = :name, phone = :phone, address = :address, bio = :bio, updatedAt = :updatedAt',
-      ExpressionAttributeNames: {
-        '#name': 'name' // 'name' is a reserved word in DynamoDB
-      },
-      ExpressionAttributeValues: {
-        ':name': name,
-        ':phone': phone,
-        ':address': address,
-        ':bio': bio,
-        ':updatedAt': timestamp
-      },
-      ReturnValues: 'ALL_NEW'
-    };
+    // Prepare query to find the user
+    let query = {};
+    try {
+      query = { _id: new ObjectId(req.user.id) };
+    } catch (e) {
+      query = { id: req.user.id };
+    }
 
-    const result = await dynamoDB.update(params).promise();
+    // Update user information using MongoDB
+    const result = await db.collection('users').findOneAndUpdate(
+      query,
+      {
+        $set: {
+          name,
+          phone,
+          address,
+          bio,
+          updatedAt: timestamp
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) {
+      return res.status(404).json({ message: 'User not found' });
+    }
     
     // Remove sensitive information
-    const { password, ...userWithoutPassword } = result.Attributes;
+    const { password, ...userWithoutPassword } = result.value;
 
     res.json({
       message: 'Profile updated successfully',
@@ -275,6 +295,170 @@ app.put('/api/users/me', authenticateJWT, async (req, res) => {
   }
 });
 
+// Company Profile Routes
+app.get('/api/employer/profile', authenticateJWT, checkRole('employer'), async (req, res) => {
+  try {
+    // Use MongoDB to fetch employer profile
+    // Always convert to ObjectId for consistency
+    let query;
+    try {
+      query = { _id: new ObjectId(req.user.id) };
+    } catch (e) {
+      console.error('Invalid ObjectId format:', e);
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    const employer = await db.collection('users').findOne(query);
+    
+    if (!employer) {
+      return res.status(404).json({ message: 'Employer not found' });
+    }
+
+    // Return only company-related fields
+    const companyProfile = {
+      name: employer.name,
+      company: employer.company,
+      industry: employer.industry,
+      location: employer.location,
+      description: employer.description,
+      logoUrl: employer.logoUrl
+    };
+
+    res.json(companyProfile);
+  } catch (error) {
+    console.error('Get company profile error:', error);
+    res.status(500).json({ message: 'Error fetching company profile', error: error.message });
+  }
+});
+
+app.put('/api/employer/profile', authenticateJWT, checkRole('employer'), async (req, res) => {
+  try {
+    const { name, industry, location, description } = req.body;
+    const timestamp = new Date().toISOString();
+
+    // Prepare query to find the user
+    // Always convert to ObjectId for consistency
+    let query;
+    try {
+      query = { _id: new ObjectId(req.user.id) };
+    } catch (e) {
+      console.error('Invalid ObjectId format:', e);
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    // Update employer profile in MongoDB
+    const result = await db.collection('users').findOneAndUpdate(
+      query,
+      {
+        $set: {
+          name,
+          industry,
+          location,
+          description,
+          updatedAt: timestamp
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: 'Employer not found' });
+    }
+
+    res.json({
+      message: 'Company profile updated successfully',
+      profile: {
+        name: result.name,
+        industry: result.industry,
+        location: result.location,
+        description: result.description,
+        logoUrl: result.logoUrl
+      }
+    });
+  } catch (error) {
+    console.error('Update company profile error:', error);
+    res.status(500).json({ message: 'Error updating company profile', error: error.message });
+  }
+});
+
+app.post('/api/employer/logo', authenticateJWT, checkRole('employer'), upload.single('logo'), async (req, res) => {
+  try {
+    console.log('Logo upload request from user:', req.user);
+    
+    if (!req.file) {
+      return res.status(400).json({ message: 'No logo file uploaded' });
+    }
+
+    console.log('Uploaded file:', req.file);
+    console.log('Upload directory:', UPLOAD_DIR);
+    
+    // Verify file exists
+    const filePath = path.join(UPLOAD_DIR, req.file.filename);
+    const fileExists = fs.existsSync(filePath);
+    console.log('File exists at', filePath, ':', fileExists);
+
+    const logoUrl = `/uploads/${req.file.filename}`;
+    const timestamp = new Date().toISOString();
+
+    console.log('Attempting to find employer with ID:', req.user.id);
+    let query;
+    try {
+      query = { _id: new ObjectId(req.user.id) };
+      console.log('Using ObjectId query:', query);
+    } catch (e) {
+      console.error('Error converting to ObjectId:', e);
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    // First, verify the user exists
+    const user = await db.collection('users').findOne(query);
+    console.log('Found user:', user ? 'Yes' : 'No', user ? `(role: ${user.role})` : '');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Employer not found' });
+    }
+
+    if (user.role !== 'employer') {
+      return res.status(403).json({ message: 'User is not an employer' });
+    }
+
+    console.log('About to update user with query:', query);
+    console.log('Setting logoUrl to:', logoUrl);
+    
+    let updatedUser;
+    try {
+      updatedUser = await db.collection('users').findOneAndUpdate(
+        query,
+        {
+          $set: {
+            logoUrl,
+            updatedAt: timestamp
+          }
+        },
+        { returnDocument: 'after' }
+      );
+
+      console.log('Update result:', updatedUser);
+
+      // In MongoDB 6.0+, the updated document is directly in the result
+      if (!updatedUser) {
+        console.error('Update failed - no document returned');
+        return res.status(500).json({ message: 'Failed to update employer profile' });
+      }
+    } catch (error) {
+      console.error('MongoDB update error:', error);
+      return res.status(500).json({ message: 'Database error during profile update' });
+    }
+
+    res.json({
+      message: 'Logo uploaded successfully',
+      logoUrl: updatedUser.logoUrl
+    });
+  } catch (error) {
+    console.error('Logo upload error:', error);
+    res.status(500).json({ message: 'Error uploading logo', error: error.message });
+  }
+});
 // Resume upload for candidates
 app.post('/api/candidates/resume', authenticateJWT, checkRole('candidate'), upload.single('resume'), async (req, res) => {
   try {
@@ -282,28 +466,35 @@ app.post('/api/candidates/resume', authenticateJWT, checkRole('candidate'), uplo
       return res.status(400).json({ message: 'No resume file uploaded' });
     }
 
-    const fileUrl = req.file.location;
+    const resumeUrl = `/uploads/${req.file.filename}`;
     const timestamp = new Date().toISOString();
 
-    // Update user with resume information
-    const params = {
-      TableName: 'Users',
-      Key: {
-        id: req.user.id
-      },
-      UpdateExpression: 'set resumeUrl = :resumeUrl, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':resumeUrl': fileUrl,
-        ':updatedAt': timestamp
-      },
-      ReturnValues: 'ALL_NEW'
-    };
+    // Update user with resume URL using MongoDB
+    let query = {};
+    try {
+      query = { _id: new ObjectId(req.user.id) };
+    } catch (e) {
+      query = { id: req.user.id };
+    }
 
-    await dynamoDB.update(params).promise();
+    const result = await db.collection('users').findOneAndUpdate(
+      query,
+      {
+        $set: {
+          resumeUrl,
+          updatedAt: timestamp
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
     res.json({
       message: 'Resume uploaded successfully',
-      resumeUrl: fileUrl
+      resumeUrl: result.value.resumeUrl
     });
   } catch (error) {
     console.error('Resume upload error:', error);
@@ -325,50 +516,46 @@ app.post('/api/jobs', authenticateJWT, checkRole('employer'), async (req, res) =
       featured
     } = req.body;
 
-    const jobId = uuidv4();
     const timestamp = new Date().toISOString();
-
-    // Get employer information
-    const employerParams = {
-      TableName: 'Users',
-      Key: {
-        id: req.user.id
-      }
-    };
-
-    const employerResult = await dynamoDB.get(employerParams).promise();
     
-    if (!employerResult.Item) {
+    // Get employer information using MongoDB
+    let query = {};
+    try {
+      query = { _id: new ObjectId(req.user.id) };
+    } catch (e) {
+      query = { id: req.user.id };
+    }
+    
+    const employer = await db.collection('users').findOne(query);
+    
+    if (!employer) {
       return res.status(404).json({ message: 'Employer not found' });
     }
 
-    // Create job listing
-    const jobParams = {
-      TableName: 'Jobs',
-      Item: {
-        id: jobId,
-        employerId: req.user.id,
-        companyName: employerResult.Item.name,
-        companyLogo: employerResult.Item.logoUrl || null,
-        title,
-        description,
-        requirements,
-        location,
-        jobType,
-        salary,
-        applicationDeadline,
-        status: 'active',
-        featured: featured || false,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      }
+    // Create job listing using MongoDB
+    const jobDoc = {
+      id: uuidv4(),
+      employerId: req.user.id,
+      companyName: employer.name,
+      companyLogo: employer.logoUrl || null,
+      title,
+      description,
+      requirements,
+      location,
+      jobType,
+      salary,
+      applicationDeadline,
+      status: 'active',
+      featured: featured || false,
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
-    await dynamoDB.put(jobParams).promise();
+    const result = await db.collection('jobs').insertOne(jobDoc);
 
     res.status(201).json({
       message: 'Job created successfully',
-      job: jobParams.Item
+      job: { ...jobDoc, _id: result.insertedId }
     });
   } catch (error) {
     console.error('Create job error:', error);
@@ -378,61 +565,45 @@ app.post('/api/jobs', authenticateJWT, checkRole('employer'), async (req, res) =
 
 app.get('/api/jobs', async (req, res) => {
   try {
-    const { search, location, jobType, limit, lastEvaluatedKey } = req.query;
+    const { search, location, jobType, limit = 20, page = 1 } = req.query;
     
-    // Base scan parameters
-    let params = {
-      TableName: 'Jobs',
-      FilterExpression: 'status = :status',
-      ExpressionAttributeValues: {
-        ':status': 'active'
-      },
-      Limit: parseInt(limit) || 20
-    };
-
-    // Add last evaluated key for pagination if provided
-    if (lastEvaluatedKey) {
-      params.ExclusiveStartKey = JSON.parse(lastEvaluatedKey);
+    // Build query filters
+    let filter = { status: 'active' };
+    
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { companyName: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (location) {
+      filter.location = { $regex: location, $options: 'i' };
+    }
+    
+    if (jobType) {
+      filter.jobType = jobType;
     }
 
-    // Add search filters if provided
-    if (search || location || jobType) {
-      let filterExpressions = ['status = :status'];
-      
-      if (search) {
-        filterExpressions.push('contains(title, :search) OR contains(description, :search) OR contains(companyName, :search)');
-        params.ExpressionAttributeValues[':search'] = search;
-      }
-      
-      if (location) {
-        filterExpressions.push('contains(location, :location)');
-        params.ExpressionAttributeValues[':location'] = location;
-      }
-      
-      if (jobType) {
-        filterExpressions.push('jobType = :jobType');
-        params.ExpressionAttributeValues[':jobType'] = jobType;
-      }
-      
-      params.FilterExpression = filterExpressions.join(' AND ');
-    }
-
-    const result = await dynamoDB.scan(params).promise();
-
-    // Sort results by featured status and creation date
-    const sortedJobs = result.Items.sort((a, b) => {
-      // First, sort by featured status (featured jobs first)
-      if (a.featured && !b.featured) return -1;
-      if (!a.featured && b.featured) return 1;
-      
-      // Then, sort by creation date (newest first)
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    });
+    // Get total count for pagination
+    const total = await db.collection('jobs').countDocuments(filter);
+    
+    // Get paginated results
+    const jobs = await db.collection('jobs')
+      .find(filter)
+      .sort({ featured: -1, createdAt: -1 })
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit))
+      .toArray();
 
     res.json({
-      jobs: sortedJobs,
-      lastEvaluatedKey: result.LastEvaluatedKey ? JSON.stringify(result.LastEvaluatedKey) : null,
-      count: result.Count
+      jobs,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit))
+      }
     });
   } catch (error) {
     console.error('Get jobs error:', error);
@@ -443,21 +614,21 @@ app.get('/api/jobs', async (req, res) => {
 app.get('/api/jobs/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    const params = {
-      TableName: 'Jobs',
-      Key: {
-        id
-      }
-    };
-
-    const result = await dynamoDB.get(params).promise();
     
-    if (!result.Item) {
+    let query = {};
+    try {
+      query = { _id: new ObjectId(id) };
+    } catch (e) {
+      query = { id };
+    }
+
+    const job = await db.collection('jobs').findOne(query);
+    
+    if (!job) {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    res.json(result.Item);
+    res.json(job);
   } catch (error) {
     console.error('Get job error:', error);
     res.status(500).json({ message: 'Error fetching job details', error: error.message });
@@ -479,56 +650,49 @@ app.put('/api/jobs/:id', authenticateJWT, checkRole('employer'), async (req, res
       featured
     } = req.body;
 
-    // Check if job exists and belongs to the employer
-    const getParams = {
-      TableName: 'Jobs',
-      Key: {
-        id
-      }
-    };
+    let query = {};
+    try {
+      query = { _id: new ObjectId(id) };
+    } catch (e) {
+      query = { id };
+    }
 
-    const getResult = await dynamoDB.get(getParams).promise();
+    // Check if job exists and belongs to the employer
+    const job = await db.collection('jobs').findOne(query);
     
-    if (!getResult.Item) {
+    if (!job) {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    if (getResult.Item.employerId !== req.user.id) {
+    if (job.employerId !== req.user.id) {
       return res.status(403).json({ message: 'You do not have permission to edit this job' });
     }
 
     const timestamp = new Date().toISOString();
 
     // Update job listing
-    const updateParams = {
-      TableName: 'Jobs',
-      Key: {
-        id
+    const result = await db.collection('jobs').findOneAndUpdate(
+      query,
+      {
+        $set: {
+          title,
+          description,
+          requirements,
+          location,
+          jobType,
+          salary,
+          applicationDeadline,
+          status,
+          featured,
+          updatedAt: timestamp
+        }
       },
-      UpdateExpression: 'set title = :title, description = :description, requirements = :requirements, ' +
-                        'location = :location, jobType = :jobType, salary = :salary, ' +
-                        'applicationDeadline = :applicationDeadline, status = :status, ' +
-                        'featured = :featured, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':title': title,
-        ':description': description,
-        ':requirements': requirements,
-        ':location': location,
-        ':jobType': jobType,
-        ':salary': salary,
-        ':applicationDeadline': applicationDeadline,
-        ':status': status,
-        ':featured': featured,
-        ':updatedAt': timestamp
-      },
-      ReturnValues: 'ALL_NEW'
-    };
-
-    const updateResult = await dynamoDB.update(updateParams).promise();
+      { returnDocument: 'after' }
+    );
 
     res.json({
       message: 'Job updated successfully',
-      job: updateResult.Attributes
+      job: result.value
     });
   } catch (error) {
     console.error('Update job error:', error);
@@ -540,33 +704,26 @@ app.delete('/api/jobs/:id', authenticateJWT, checkRole('employer'), async (req, 
   try {
     const { id } = req.params;
 
-    // Check if job exists and belongs to the employer
-    const getParams = {
-      TableName: 'Jobs',
-      Key: {
-        id
-      }
-    };
+    let query = {};
+    try {
+      query = { _id: new ObjectId(id) };
+    } catch (e) {
+      query = { id };
+    }
 
-    const getResult = await dynamoDB.get(getParams).promise();
+    // Check if job exists and belongs to the employer
+    const job = await db.collection('jobs').findOne(query);
     
-    if (!getResult.Item) {
+    if (!job) {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    if (getResult.Item.employerId !== req.user.id) {
+    if (job.employerId !== req.user.id) {
       return res.status(403).json({ message: 'You do not have permission to delete this job' });
     }
 
     // Delete job listing
-    const deleteParams = {
-      TableName: 'Jobs',
-      Key: {
-        id
-      }
-    };
-
-    await dynamoDB.delete(deleteParams).promise();
+    await db.collection('jobs').deleteOne(query);
 
     res.json({ message: 'Job deleted successfully' });
   } catch (error) {
@@ -576,117 +733,85 @@ app.delete('/api/jobs/:id', authenticateJWT, checkRole('employer'), async (req, 
 });
 
 // Application Routes
-app.post('/api/applications', authenticateJWT, checkRole('candidate'), async (req, res) => {
+// Job application endpoint will be added here
+app.post('/api/jobs/:id/apply', authenticateJWT, checkRole('candidate'), upload.single('resume'), async (req, res) => {
   try {
-    const { jobId, coverLetter } = req.body;
+    const { id } = req.params;
+    const { coverLetter } = req.body;
 
-    // Check if job exists
-    const jobParams = {
-      TableName: 'Jobs',
-      Key: {
-        id: jobId
-      }
-    };
+    // Find the job
+    let jobQuery = {};
+    try {
+      jobQuery = { _id: new ObjectId(id) };
+    } catch (e) {
+      jobQuery = { id };
+    }
 
-    const jobResult = await dynamoDB.get(jobParams).promise();
+    const job = await db.collection('jobs').findOne(jobQuery);
     
-    if (!jobResult.Item) {
+    if (!job) {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    // Check if user has already applied for this job
-    const checkParams = {
-      TableName: 'Applications',
-      IndexName: 'JobUserIndex',
-      KeyConditionExpression: 'jobId = :jobId AND userId = :userId',
-      ExpressionAttributeValues: {
-        ':jobId': jobId,
-        ':userId': req.user.id
-      }
-    };
-
-    const checkResult = await dynamoDB.query(checkParams).promise();
-    
-    if (checkResult.Items && checkResult.Items.length > 0) {
-      return res.status(400).json({ message: 'You have already applied for this job' });
+    // Get the candidate information
+    let userQuery = {};
+    try {
+      userQuery = { _id: new ObjectId(req.user.id) };
+    } catch (e) {
+      userQuery = { id: req.user.id };
     }
 
-    // Get candidate information
-    const candidateParams = {
-      TableName: 'Users',
-      Key: {
-        id: req.user.id
-      }
-    };
-
-    const candidateResult = await dynamoDB.get(candidateParams).promise();
+    const candidate = await db.collection('users').findOne(userQuery);
     
-    if (!candidateResult.Item) {
+    if (!candidate) {
       return res.status(404).json({ message: 'Candidate not found' });
     }
 
-    if (!candidateResult.Item.resumeUrl) {
-      return res.status(400).json({ message: 'Please upload a resume before applying' });
+    // Create the application
+    const timestamp = new Date().toISOString();
+    
+    // Use uploaded resume if available, otherwise use candidate's stored resume
+    const resumeUrl = req.file 
+      ? `/uploads/${req.file.filename}` 
+      : candidate.resumeUrl;
+
+    const applicationDoc = {
+      id: uuidv4(),
+      jobId: job._id ? job._id.toString() : job.id,
+      userId: req.user.id,
+      jobTitle: job.title,
+      companyName: job.companyName,
+      candidateName: candidate.name,
+      candidateEmail: candidate.email,
+      resumeUrl,
+      coverLetter: coverLetter || '',
+      status: 'pending',
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    const result = await db.collection('applications').insertOne(applicationDoc);
+
+    // Find the employer to send them an email notification
+    let employerQuery = {};
+    try {
+      employerQuery = { _id: new ObjectId(job.employerId) };
+    } catch (e) {
+      employerQuery = { id: job.employerId };
     }
 
-    const applicationId = uuidv4();
-    const timestamp = new Date().toISOString();
-
-    // Create application
-    const applicationParams = {
-      TableName: 'Applications',
-      Item: {
-        id: applicationId,
-        jobId,
-        userId: req.user.id,
-        jobTitle: jobResult.Item.title,
-        companyName: jobResult.Item.companyName,
-        candidateName: candidateResult.Item.name,
-        candidateEmail: candidateResult.Item.email,
-        resumeUrl: candidateResult.Item.resumeUrl,
-        coverLetter,
-        status: 'pending',
-        createdAt: timestamp,
-        updatedAt: timestamp
-      }
-    };
-
-    await dynamoDB.put(applicationParams).promise();
-
-    // Send email notification to employer
-    const employerParams = {
-      TableName: 'Users',
-      Key: {
-        id: jobResult.Item.employerId
-      }
-    };
-
-    const employerResult = await dynamoDB.get(employerParams).promise();
+    const employer = await db.collection('users').findOne(employerQuery);
     
-    if (employerResult.Item) {
-      const emailParams = {
-        Source: process.env.SES_EMAIL_FROM || 'noreply@bingitech.com',
-        Destination: {
-          ToAddresses: [employerResult.Item.email]
-        },
-        Message: {
-          Subject: {
-            Data: `New Application for ${jobResult.Item.title}`
-          },
-          Body: {
-            Text: {
-              Data: `You have received a new application from ${candidateResult.Item.name} for the ${jobResult.Item.title} position. Log in to view the application details.`
-            }
-          }
-        }
-      };
-
-      await ses.sendEmail(emailParams).promise();
+    if (employer) {
+      // In development mode, just log the email notification
+      console.log('Email would be sent to:', employer.email);
+      console.log('Subject:', `New Application for ${job.title}`);
+      console.log('Content:', `You have received a new application from ${candidate.name} for the ${job.title} position. Log in to view the application details.`);
     }
 
     res.status(201).json({
       message: 'Application submitted successfully',
-      application: applicationParams.Item
+      application: { ...applicationDoc, _id: result.insertedId }
     });
   } catch (error) {
     console.error('Create application error:', error);
@@ -696,66 +821,35 @@ app.post('/api/applications', authenticateJWT, checkRole('candidate'), async (re
 
 app.get('/api/applications', authenticateJWT, async (req, res) => {
   try {
-    let params;
-
     // Different queries based on user role
     if (req.user.role === 'employer') {
       // Get all jobs for this employer
-      const jobsParams = {
-        TableName: 'Jobs',
-        IndexName: 'EmployerIndex',
-        KeyConditionExpression: 'employerId = :employerId',
-        ExpressionAttributeValues: {
-          ':employerId': req.user.id
-        }
-      };
+      const jobs = await db.collection('jobs')
+        .find({ employerId: req.user.id })
+        .toArray();
 
-      const jobsResult = await dynamoDB.query(jobsParams).promise();
-      
-      if (!jobsResult.Items || jobsResult.Items.length === 0) {
+      if (!jobs || jobs.length === 0) {
         return res.json({ applications: [] });
       }
 
-      const jobIds = jobsResult.Items.map(job => job.id);
+      // Get job IDs - handle both string IDs and ObjectIds
+      const jobIds = jobs.map(job => {
+        return job._id ? job._id.toString() : job.id;
+      });
 
-      // Build batch get for applications for these jobs
-      const applicationKeys = [];
-      
-      for (const jobId of jobIds) {
-        // Query applications for each job
-        const appParams = {
-          TableName: 'Applications',
-          IndexName: 'JobIndex',
-          KeyConditionExpression: 'jobId = :jobId',
-          ExpressionAttributeValues: {
-            ':jobId': jobId
-          }
-        };
+      // Get applications for these jobs
+      const applications = await db.collection('applications')
+        .find({ jobId: { $in: jobIds } })
+        .toArray();
 
-        const appResult = await dynamoDB.query(appParams).promise();
-        
-        if (appResult.Items && appResult.Items.length > 0) {
-          const jobApplications = appResult.Items;
-          res.json({ applications: jobApplications });
-          return;
-        }
-      }
-
-      res.json({ applications: [] });
+      res.json({ applications });
     } else {
       // For candidates, get their applications
-      params = {
-        TableName: 'Applications',
-        IndexName: 'UserIndex',
-        KeyConditionExpression: 'userId = :userId',
-        ExpressionAttributeValues: {
-          ':userId': req.user.id
-        }
-      };
+      const applications = await db.collection('applications')
+        .find({ userId: req.user.id })
+        .toArray();
 
-      const result = await dynamoDB.query(params).promise();
-      
-      res.json({ applications: result.Items || [] });
+      res.json({ applications });
     }
   } catch (error) {
     console.error('Get applications error:', error);
@@ -767,39 +861,40 @@ app.get('/api/applications/:id', authenticateJWT, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const params = {
-      TableName: 'Applications',
-      Key: {
-        id
-      }
-    };
+    // Prepare query to find the application
+    let query = {};
+    try {
+      query = { _id: new ObjectId(id) };
+    } catch (e) {
+      query = { id };
+    }
 
-    const result = await dynamoDB.get(params).promise();
+    const application = await db.collection('applications').findOne(query);
     
-    if (!result.Item) {
+    if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
 
     // Check permission based on role
     if (req.user.role === 'employer') {
       // Employer should own the job
-      const jobParams = {
-        TableName: 'Jobs',
-        Key: {
-          id: result.Item.jobId
-        }
-      };
+      let jobQuery = {};
+      try {
+        jobQuery = { _id: new ObjectId(application.jobId) };
+      } catch (e) {
+        jobQuery = { id: application.jobId };
+      }
 
-      const jobResult = await dynamoDB.get(jobParams).promise();
+      const job = await db.collection('jobs').findOne(jobQuery);
       
-      if (!jobResult.Item || jobResult.Item.employerId !== req.user.id) {
+      if (!job || job.employerId !== req.user.id) {
         return res.status(403).json({ message: 'You do not have permission to view this application' });
       }
-    } else if (req.user.id !== result.Item.userId) {
+    } else if (req.user.id !== application.userId) {
       return res.status(403).json({ message: 'You do not have permission to view this application' });
     }
 
-    res.json(result.Item);
+    res.json(application);
   } catch (error) {
     console.error('Get application error:', error);
     res.status(500).json({ message: 'Error fetching application details', error: error.message });
@@ -811,105 +906,83 @@ app.put('/api/applications/:id/status', authenticateJWT, checkRole('employer'), 
     const { id } = req.params;
     const { status, feedbackNote } = req.body;
 
-    // Check if application exists
-    const getParams = {
-      TableName: 'Applications',
-      Key: {
-        id
-      }
-    };
+    // Prepare query to find the application
+    let query = {};
+    try {
+      query = { _id: new ObjectId(id) };
+    } catch (e) {
+      query = { id };
+    }
 
-    const getResult = await dynamoDB.get(getParams).promise();
+    // Check if application exists
+    const application = await db.collection('applications').findOne(query);
     
-    if (!getResult.Item) {
+    if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
 
     // Check if employer owns the job
-    const jobParams = {
-      TableName: 'Jobs',
-      Key: {
-        id: getResult.Item.jobId
-      }
-    };
+    let jobQuery = {};
+    try {
+      jobQuery = { _id: new ObjectId(application.jobId) };
+    } catch (e) {
+      jobQuery = { id: application.jobId };
+    }
 
-    const jobResult = await dynamoDB.get(jobParams).promise();
+    const job = await db.collection('jobs').findOne(jobQuery);
     
-    if (!jobResult.Item || jobResult.Item.employerId !== req.user.id) {
+    if (!job || job.employerId !== req.user.id) {
       return res.status(403).json({ message: 'You do not have permission to update this application' });
     }
 
     const timestamp = new Date().toISOString();
 
     // Update application status
-    const updateParams = {
-      TableName: 'Applications',
-      Key: {
-        id
+    const result = await db.collection('applications').findOneAndUpdate(
+      query,
+      {
+        $set: {
+          status,
+          feedbackNote,
+          updatedAt: timestamp
+        }
       },
-      UpdateExpression: 'set #status = :status, feedbackNote = :feedbackNote, updatedAt = :updatedAt',
-      ExpressionAttributeNames: {
-        '#status': 'status' // 'status' is a reserved word in DynamoDB
-      },
-      ExpressionAttributeValues: {
-        ':status': status,
-        ':feedbackNote': feedbackNote || null,
-        ':updatedAt': timestamp
-      },
-      ReturnValues: 'ALL_NEW'
-    };
+      { returnDocument: 'after' }
+    );
 
-    const updateResult = await dynamoDB.update(updateParams).promise();
+    // Get candidate details for email notification
+    const candidate = await db.collection('users').findOne({
+      $or: [
+        { _id: new ObjectId(application.userId) },
+        { id: application.userId }
+      ]
+    });
 
-    // Send email notification to candidate
-    const candidateParams = {
-      TableName: 'Users',
-      Key: {
-        id: getResult.Item.userId
-      }
-    };
-
-    const candidateResult = await dynamoDB.get(candidateParams).promise();
-    
-    if (candidateResult.Item) {
+    if (candidate) {
+      // In development mode, just log the email content
       let emailSubject, emailContent;
 
       if (status === 'rejected') {
-        emailSubject = `Application Status Update: ${jobResult.Item.title}`;
-        emailContent = `Dear ${candidateResult.Item.name},\n\nThank you for your interest in the ${jobResult.Item.title} position at ${jobResult.Item.companyName}.\n\nAfter careful consideration, we have decided to pursue other candidates whose qualifications better match our current needs.\n\n${feedbackNote ? `Additional feedback: ${feedbackNote}\n\n` : ''}We appreciate your interest in our company and wish you the best in your job search.\n\nSincerely,\n${jobResult.Item.companyName} Hiring Team`;
+        emailSubject = `Application Status Update: ${job.title}`;
+        emailContent = `Dear ${candidate.name},\n\nThank you for your interest in the ${job.title} position at ${job.companyName}.\n\nAfter careful consideration, we have decided to pursue other candidates whose qualifications better match our current needs.\n\n${feedbackNote ? `Additional feedback: ${feedbackNote}\n\n` : ''}We appreciate your interest in our company and wish you the best in your job search.\n\nSincerely,\n${job.companyName} Hiring Team`;
       } else if (status === 'interview') {
-        emailSubject = `Interview Request: ${jobResult.Item.title}`;
-        emailContent = `Dear ${candidateResult.Item.name},\n\nWe're pleased to inform you that we would like to schedule an interview for the ${jobResult.Item.title} position at ${jobResult.Item.companyName}.\n\n${feedbackNote ? `${feedbackNote}\n\n` : ''}Please log in to your account to respond to this interview request.\n\nWe look forward to speaking with you!\n\nSincerely,\n${jobResult.Item.companyName} Hiring Team`;
+        emailSubject = `Interview Request: ${job.title}`;
+        emailContent = `Dear ${candidate.name},\n\nWe're pleased to inform you that we would like to schedule an interview for the ${job.title} position at ${job.companyName}.\n\n${feedbackNote ? `${feedbackNote}\n\n` : ''}Please log in to your account to respond to this interview request.\n\nWe look forward to speaking with you!\n\nSincerely,\n${job.companyName} Hiring Team`;
       } else if (status === 'hired') {
-        emailSubject = `Congratulations! Job Offer for ${jobResult.Item.title}`;
-        emailContent = `Dear ${candidateResult.Item.name},\n\nCongratulations! We're delighted to offer you the ${jobResult.Item.title} position at ${jobResult.Item.companyName}.\n\n${feedbackNote ? `${feedbackNote}\n\n` : ''}Please log in to your account for more details about the offer.\n\nWe're excited to have you join our team!\n\nSincerely,\n${jobResult.Item.companyName} Hiring Team`;
+        emailSubject = `Congratulations! Job Offer for ${job.title}`;
+        emailContent = `Dear ${candidate.name},\n\nCongratulations! We're delighted to offer you the ${job.title} position at ${job.companyName}.\n\n${feedbackNote ? `${feedbackNote}\n\n` : ''}Please log in to your account for more details about the offer.\n\nWe're excited to have you join our team!\n\nSincerely,\n${job.companyName} Hiring Team`;
       }
 
       if (emailSubject && emailContent) {
-        const emailParams = {
-          Source: process.env.SES_EMAIL_FROM || 'noreply@bingitech.com',
-          Destination: {
-            ToAddresses: [candidateResult.Item.email]
-          },
-          Message: {
-            Subject: {
-              Data: emailSubject
-            },
-            Body: {
-              Text: {
-                Data: emailContent
-              }
-            }
-          }
-        };
-
-        await ses.sendEmail(emailParams).promise();
+        console.log('Email would be sent to:', candidate.email);
+        console.log('Subject:', emailSubject);
+        console.log('Content:', emailContent);
       }
     }
 
     res.json({
       message: 'Application status updated successfully',
-      application: updateResult.Attributes
+      application: result.value
     });
   } catch (error) {
     console.error('Update application status error:', error);
@@ -921,18 +994,11 @@ app.put('/api/applications/:id/status', authenticateJWT, checkRole('employer'), 
 app.get('/api/analytics/employer', authenticateJWT, checkRole('employer'), async (req, res) => {
   try {
     // Get all jobs for this employer
-    const jobsParams = {
-      TableName: 'Jobs',
-      IndexName: 'EmployerIndex',
-      KeyConditionExpression: 'employerId = :employerId',
-      ExpressionAttributeValues: {
-        ':employerId': req.user.id
-      }
-    };
+    const jobs = await db.collection('jobs')
+      .find({ employerId: req.user.id })
+      .toArray();
 
-    const jobsResult = await dynamoDB.query(jobsParams).promise();
-    
-    if (!jobsResult.Items || jobsResult.Items.length === 0) {
+    if (!jobs || jobs.length === 0) {
       return res.json({
         totalJobs: 0,
         totalApplications: 0,
@@ -941,50 +1007,55 @@ app.get('/api/analytics/employer', authenticateJWT, checkRole('employer'), async
       });
     }
 
-    const jobIds = jobsResult.Items.map(job => job.id);
-    let totalApplications = 0;
-    const applicationsByStatus = {
+    const jobIds = jobs.map(job => job._id ? job._id.toString() : job.id);
+
+    // Get applications stats using MongoDB aggregation
+    const applicationStats = await db.collection('applications')
+      .aggregate([
+        {
+          $match: { jobId: { $in: jobIds } }
+        },
+        {
+          $group: {
+            _id: null,
+            totalApplications: { $sum: 1 },
+            byStatus: {
+              $push: '$status'
+            }
+          }
+        }
+      ]).toArray();
+
+    const stats = applicationStats[0] || { totalApplications: 0, byStatus: [] };
+    
+    // Count applications by status
+    const applicationsByStatus = stats.byStatus.reduce((acc, status) => {
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {
       pending: 0,
       reviewed: 0,
       interview: 0,
       rejected: 0,
       hired: 0
-    };
-    const applicationsByJob = [];
+    });
 
-    // Get applications for each job
-    for (const job of jobsResult.Items) {
-      const appParams = {
-        TableName: 'Applications',
-        IndexName: 'JobIndex',
-        KeyConditionExpression: 'jobId = :jobId',
-        ExpressionAttributeValues: {
-          ':jobId': job.id
-        }
-      };
-
-      const appResult = await dynamoDB.query(appParams).promise();
+    // Get applications count by job
+    const applicationsByJob = await Promise.all(jobs.map(async (job) => {
+      const jobId = job._id ? job._id.toString() : job.id;
+      const count = await db.collection('applications')
+        .countDocuments({ jobId });
       
-      const jobApplications = appResult.Items || [];
-      totalApplications += jobApplications.length;
-      
-      // Count applications by status
-      jobApplications.forEach(app => {
-        if (applicationsByStatus[app.status] !== undefined) {
-          applicationsByStatus[app.status]++;
-        }
-      });
-      
-      applicationsByJob.push({
-        jobId: job.id,
+      return {
+        jobId,
         jobTitle: job.title,
-        applicationCount: jobApplications.length
-      });
-    }
+        applicationCount: count
+      };
+    }));
 
     res.json({
-      totalJobs: jobsResult.Items.length,
-      totalApplications,
+      totalJobs: jobs.length,
+      totalApplications: stats.totalApplications,
       applicationsByStatus,
       applicationsByJob
     });
@@ -996,20 +1067,12 @@ app.get('/api/analytics/employer', authenticateJWT, checkRole('employer'), async
 
 app.get('/api/analytics/candidate', authenticateJWT, checkRole('candidate'), async (req, res) => {
   try {
-    // Get all applications for this candidate
-    const applicationsParams = {
-      TableName: 'Applications',
-      IndexName: 'UserIndex',
-      KeyConditionExpression: 'userId = :userId',
-      ExpressionAttributeValues: {
-        ':userId': req.user.id
-      }
-    };
-
-    const applicationsResult = await dynamoDB.query(applicationsParams).promise();
+    // Get all applications for this candidate using MongoDB
+    const applications = await db.collection('applications')
+      .find({ userId: req.user.id })
+      .toArray();
     
-    const applications = applicationsResult.Items || [];
-    
+    // Initialize status counters
     const applicationsByStatus = {
       pending: 0,
       reviewed: 0,
@@ -1026,6 +1089,7 @@ app.get('/api/analytics/candidate', authenticateJWT, checkRole('candidate'), asy
     });
 
     // Get recent job view history (mock data - would be implemented with a separate table)
+    // This could be implemented with a real collection in MongoDB later
     const recentJobViews = [
       {
         jobId: 'job1',
@@ -1053,44 +1117,53 @@ app.get('/api/analytics/candidate', authenticateJWT, checkRole('candidate'), asy
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await connectToMongoDB();
+    
+    // Serve static files from uploads directory
+    app.use('/uploads', express.static(UPLOAD_DIR));
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 // environment variables - save as .env file
-// AWS_REGION=us-east-1
-// AWS_ACCESS_KEY_ID=your_access_key_id
-// AWS_SECRET_ACCESS_KEY=your_secret_access_key
-// S3_BUCKET=bingitech-job-board-files
 // JWT_SECRET=your_jwt_secret
-// SES_EMAIL_FROM=noreply@bingitech.com
 // PORT=5000
+// MONGO_URI=mongodb://jobboard:jobboard@mongodb:27017/jobboard?authSource=admin
 
-// DynamoDB table schemas
+// MongoDB Collections Schema Example
 
 /*
-Users Table:
-- id (string, hash key)
+Users Collection:
+- _id (ObjectId, automatically generated)
+- id (string, legacy identifier)
 - name (string)
-- email (string)
+- email (string, indexed)
 - password (string)
 - role (string) - 'candidate' or 'employer'
 - phone (string, optional)
 - address (string, optional)
 - bio (string, optional)
-- resumeUrl (string, optional) - S3 URL to resume for candidates
-- logoUrl (string, optional) - S3 URL to company logo for employers
+- resumeUrl (string, optional) - URL to resume for candidates
+- logoUrl (string, optional) - URL to company logo for employers
 - createdAt (string) - ISO timestamp
 - updatedAt (string) - ISO timestamp
 
-Global Secondary Indexes:
-- EmailIndex: email (hash key)
-
-Jobs Table:
-- id (string, hash key)
+Jobs Collection:
+- _id (ObjectId, automatically generated)
+- id (string, legacy identifier)
 - employerId (string)
 - companyName (string)
-- companyLogo (string, optional) - S3 URL to company logo
+- companyLogo (string, optional) - URL to company logo
 - title (string)
 - description (string)
 - requirements (string)
@@ -1103,27 +1176,19 @@ Jobs Table:
 - createdAt (string) - ISO timestamp
 - updatedAt (string) - ISO timestamp
 
-Global Secondary Indexes:
-- EmployerIndex: employerId (hash key), createdAt (range key)
-- StatusIndex: status (hash key), createdAt (range key)
-
-Applications Table:
-- id (string, hash key)
+Applications Collection:
+- _id (ObjectId, automatically generated)
+- id (string, legacy identifier)
 - jobId (string)
 - userId (string)
 - jobTitle (string)
 - companyName (string)
 - candidateName (string)
 - candidateEmail (string)
-- resumeUrl (string) - S3 URL to candidate's resume
+- resumeUrl (string) - URL to candidate's resume
 - coverLetter (string, optional)
 - status (string) - 'pending', 'reviewed', 'interview', 'rejected', 'hired'
 - feedbackNote (string, optional)
 - createdAt (string) - ISO timestamp
 - updatedAt (string) - ISO timestamp
-
-Global Secondary Indexes:
-- JobIndex: jobId (hash key), createdAt (range key)
-- UserIndex: userId (hash key), createdAt (range key)
-- JobUserIndex: jobId (hash key), userId (range key)
 */

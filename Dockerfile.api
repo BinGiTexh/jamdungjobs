@@ -1,88 +1,11 @@
-FROM node:20-alpine
+FROM node:16
 
-# Set working directory
 WORKDIR /app
 
-# Debug: Show initial directory
-RUN echo "=== Initial directory contents ===" && \
-    ls -la
-
-# Copy package files first for better caching
 COPY backend/package*.json ./
-RUN echo "=== After copying package.json ===" && \
-    ls -la && \
-    echo "=== package.json contents ===" && \
-    cat package.json
 
-# Install dependencies
 RUN npm install
-RUN echo "=== After npm install ===" && \
-    ls -la
 
-# Copy backend source code
-COPY backend/ ./
-RUN echo "=== After copying backend files ===" && \
-    ls -la
+COPY backend/ .
 
-# Create adapter directory
-RUN mkdir -p /app/adapter && \
-    echo "=== Created adapter directory ===" && \
-    ls -la /app
-
-# Debug: Show build context before copying adapter
-RUN set -x && \
-    echo "=== Build context directory contents ===" && \
-    ls -la / && \
-    echo "=== App directory contents ===" && \
-    ls -la /app && \
-    echo "=== Adapter directory contents ===" && \
-    ls -la /app/adapter
-
-# Copy adapter file to its own directory first
-COPY local-dev/backend-adapter.js /app/adapter/
-RUN echo "=== Copied adapter file to adapter directory ===" && \
-    ls -la /app/adapter && \
-    cat /app/adapter/backend-adapter.js | head -n 5
-
-# Move adapter file to final location
-RUN cp /app/adapter/backend-adapter.js /app/local-adapter.js && \
-    chmod 644 /app/local-adapter.js && \
-    echo "=== Moved adapter file to final location ===" && \
-    ls -la /app/local-adapter.js
-
-# Verify the adapter file is valid JavaScript
-RUN node -c /app/local-adapter.js && \
-    echo "=== Adapter file validation successful ==="
-
-# Set environment variables
-ENV NODE_ENV=development
-ENV PORT=5000
-
-# Expose the port
-EXPOSE 5000
-
-# Final verification of all files
-RUN echo "=== Final directory structure ===" && \
-    ls -la && \
-    echo "=== Current working directory ===" && \
-    pwd
-
-# Start the application with debugging output
-CMD ["sh", "-c", "\
-    echo '=== Verifying required files ===' && \
-    if [ ! -f /app/local-adapter.js ]; then \
-        echo 'Error: local-adapter.js not found' && exit 1; \
-    fi && \
-    if [ ! -f /app/server.js ]; then \
-        echo 'Error: server.js not found' && exit 1; \
-    fi && \
-    echo '=== Directory contents ===' && \
-    ls -la /app && \
-    echo '=== local-adapter.js contents ===' && \
-    echo '------------------------' && \
-    cat /app/local-adapter.js && \
-    echo '------------------------' && \
-    echo '=== server.js first 10 lines ===' && \
-    head -n 10 /app/server.js && \
-    echo '=== Starting API with local adapter ===' && \
-    NODE_DEBUG=module,loading NODE_PATH=/app node /app/local-adapter.js"]
+CMD ["node", "server.js"]

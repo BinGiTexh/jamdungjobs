@@ -1,19 +1,11 @@
-# Dockerfile.frontend - For frontend React app
-FROM node:20-alpine
+FROM node:16.20.0
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json first for better caching
 COPY web-frontend/package*.json ./
+RUN npm install --legacy-peer-deps
+RUN npm install react-icons@4.10.1 --save --legacy-peer-deps
 
-# Install dependencies
-RUN npm install
+COPY web-frontend/ .
 
-# Set environment variables
-ENV NODE_ENV=development
-
-# Expose port 3000
-EXPOSE 3000
-
-# Command to run the app
 CMD ["npm", "start"]
