@@ -34,7 +34,7 @@ services:
       - ../backend/server.js:/app/server.js:delegated
       - ../backend/package.json:/app/package.json:delegated
       - ../backend/package-lock.json:/app/package-lock.json:delegated
-      - uploads:/app/uploads
+      - ../backend/uploads:/app/uploads
     depends_on:
       - mongodb
 

@@ -57,10 +57,20 @@ const storage = multer.diskStorage({
 });
 
 // Setup middleware
-app.use(helmet());
+// Configure helmet with cross-origin image loading
+app.use(helmet({
+  crossOriginResourcePolicy: {
+    policy: 'cross-origin'
+  }
+}));
+
+// Configure CORS
 app.use(cors());
 app.use(express.json({limit: '50mb'}));
 app.use(morgan('dev'));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // File upload configuration
 const upload = multer({
@@ -317,11 +327,19 @@ app.get('/api/employer/profile', authenticateJWT, checkRole('employer'), async (
     // Return only company-related fields
     const companyProfile = {
       name: employer.name,
-      company: employer.company,
-      industry: employer.industry,
-      location: employer.location,
-      description: employer.description,
-      logoUrl: employer.logoUrl
+      industry: employer.industry || '',
+      location: employer.location || '',
+      description: employer.description || '',
+      logoUrl: employer.logoUrl || null,
+      website: employer.website || '',
+      employeeCount: employer.employeeCount || '',
+      founded: employer.founded || '',
+      socialLinks: employer.socialLinks || {
+        linkedin: '',
+        twitter: '',
+        facebook: ''
+      },
+      culture: employer.culture || ''
     };
 
     res.json(companyProfile);
@@ -333,7 +351,17 @@ app.get('/api/employer/profile', authenticateJWT, checkRole('employer'), async (
 
 app.put('/api/employer/profile', authenticateJWT, checkRole('employer'), async (req, res) => {
   try {
-    const { name, industry, location, description } = req.body;
+    const { 
+      name, 
+      industry, 
+      location, 
+      description, 
+      website, 
+      employeeCount, 
+      founded, 
+      socialLinks,
+      culture
+    } = req.body;
     const timestamp = new Date().toISOString();
 
     // Prepare query to find the user
@@ -355,6 +383,11 @@ app.put('/api/employer/profile', authenticateJWT, checkRole('employer'), async (
           industry,
           location,
           description,
+          website,
+          employeeCount,
+          founded,
+          socialLinks,
+          culture,
           updatedAt: timestamp
         }
       },
@@ -372,6 +405,11 @@ app.put('/api/employer/profile', authenticateJWT, checkRole('employer'), async (
         industry: result.industry,
         location: result.location,
         description: result.description,
+        website: result.website,
+        employeeCount: result.employeeCount,
+        founded: result.founded,
+        socialLinks: result.socialLinks,
+        culture: result.culture,
         logoUrl: result.logoUrl
       }
     });

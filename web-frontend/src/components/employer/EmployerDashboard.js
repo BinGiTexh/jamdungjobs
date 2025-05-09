@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { buildApiUrl, buildAssetUrl, config } from '../../config';
+import './EmployerDashboard.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 // Logo Upload Modal Component
 const LogoUploadModal = ({ onClose, onUpload }) => {
@@ -85,7 +88,17 @@ export const EmployerDashboard = () => {
     industry: '',
     location: '',
     description: '',
-    logo: null
+    logoUrl: null,
+    website: '',
+    employeeCount: '',
+    founded: '',
+    socialLinks: {
+      linkedin: '',
+      twitter: '',
+      facebook: ''
+    },
+    benefits: [],
+    culture: ''
   });
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -119,7 +132,16 @@ export const EmployerDashboard = () => {
           industry: data.industry || '',
           location: data.location || '',
           description: data.description || '',
-          logo: data.logoUrl || null
+          logoUrl: data.logoUrl || null,
+          website: data.website || '',
+          employeeCount: data.employeeCount || '',
+          founded: data.founded || '',
+          socialLinks: data.socialLinks || {
+            linkedin: '',
+            twitter: '',
+            facebook: ''
+          },
+          culture: data.culture || ''
         });
       } catch (error) {
         // Only set error message for network failures or server errors
@@ -150,7 +172,12 @@ export const EmployerDashboard = () => {
           name: companyProfile.name,
           industry: companyProfile.industry,
           location: companyProfile.location,
-          description: companyProfile.description
+          description: companyProfile.description,
+          website: companyProfile.website,
+          employeeCount: companyProfile.employeeCount,
+          founded: companyProfile.founded,
+          socialLinks: companyProfile.socialLinks,
+          culture: companyProfile.culture
         })
       });
 
@@ -159,15 +186,24 @@ export const EmployerDashboard = () => {
         throw new Error(errorData.message || 'Failed to update profile. Please try again.');
       }
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update profile');
+      }
+
       const data = await response.json();
       setCompanyProfile(prev => ({
         ...prev,
-        ...data.profile
+        ...data.profile,
+        logoUrl: data.profile.logoUrl || prev.logoUrl // Keep the logo state in sync
       }));
       setMessage({ 
         type: 'success', 
         text: 'Your company profile has been updated successfully! 🎉'
       });
+      
+      // Prevent page reload
+      return false;
     } catch (error) {
       setMessage({ 
         type: 'error', 
@@ -199,7 +235,7 @@ export const EmployerDashboard = () => {
       }
 
       // Upload to server
-      const response = await fetch('http://localhost:5000/api/employer/logo', {
+      const response = await fetch(buildApiUrl('api/employer/logo'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -217,7 +253,7 @@ export const EmployerDashboard = () => {
       // Update company profile with the new logo URL
       setCompanyProfile(prev => ({
         ...prev,
-        logo: data.logoUrl
+        logoUrl: data.logoUrl
       }));
       
       setMessage({ 
@@ -243,6 +279,38 @@ export const EmployerDashboard = () => {
 
   return (
     <div className="employer-dashboard">
+      {message && (
+        <div className={`alert alert-${message.type}`}>
+          {message.text}
+        </div>
+      )}
+      
+      <div className="dashboard-header">
+        <div className="company-header">
+          <div className="company-logo-large">
+            {companyProfile.logoUrl ? (
+              <img 
+                src={buildAssetUrl(companyProfile.logoUrl)} 
+                alt={`${companyProfile.name} logo`} 
+              />
+            ) : (
+              <div className="logo-placeholder-large">
+                {companyProfile.name ? companyProfile.name[0].toUpperCase() : '?'}
+              </div>
+            )}
+          </div>
+          <div className="company-info">
+            <h1>{companyProfile.name || 'Your Company Name'}</h1>
+            {companyProfile.industry && <span className="industry-badge">{companyProfile.industry}</span>}
+            {companyProfile.location && (
+              <div className="location">
+                <i className="fas fa-map-marker-alt"></i> {companyProfile.location}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="dashboard-tabs">
         <button
           className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
@@ -258,12 +326,6 @@ export const EmployerDashboard = () => {
         </button>
       </div>
 
-      {message && (
-        <div className={`message ${message.type}`}>
-          {message.text}
-        </div>
-      )}
-
       {activeTab === 'profile' && (
         <div className="profile-section">
           <h2>Company Profile</h2>
@@ -275,63 +337,167 @@ export const EmployerDashboard = () => {
           </p>
 
           <form className="profile-form" onSubmit={handleProfileSubmit}>
-            <div className="form-group">
-              <label>Company Name</label>
-              <input
-                type="text"
-                value={companyProfile.name}
-                onChange={(e) => setCompanyProfile(prev => ({ ...prev, name: e.target.value }))}
-                required
-              />
+            <div className="form-section">
+              <h3>Basic Information</h3>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Company Name</label>
+                  <input
+                    type="text"
+                    value={companyProfile.name}
+                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, name: e.target.value }))}
+                    required
+                    placeholder="Enter your company name"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Industry</label>
+                  <select
+                    value={companyProfile.industry}
+                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, industry: e.target.value }))}
+                    required
+                  >
+                    <option value="">Select Industry</option>
+                    <option value="technology">Technology</option>
+                    <option value="finance">Finance</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="education">Education</option>
+                    <option value="tourism">Tourism</option>
+                    <option value="retail">Retail</option>
+                    <option value="manufacturing">Manufacturing</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Location</label>
+                  <input
+                    type="text"
+                    value={companyProfile.location}
+                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, location: e.target.value }))}
+                    required
+                    placeholder="e.g., Kingston, Jamaica"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Website</label>
+                  <input
+                    type="url"
+                    value={companyProfile.website}
+                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, website: e.target.value }))}
+                    placeholder="https://www.example.com"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Founded Year</label>
+                  <input
+                    type="number"
+                    value={companyProfile.founded}
+                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, founded: e.target.value }))}
+                    placeholder="e.g., 2020"
+                    min="1900"
+                    max={new Date().getFullYear()}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Employee Count</label>
+                  <select
+                    value={companyProfile.employeeCount}
+                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, employeeCount: e.target.value }))}
+                  >
+                    <option value="">Select Range</option>
+                    <option value="1-10">1-10 employees</option>
+                    <option value="11-50">11-50 employees</option>
+                    <option value="51-200">51-200 employees</option>
+                    <option value="201-500">201-500 employees</option>
+                    <option value="501+">501+ employees</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label>Industry</label>
-              <select
-                value={companyProfile.industry}
-                onChange={(e) => setCompanyProfile(prev => ({ ...prev, industry: e.target.value }))}
-                required
-              >
-                <option value="">Select Industry</option>
-                <option value="technology">Technology</option>
-                <option value="finance">Finance</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="education">Education</option>
-                <option value="tourism">Tourism</option>
-                <option value="retail">Retail</option>
-                <option value="manufacturing">Manufacturing</option>
-                <option value="other">Other</option>
-              </select>
+            <div className="form-section">
+              <h3>Company Details</h3>
+              <div className="form-group">
+                <label>Company Description</label>
+                <textarea
+                  value={companyProfile.description}
+                  onChange={(e) => setCompanyProfile(prev => ({ ...prev, description: e.target.value }))}
+                  required
+                  placeholder="Tell potential candidates about your company..."
+                  rows="6"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Company Culture</label>
+                <textarea
+                  value={companyProfile.culture}
+                  onChange={(e) => setCompanyProfile(prev => ({ ...prev, culture: e.target.value }))}
+                  placeholder="Describe your company culture and values..."
+                  rows="4"
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label>Location</label>
-              <input
-                type="text"
-                value={companyProfile.location}
-                onChange={(e) => setCompanyProfile(prev => ({ ...prev, location: e.target.value }))}
-                required
-                placeholder="e.g., Kingston, Jamaica"
-              />
-            </div>
+            <div className="form-section">
+              <h3>Social Media</h3>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>LinkedIn</label>
+                  <input
+                    type="url"
+                    value={companyProfile.socialLinks.linkedin}
+                    onChange={(e) => setCompanyProfile(prev => ({
+                      ...prev,
+                      socialLinks: { ...prev.socialLinks, linkedin: e.target.value }
+                    }))}
+                    placeholder="LinkedIn profile URL"
+                  />
+                </div>
 
-            <div className="form-group">
-              <label>Company Description</label>
-              <textarea
-                value={companyProfile.description}
-                onChange={(e) => setCompanyProfile(prev => ({ ...prev, description: e.target.value }))}
-                required
-                placeholder="Tell potential candidates about your company..."
-              />
+                <div className="form-group">
+                  <label>Twitter</label>
+                  <input
+                    type="url"
+                    value={companyProfile.socialLinks.twitter}
+                    onChange={(e) => setCompanyProfile(prev => ({
+                      ...prev,
+                      socialLinks: { ...prev.socialLinks, twitter: e.target.value }
+                    }))}
+                    placeholder="Twitter profile URL"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Facebook</label>
+                  <input
+                    type="url"
+                    value={companyProfile.socialLinks.facebook}
+                    onChange={(e) => setCompanyProfile(prev => ({
+                      ...prev,
+                      socialLinks: { ...prev.socialLinks, facebook: e.target.value }
+                    }))}
+                    placeholder="Facebook page URL"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="form-group">
               <label>Company Logo</label>
               <div className="logo-upload">
                 <div className="logo-container">
-                  {companyProfile.logo ? (
+                  {companyProfile.logoUrl ? (
                     <div className="logo-preview">
-                      <img src={companyProfile.logo} alt="Company logo preview" />
+                      <img 
+                        src={buildAssetUrl(companyProfile.logoUrl)} 
+                        alt="Company logo preview" 
+                      />
                     </div>
                   ) : (
                     <div className="logo-placeholder">
@@ -344,7 +510,7 @@ export const EmployerDashboard = () => {
                       className="upload-button"
                       onClick={() => setShowLogoModal(true)}
                     >
-                      {companyProfile.logo ? 'Change Logo' : 'Upload Logo'}
+                      {companyProfile.logoUrl ? 'Change Logo' : 'Upload Logo'}
                     </button>
                     <p className="upload-hint">Recommended: 400x400px, PNG or JPG</p>
                   </div>
