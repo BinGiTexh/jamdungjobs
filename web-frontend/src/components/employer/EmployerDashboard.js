@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { buildApiUrl, buildAssetUrl, config } from '../../config';
+import { buildApiUrl, buildAssetUrl } from '../../config';
 import './EmployerDashboard.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import { EnvDebug } from '../debug/EnvDebug';
+import { LocationAutocomplete } from '../common/LocationAutocomplete';
 
 // Logo Upload Modal Component
 const LogoUploadModal = ({ onClose, onUpload }) => {
@@ -279,6 +281,7 @@ export const EmployerDashboard = () => {
 
   return (
     <div className="employer-dashboard">
+      <EnvDebug />
       {message && (
         <div className={`alert alert-${message.type}`}>
           {message.text}
@@ -372,12 +375,10 @@ export const EmployerDashboard = () => {
 
                 <div className="form-group">
                   <label>Location</label>
-                  <input
-                    type="text"
+                  <LocationAutocomplete
                     value={companyProfile.location}
-                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, location: e.target.value }))}
-                    required
-                    placeholder="e.g., Kingston, Jamaica"
+                    onChange={(value) => setCompanyProfile(prev => ({ ...prev, location: value }))}
+                    placeholder="Company location"
                   />
                 </div>
 

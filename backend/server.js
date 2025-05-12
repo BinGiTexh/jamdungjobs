@@ -541,6 +541,73 @@ app.post('/api/candidates/resume', authenticateJWT, checkRole('candidate'), uplo
 });
 
 // Job Routes
+
+// Save/unsave job
+app.post('/api/jobs/:jobId/:action', authenticateJWT, checkRole('candidate'), async (req, res) => {
+  try {
+    const { jobId, action } = req.params;
+    if (!['save', 'unsave'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action' });
+    }
+
+    // Update user's saved jobs
+    const update = action === 'save' 
+      ? { $addToSet: { savedJobs: jobId } }
+      : { $pull: { savedJobs: jobId } };
+
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(req.user.id) },
+      update
+    );
+
+    res.json({ message: `Job ${action}d successfully` });
+  } catch (error) {
+    console.error(`${action} job error:`, error);
+    res.status(500).json({ message: `Error ${action}ing job`, error: error.message });
+  }
+});
+
+// Apply to job
+app.post('/api/jobs/:jobId/apply', authenticateJWT, checkRole('candidate'), async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { coverLetter } = req.body;
+    
+    // Check if already applied
+    const existingApplication = await db.collection('applications').findOne({
+      jobId,
+      userId: req.user.id
+    });
+    
+    if (existingApplication) {
+      return res.status(400).json({ message: 'Already applied to this job' });
+    }
+    
+    const job = await db.collection('jobs').findOne({ _id: new ObjectId(jobId) });
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+    
+    const application = {
+      jobId,
+      userId: req.user.id,
+      jobTitle: job.title,
+      companyName: job.companyName,
+      candidateName: req.user.name,
+      coverLetter,
+      status: 'pending',
+      appliedAt: new Date().toISOString()
+    };
+    
+    await db.collection('applications').insertOne(application);
+    res.status(201).json({ message: 'Application submitted successfully' });
+  } catch (error) {
+    console.error('Apply to job error:', error);
+    res.status(500).json({ message: 'Error submitting application', error: error.message });
+  }
+});
+
+// Create job
 app.post('/api/jobs', authenticateJWT, checkRole('employer'), async (req, res) => {
   try {
     const {
@@ -603,10 +670,32 @@ app.post('/api/jobs', authenticateJWT, checkRole('employer'), async (req, res) =
 
 app.get('/api/jobs', async (req, res) => {
   try {
-    const { search, location, jobType, limit = 20, page = 1 } = req.query;
+    const { 
+      search, 
+      location, 
+      jobType, 
+      limit = 20, 
+      page = 1,
+      sort = 'latest',
+      minSalary,
+      maxSalary,
+      remote
+    } = req.query;
     
     // Build query filters
     let filter = { status: 'active' };
+    
+    // Add salary range filter if provided
+    if (minSalary || maxSalary) {
+      filter.salary = {};
+      if (minSalary) filter.salary.$gte = parseInt(minSalary);
+      if (maxSalary) filter.salary.$lte = parseInt(maxSalary);
+    }
+
+    // Add remote filter
+    if (remote === 'true') {
+      filter.remote = true;
+    }
     
     if (search) {
       filter.$or = [
@@ -630,7 +719,11 @@ app.get('/api/jobs', async (req, res) => {
     // Get paginated results
     const jobs = await db.collection('jobs')
       .find(filter)
-      .sort({ featured: -1, createdAt: -1 })
+      .sort(sort === 'latest' 
+        ? { featured: -1, createdAt: -1 }
+        : sort === 'salary' 
+        ? { featured: -1, salary: -1, createdAt: -1 }
+        : { featured: -1, score: { $meta: 'textScore' } })
       .skip((parseInt(page) - 1) * parseInt(limit))
       .limit(parseInt(limit))
       .toArray();
