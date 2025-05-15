@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Grid,
+  Paper,
+  Button,
+  IconButton,
+  Chip
+} from '@mui/material';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../../context/AuthContext';
 import { buildApiUrl, buildAssetUrl } from '../../config';
-import './EmployerDashboard.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
-import { EnvDebug } from '../debug/EnvDebug';
+import JobManagementModal from './JobManagementModal';
 import { LocationAutocomplete } from '../common/LocationAutocomplete';
+import axios from 'axios';
 
 // Logo Upload Modal Component
 const LogoUploadModal = ({ onClose, onUpload }) => {
@@ -44,18 +57,68 @@ const LogoUploadModal = ({ onClose, onUpload }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>×</button>
-        <h3>Upload Company Logo</h3>
-        <div
-          className="logo-upload-area"
-          style={{ 
-            backgroundColor: dragOver ? 'var(--light-green)' : 'transparent'
+    <Box
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1300,
+        p: { xs: 2, sm: 3 }
+      }}
+      onClick={onClose}
+    >
+      <Paper
+        onClick={e => e.stopPropagation()}
+        sx={{
+          width: '100%',
+          maxWidth: { xs: '90%', sm: '450px' },
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          p: { xs: 2, sm: 3 },
+          position: 'relative',
+          borderRadius: 2
+        }}
+      >
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+
+        <Typography variant="h6" sx={{ mb: 3 }}>
+          Upload Company Logo
+        </Typography>
+
+        <Box
+          sx={{
+            border: '2px dashed',
+            borderColor: dragOver ? 'primary.main' : 'grey.300',
+            borderRadius: 2,
+            p: 3,
+            textAlign: 'center',
+            backgroundColor: dragOver ? 'primary.50' : 'background.paper',
+            transition: 'all 0.2s ease',
+            cursor: 'pointer',
+            '&:hover': {
+              borderColor: 'primary.main',
+              backgroundColor: 'primary.50'
+            }
           }}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          onClick={handleFileSelect}
         >
           <input
             ref={fileInputRef}
@@ -64,27 +127,31 @@ const LogoUploadModal = ({ onClose, onUpload }) => {
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
-          <div>
-            <p>Drag and drop your logo here</p>
-            <p>or</p>
-            <button 
-              className="upload-button" 
-              type="button"
-              onClick={handleFileSelect}
-            >
-              Choose File
-            </button>
-          </div>
-          <p className="upload-hint">Recommended: 400x400px, PNG or JPG (max 5MB)</p>
-        </div>
-      </div>
-    </div>
+
+          <Box sx={{ mb: 2 }}>
+            <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              Drag and drop your logo here
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              or click to browse
+            </Typography>
+          </Box>
+
+          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 2 }}>
+            Recommended: 400x400px, PNG or JPG (max 5MB)
+          </Typography>
+        </Box>
+      </Paper>
+    </Box>
   );
 };
 
 export const EmployerDashboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
+  const [jobs, setJobs] = useState([]);
+  const [showJobModal, setShowJobModal] = useState(null);
   const [companyProfile, setCompanyProfile] = useState({
     name: user?.company || '',
     industry: '',
@@ -107,6 +174,53 @@ export const EmployerDashboard = () => {
   const [showLogoModal, setShowLogoModal] = useState(false);
 
   // Fetch company profile on component mount
+  const fetchJobs = async () => {
+    try {
+      const response = await axios.get('/api/employer/jobs');
+      setJobs(response.data || []); // Ensure we always have an array
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      // Don't show error to user, just set empty jobs array
+      setJobs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleJobSave = async (jobData) => {
+    try {
+      if (showJobModal.mode === 'create') {
+        const response = await axios.post('/api/employer/jobs', jobData);
+        setJobs(prev => [...prev, response.data]);
+      } else {
+        const response = await axios.put(`/api/employer/jobs/${showJobModal.jobId}`, jobData);
+        setJobs(prev => prev.map(job => 
+          job.id === showJobModal.jobId ? response.data : job
+        ));
+      }
+      setShowJobModal(null);
+      setMessage({ type: 'success', text: `Job ${showJobModal.mode === 'create' ? 'created' : 'updated'} successfully` });
+    } catch (error) {
+      console.error('Error saving job:', error);
+      setMessage({ type: 'error', text: 'Failed to save job' });
+    }
+  };
+
+  const handleDeleteJob = async (jobId) => {
+    if (!window.confirm('Are you sure you want to delete this job posting?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`/api/employer/jobs/${jobId}`);
+      setJobs(prev => prev.filter(job => job.id !== jobId));
+      setMessage({ type: 'success', text: 'Job deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      setMessage({ type: 'error', text: 'Failed to delete job' });
+    }
+  };
+
   useEffect(() => {
     const fetchCompanyProfile = async () => {
       try {
@@ -159,6 +273,7 @@ export const EmployerDashboard = () => {
     };
 
     fetchCompanyProfile();
+    fetchJobs();
   }, []);
 
   const handleProfileSubmit = async (e) => {
@@ -281,7 +396,6 @@ export const EmployerDashboard = () => {
 
   return (
     <div className="employer-dashboard">
-      <EnvDebug />
       {message && (
         <div className={`alert alert-${message.type}`}>
           {message.text}
@@ -528,25 +642,78 @@ export const EmployerDashboard = () => {
 
       {activeTab === 'jobs' && (
         <div className="jobs-section">
-          <div className="section-header">
-            <h2>Job Postings</h2>
-            <button className="add-job-button">+ Add New Job</button>
-          </div>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5">Job Postings</Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => setShowJobModal({ mode: 'create' })}
+            >
+              Add New Job
+            </Button>
+          </Box>
 
-          <div className="job-listings">
-            <div className="job-listing-header">
-              <div>Job Title</div>
-              <div>Location</div>
-              <div>Posted Date</div>
-              <div>Status</div>
-              <div>Applications</div>
-              <div>Actions</div>
-            </div>
-            
-            <div className="no-jobs">
-              No job postings yet. Click "Add New Job" to create your first posting.
-            </div>
-          </div>
+          <Grid container spacing={3}>
+            {jobs.map(job => (
+              <Grid item xs={12} key={job.id}>
+                <Paper sx={{ p: 3 }}>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="h6">{job.title}</Typography>
+                      <Typography color="textSecondary">
+                        {job.location}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} md={2}>
+                      <Typography variant="body2" color="textSecondary">
+                        Posted: {new Date(job.createdAt).toLocaleDateString()}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} md={2}>
+                      <Chip
+                        label={job.status}
+                        color={
+                          job.status === 'ACTIVE' ? 'success' :
+                          job.status === 'DRAFT' ? 'default' :
+                          job.status === 'CLOSED' ? 'error' : 'warning'
+                        }
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={6} md={2}>
+                      <Typography>
+                        {job.applications?.length || 0} Applications
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} md={2} sx={{ textAlign: 'right' }}>
+                      <IconButton
+                        onClick={() => setShowJobModal({ mode: 'edit', jobId: job.id })}
+                        color="primary"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handleDeleteJob(job.id)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              </Grid>
+            ))}
+            {jobs.length === 0 && (
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography color="textSecondary">
+                    No job postings yet. Click "Add New Job" to create your first posting.
+                  </Typography>
+                </Paper>
+              </Grid>
+            )}
+          </Grid>
         </div>
       )}
 
@@ -554,6 +721,17 @@ export const EmployerDashboard = () => {
         <LogoUploadModal
           onClose={() => setShowLogoModal(false)}
           onUpload={handleLogoUpload}
+        />
+      )}
+
+      {showJobModal && (
+        <JobManagementModal
+          open={!!showJobModal}
+          onClose={() => setShowJobModal(null)}
+          mode={showJobModal.mode}
+          jobData={showJobModal.mode === 'edit' ? jobs.find(j => j.id === showJobModal.jobId) : null}
+          onSave={handleJobSave}
+          applications={showJobModal.mode === 'edit' ? jobs.find(j => j.id === showJobModal.jobId)?.applications || [] : []}
         />
       )}
     </div>

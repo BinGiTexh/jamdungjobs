@@ -4,7 +4,7 @@ import { FaMapMarkerAlt } from 'react-icons/fa';
 export const LocationAutocomplete = ({ value, onChange, placeholder = "Location" }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const autocompleteRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -12,7 +12,7 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
     // Check if script is already loaded
     if (window.google?.maps?.places) {
       console.log('Google Maps already loaded');
-      setScriptLoaded(true);
+      setIsLoaded(true);
       initAutocomplete();
       return;
     }
@@ -38,7 +38,7 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
     };
     script.onload = () => {
       console.log('Google Maps script loaded successfully');
-      setScriptLoaded(true);
+      setIsLoaded(true);
       initAutocomplete();
     };
     document.head.appendChild(script);
@@ -80,7 +80,7 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
                 {
                   input,
                   types: ['(cities)'],
-                  componentRestrictions: { country: 'us' }
+                  componentRestrictions: { country: 'jm' }
                 },
                 (predictions, status) => {
                   resolve({ predictions, status });

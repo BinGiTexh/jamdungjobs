@@ -4,7 +4,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { MongoClient } = require('mongodb');
+const { PrismaClient } = require('@prisma/client');
 const AWS = require('aws-sdk');
 const multer = require('multer');
 const path = require('path');
@@ -13,6 +13,9 @@ const fs = require('fs');
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Initialize Prisma
+const prisma = new PrismaClient();
 
 // Configure middleware
 app.use(cors());
@@ -27,7 +30,6 @@ AWS.config.update({
 });
 
 // Initialize AWS services
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
 const s3 = new AWS.S3();
 
 // Configure file upload
@@ -49,39 +51,15 @@ const upload = multer({
   }
 });
 
-// MongoDB connection
-let db;
-const mongoURI = process.env.MONGO_URI || 'mongodb://jobboard:jobboard@mongodb:27017/jobboard?authSource=admin';
-
-async function connectToMongo() {
+// Connect to the database
+async function connectToDatabase() {
   try {
-    const client = new MongoClient(mongoURI);
-    await client.connect();
-    console.log('Connected to MongoDB');
-    db = client.db('jobboard');
-    
-    // Check if collections exist, create them if not
-    const collections = await db.listCollections().toArray();
-    const collectionNames = collections.map(c => c.name);
-    
-    if (!collectionNames.includes('users')) {
-      await db.createCollection('users');
-    }
-    if (!collectionNames.includes('jobs')) {
-      await db.createCollection('jobs');
-    }
-    if (!collectionNames.includes('applications')) {
-      await db.createCollection('applications');
-    }
-    if (!collectionNames.includes('analytics')) {
-      await db.createCollection('analytics');
-    }
-    
-    console.log('Collections checked and created if needed');
+    await prisma.$connect();
+    console.log('Connected to PostgreSQL via Prisma');
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('Database connection error:', error);
     // Retry after a delay
-    setTimeout(connectToMongo, 5000);
+    setTimeout(connectToDatabase, 5000);
   }
 }
 
@@ -142,34 +120,30 @@ app.post('/api/auth/register', async (req, res) => {
     const { name, email, password, role } = req.body;
     
     // Check if user exists
-    const user = await db.collection('users').findOne({ email });
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+    
     if (user) {
       return res.status(400).json({ message: 'User already exists' });
     }
     
-    // Create user
-    const newUser = {
-      id: Date.now().toString(),
-      name,
-      email,
-      password, // In production, this would be hashed
-      role: role || 'candidate',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    // Create new user
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password, // In production, this would be hashed
+        role: role || 'CANDIDATE'
+      }
+    });
     
-    await db.collection('users').insertOne(newUser);
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = newUser;
     
-    // Return token
     res.status(201).json({
       message: 'User registered successfully',
-      token: 'dev-token',
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role
-      }
+      user: userWithoutPassword
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -182,26 +156,25 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     
     // Find user
-    const user = await db.collection('users').findOne({ email });
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+    
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
     
-    // Check password
+    // Check password (in production, this would use proper hashing)
     if (user.password !== password) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     
-    // Return token
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = user;
+    
     res.json({
       message: 'Login successful',
-      token: 'dev-token',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: userWithoutPassword
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -212,13 +185,16 @@ app.post('/api/auth/login', async (req, res) => {
 // User routes
 app.get('/api/users/me', authenticateJWT, async (req, res) => {
   try {
-    const user = await db.collection('users').findOne({ id: req.user.id });
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Remove password
-    const { password, ...userWithoutPassword } = user;
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = user;
     
     res.json(userWithoutPassword);
   } catch (error) {
@@ -667,5 +643,5 @@ app.post('/api/analytics', async (req, res) => {
 // Start server
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
-  await connectToMongo();
+  await connectToDatabase();
 });

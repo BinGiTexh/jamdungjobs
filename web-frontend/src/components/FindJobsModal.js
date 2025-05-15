@@ -23,7 +23,7 @@ const QuickApplyModal = ({ job, onClose, onSuccess }) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/jobs/${job._id}/apply`, {
+      const response = await fetch(`http://localhost:5000/api/jobs/${job.id}/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -389,12 +389,12 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
             <div className="space-y-4">
               {jobs.map(job => (
                 <div
-                  key={job._id}
+                  key={job.id}
                   className="border rounded-lg p-4 hover:shadow-md transition-shadow relative"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-blue-600 hover:text-blue-800 cursor-pointer" onClick={() => viewJobDetails(job._id)}>
+                      <h3 className="text-lg font-semibold text-blue-600 hover:text-blue-800 cursor-pointer" onClick={() => viewJobDetails(job.id)}>
                         {job.title}
                       </h3>
                       <div className="flex flex-wrap gap-2 mt-1">
@@ -419,11 +419,11 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleSaveJob(job._id);
+                        toggleSaveJob(job.id);
                       }}
                       className="text-gray-400 hover:text-blue-600 transition-colors"
                     >
-                      {savedJobs.has(job._id) ? <FaBookmark /> : <FaRegBookmark />}
+                      {savedJobs.has(job.id) ? <FaBookmark /> : <FaRegBookmark />}
                     </button>
                   </div>
                   

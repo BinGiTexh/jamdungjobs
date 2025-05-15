@@ -192,7 +192,7 @@ body {
 /* Hero section styles */
 .hero-section {
   position: relative;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url('/images/replicate-prediction-xh4f4f3m6srme0cpnm0bjeq0c0.png');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url('./images/replicate-prediction-xh4f4f3m6srme0cpnm0bjeq0c0.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;

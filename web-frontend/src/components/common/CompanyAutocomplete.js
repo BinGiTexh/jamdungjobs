@@ -12,7 +12,7 @@ export const CompanyAutocomplete = ({ value, onChange }) => {
       const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
       const data = await response.json();
       return data.companies.map(company => ({
-        id: company._id,
+        id: company.id,
         name: company.name,
         logo: company.logo,
         location: company.location

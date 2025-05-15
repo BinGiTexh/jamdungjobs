@@ -4,11 +4,12 @@ import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { useAuth } from './context/AuthContext';
-import { FaSearch, FaMapMarkerAlt, FaBriefcase, FaBuilding, FaRegClock } from 'react-icons/fa';
 import { EmployerDashboard } from './components/employer/EmployerDashboard';
+import CandidateDashboard from './components/candidate/CandidateDashboard';
 import Register from './components/Register';
 import { buildAssetUrl } from './config';
 import { FindJobsModal } from './components/FindJobsModal';
+import HomePage from './components/home/HomePage';
 
 // Inline component definitions to avoid missing module errors
 const LoginPage = () => {
@@ -21,8 +22,16 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await login(email, password);
-      const redirectTo = location.state?.from || '/dashboard';
+      const user = await login(email, password);
+      let redirectTo = location.state?.from;
+      
+      if (!redirectTo) {
+        // Redirect based on user role
+        redirectTo = user.role === 'EMPLOYER' 
+          ? '/employer/dashboard'
+          : '/candidate/dashboard';
+      }
+      
       navigate(redirectTo, { replace: true });
     } catch (err) {
       console.error('Login failed:', err);
@@ -103,143 +112,6 @@ const JobSearchPage = () => (
   </div>
 );
 
-const HomePage = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [location, setLocation] = useState('');
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    // TODO: Implement search functionality
-    console.log('Searching for:', searchTerm, 'in', location);
-  };
-
-  // Note: You need to copy the replicate-prediction-xh4f4f3m6srme0cpnm0bjeq0c0.png image
-  // to the /src/assets directory for this to work
-
-  // Sample job data
-  const featuredJobs = [
-    {
-      id: 1,
-      title: 'Senior Software Engineer',
-      company: 'Tech Solutions Jamaica',
-      location: 'Kingston, Jamaica',
-      salary: '$80,000 - $120,000 per year',
-      type: 'Full-time',
-      posted: '2 days ago'
-    },
-    {
-      id: 2,
-      title: 'Frontend Developer',
-      company: 'Caribbean Digital',
-      location: 'Montego Bay, Jamaica',
-      salary: '$50,000 - $70,000 per year',
-      type: 'Full-time',
-      posted: '3 days ago'
-    },
-    {
-      id: 3,
-      title: 'DevOps Engineer',
-      company: 'Island Tech Solutions',
-      location: 'Kingston, Jamaica',
-      salary: '$70,000 - $90,000 per year',
-      type: 'Full-time',
-      posted: '1 week ago'
-    }
-  ];
-
-  return (
-    <div>
-      <section 
-        className="hero-section"
-        style={{
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url('/images/replicate-prediction-xh4f4f3m6srme0cpnm0bjeq0c0.png')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          color: 'white',
-          minHeight: '600px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          padding: '2rem'
-        }}
-      >
-        <h1 style={{ 
-          fontSize: '3rem',
-          marginBottom: '1rem',
-          textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
-        }}>
-          Find Your Next Tech Job in Jamaica
-        </h1>
-        <p style={{
-          fontSize: '1.5rem',
-          marginBottom: '2rem',
-          textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
-        }}>
-          Search through thousands of job listings
-        </p>
-        
-        <form onSubmit={handleSearch} className="search-container" style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          padding: '2rem',
-          borderRadius: '8px',
-          maxWidth: '800px',
-          margin: '0 auto',
-          width: '100%'
-        }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <FaSearch style={{ position: 'absolute', left: '1rem', top: '1.2rem', color: '#666' }} />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Job title, keywords, or company"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '2.5rem' }}
-            />
-          </div>
-          
-          <div style={{ flex: 1, position: 'relative' }}>
-            <FaMapMarkerAlt style={{ position: 'absolute', left: '1rem', top: '1.2rem', color: '#666' }} />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="City or parish"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              style={{ paddingLeft: '2.5rem' }}
-            />
-          </div>
-          
-          <button type="submit" className="search-button">
-            Find Jobs
-          </button>
-        </form>
-      </section>
-
-      <div style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 1rem' }}>
-        <div className="featured-jobs-header">
-          <h2>Featured Jobs</h2>
-          <Link to="/jobs" style={{ color: 'var(--primary-color)', textDecoration: 'none' }}>
-            View all jobs →
-          </Link>
-        </div>
-        <div className="featured-jobs">
-          {featuredJobs.map(job => (
-            <div key={job.id} className="job-card">
-              <h3 className="job-title">{job.title}</h3>
-              <p className="company-name"><FaBuilding style={{ marginRight: '0.5rem' }} />{job.company}</p>
-              <p className="job-location"><FaMapMarkerAlt style={{ marginRight: '0.5rem' }} />{job.location}</p>
-              <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem' }}>
-                <p className="job-salary"><FaBriefcase style={{ marginRight: '0.5rem' }} />{job.salary}</p>
-                <p style={{ color: '#666' }}><FaRegClock style={{ marginRight: '0.5rem' }} />{job.posted}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const RegisterPage = () => {
   const { isAuthenticated } = useAuth();
@@ -254,7 +126,6 @@ const RegisterPage = () => {
 const Navigation = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 
   return (
     <nav className="nav-container">
@@ -264,57 +135,54 @@ const Navigation = () => {
         </Link>
         
         <div className="nav-links">
-          {user?.role === 'employer' ? (
-            <>
-              <Link to="/employer/dashboard">Company Dashboard</Link>
-              <Link to="/employer/jobs">Manage Jobs</Link>
-              <Link to="/profile">Profile</Link>
-              <button
-                onClick={logout}
-                className="nav-button"
-              >
-                Logout
-              </button>
-            </>
-          ) : user?.role === 'candidate' ? (
-            <>
-              <button
-                onClick={() => setIsJobModalOpen(true)}
-                className="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium"
-              >
-                Find Jobs
-              </button>
-              <Link to="/dashboard">My Applications</Link>
-              <Link to="/profile">Profile</Link>
-              <button
-                onClick={logout}
-                className="nav-button"
-              >
-                Logout
-              </button>
-            </>
+          {user ? (
+            user.role === 'EMPLOYER' ? (
+              <>
+                <Link to="/employer/dashboard">Dashboard</Link>
+                <Link to="/employer/jobs">Job Listings</Link>
+                <Link to="/employer/applications">Applications</Link>
+                <Link to="/employer/profile">Company Profile</Link>
+                <button 
+                  onClick={logout}
+                  style={{
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/jobs">Browse Jobs</Link>
+                <Link to="/candidate/dashboard">Dashboard</Link>
+                <Link to="/saved-jobs">Saved Jobs</Link>
+                <Link to="/applications">My Applications</Link>
+                <button 
+                  onClick={logout}
+                  style={{
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            )
           ) : (
+            // Hide navigation links when user is not logged in since we have buttons on the homepage
             <>
-              <button
-                onClick={() => setIsJobModalOpen(true)}
-                className="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium"
-              >
-                Browse Jobs
-              </button>
-              <Link to="/login">Sign In</Link>
-              <Link 
-                to="/register" 
-                className="auth-button"
-                style={{ margin: 0, padding: '0.5rem 1rem', textDecoration: 'none' }}
-              >
-                Register
-              </Link>
+              {/* Navigation links for non-logged in users removed */}
             </>
           )}
-          <FindJobsModal
-            isOpen={isJobModalOpen}
-            onClose={() => setIsJobModalOpen(false)}
-          />
         </div>
       </div>
     </nav>
@@ -616,9 +484,9 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+        <div style={{ minHeight: '100vh' }}>
           <Navigation />
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+          <div>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
@@ -640,8 +508,18 @@ function App() {
               <Route
                 path="/employer/dashboard"
                 element={
-                  <RoleProtectedRoute role="employer">
+                  <RoleProtectedRoute role="EMPLOYER">
                     <EmployerDashboard />
+                  </RoleProtectedRoute>
+                }
+              />
+
+              {/* Candidate Routes */}
+              <Route
+                path="/candidate/dashboard"
+                element={
+                  <RoleProtectedRoute role="JOBSEEKER">
+                    <CandidateDashboard />
                   </RoleProtectedRoute>
                 }
               />

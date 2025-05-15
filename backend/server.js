@@ -4,10 +4,11 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const path = require('path');
-const { MongoClient, ObjectId } = require('mongodb');
+const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 require('dotenv').config();
 
@@ -15,26 +16,15 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// MongoDB Connection
-const mongoUri = process.env.MONGO_URI || 'mongodb://jobboard:jobboard@mongodb:27017/jobboard?authSource=admin';
-let db;
+// Initialize Prisma
+const prisma = new PrismaClient();
 
-const connectToMongoDB = async () => {
+const connectToDatabase = async () => {
   try {
-    const client = new MongoClient(mongoUri);
-    await client.connect();
-    console.log('Connected to MongoDB');
-    db = client.db('jobboard');
-
-    // Create indexes
-    await db.collection('users').createIndex({ email: 1 }, { unique: true });
-    await db.collection('jobs').createIndex({ employerId: 1 });
-    await db.collection('applications').createIndex({ jobId: 1 });
-    await db.collection('applications').createIndex({ userId: 1 });
-    
-    return db;
+    await prisma.$connect();
+    console.log('Connected to PostgreSQL via Prisma');
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('Database connection error:', error);
     process.exit(1);
   }
 };
@@ -131,49 +121,34 @@ const checkRole = (role) => {
 // Authentication Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { firstName, lastName, email, password, role } = req.body;
 
     // Check if user already exists
-    const existingUser = await db.collection('users').findOne({ email });
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
     
     if (existingUser) {
-      return res.status(400).json({ message: 'User with that email already exists' });
+      return res.status(400).json({ message: 'User already exists' });
     }
-
-    // Create new user
-    const timestamp = new Date().toISOString();
-    const newUser = {
-      name,
-      email,
-      password, // In production, hash this password!
-      role: role || 'candidate', // Default to candidate if role not specified
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-
-    const result = await db.collection('users').insertOne(newUser);
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { 
-        id: result.insertedId.toString(), // Use MongoDB's ObjectId
-        email,
-        role: role || 'candidate',
-        name 
-      },
-      process.env.JWT_SECRET || 'local_development_secret',
-      { expiresIn: '7d' }
-    );
-
+    
+    // Create user
+    const newUser = await prisma.user.create({
+      data: {
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        passwordHash: password, // In production, this would be hashed
+        role: role || 'JOBSEEKER',
+      }
+    });
+    
+    // Return token
+    const { passwordHash: _, ...userWithoutPassword } = newUser;
     res.status(201).json({
       message: 'User registered successfully',
-      token,
-      user: {
-        id: result.insertedId.toString(),
-        name,
-        email,
-        role: role || 'candidate'
-      }
+      token: 'dev-token',
+      user: userWithoutPassword
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -186,72 +161,55 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     console.log('Login attempt for:', email);
 
-    // Use MongoDB for authentication
-    const user = await db.collection('users').findOne({ email });
-    console.log('Found user:', user ? 'Yes' : 'No');
-    
-    if (!user) {
-      console.log('User not found:', email);
-      return res.status(404).json({ message: 'User not found' });
-    }
+    // Use Prisma for authentication
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
 
-    // Simple password check (in production, use bcrypt)
-    if (user.password !== password) {
-      console.log('Invalid password for user:', email);
+    if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Generate JWT token
+    // Compare password with hashed password
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    console.log('Password comparison:', { password, hash: user.passwordHash, isValid: isValidPassword });
+
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
     const token = jwt.sign(
-      { 
-        id: user._id.toString(),
-        email: user.email,
-        role: user.role,
-        name: user.name 
-      },
+      { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'local_development_secret',
-      { expiresIn: '7d' }
+      { expiresIn: '24h' }
     );
 
-    console.log('Login successful for:', email);
-    
-    // Send response
+    const { passwordHash, ...userWithoutPassword } = user;
+
     res.json({
       message: 'Login successful',
       token,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: userWithoutPassword
     });
+
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      message: 'Error during login', 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ message: 'Error during login', error: error.message });
   }
 });
 
 // User Routes
 app.get('/api/users/me', authenticateJWT, async (req, res) => {
   try {
-    const user = await db.collection('users').findOne({ 
-      $or: [
-        { _id: req.user.id },
-        { id: req.user.id }
-      ]
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id }
     });
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
-    // Remove sensitive information
-    const { password, ...userWithoutPassword } = user;
+    
+    const { password: _, ...userWithoutPassword } = user;
 
     res.json(userWithoutPassword);
   } catch (error) {
@@ -306,50 +264,43 @@ app.put('/api/users/me', authenticateJWT, async (req, res) => {
 });
 
 // Company Profile Routes
-app.get('/api/employer/profile', authenticateJWT, checkRole('employer'), async (req, res) => {
+app.get('/api/employer/profile', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
-    // Use MongoDB to fetch employer profile
-    // Always convert to ObjectId for consistency
-    let query;
-    try {
-      query = { _id: new ObjectId(req.user.id) };
-    } catch (e) {
-      console.error('Invalid ObjectId format:', e);
-      return res.status(400).json({ message: 'Invalid user ID format' });
-    }
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
 
-    const employer = await db.collection('users').findOne(query);
-    
     if (!employer) {
       return res.status(404).json({ message: 'Employer not found' });
     }
 
-    // Return only company-related fields
-    const companyProfile = {
-      name: employer.name,
-      industry: employer.industry || '',
-      location: employer.location || '',
-      description: employer.description || '',
-      logoUrl: employer.logoUrl || null,
-      website: employer.website || '',
-      employeeCount: employer.employeeCount || '',
-      founded: employer.founded || '',
-      socialLinks: employer.socialLinks || {
-        linkedin: '',
-        twitter: '',
-        facebook: ''
-      },
-      culture: employer.culture || ''
-    };
+    const company = await prisma.company.findUnique({
+      where: { id: employer.companyId }
+    });
 
-    res.json(companyProfile);
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    res.json({
+      name: company.name,
+      industry: company.industry,
+      location: company.location,
+      description: company.description,
+      website: company.website,
+      employeeCount: company.employeeCount,
+      founded: company.founded,
+      socialLinks: company.socialLinks,
+      logoUrl: company.logoUrl,
+      culture: company.culture
+    });
   } catch (error) {
     console.error('Get company profile error:', error);
     res.status(500).json({ message: 'Error fetching company profile', error: error.message });
   }
 });
 
-app.put('/api/employer/profile', authenticateJWT, checkRole('employer'), async (req, res) => {
+app.put('/api/employer/profile', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
     const { 
       name, 
@@ -362,55 +313,65 @@ app.put('/api/employer/profile', authenticateJWT, checkRole('employer'), async (
       socialLinks,
       culture
     } = req.body;
-    const timestamp = new Date().toISOString();
 
-    // Prepare query to find the user
-    // Always convert to ObjectId for consistency
-    let query;
-    try {
-      query = { _id: new ObjectId(req.user.id) };
-    } catch (e) {
-      console.error('Invalid ObjectId format:', e);
-      return res.status(400).json({ message: 'Invalid user ID format' });
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'Employer not found' });
     }
 
-    // Update employer profile in MongoDB
-    const result = await db.collection('users').findOneAndUpdate(
-      query,
-      {
-        $set: {
-          name,
-          industry,
-          location,
-          description,
-          website,
-          employeeCount,
-          founded,
-          socialLinks,
-          culture,
-          updatedAt: timestamp
+    const company = await prisma.company.upsert({
+      where: { id: employer.companyId || '' },
+      create: {
+        name,
+        industry,
+        location,
+        description,
+        website,
+        employeeCount,
+        founded,
+        socialLinks,
+        culture,
+        users: {
+          connect: { id: employer.id }
         }
       },
-      { returnDocument: 'after' }
-    );
+      update: {
+        name,
+        industry,
+        location,
+        description,
+        website,
+        employeeCount,
+        founded,
+        socialLinks,
+        culture
+      }
+    });
 
-    if (!result) {
-      return res.status(404).json({ message: 'Employer not found' });
+    // Update employer's companyId if it's a new company
+    if (!employer.companyId) {
+      await prisma.user.update({
+        where: { id: employer.id },
+        data: { companyId: company.id }
+      });
     }
 
     res.json({
       message: 'Company profile updated successfully',
       profile: {
-        name: result.name,
-        industry: result.industry,
-        location: result.location,
-        description: result.description,
-        website: result.website,
-        employeeCount: result.employeeCount,
-        founded: result.founded,
-        socialLinks: result.socialLinks,
-        culture: result.culture,
-        logoUrl: result.logoUrl
+        name: company.name,
+        industry: company.industry,
+        location: company.location,
+        description: company.description,
+        website: company.website,
+        employeeCount: company.employeeCount,
+        founded: company.founded,
+        socialLinks: company.socialLinks,
+        culture: company.culture,
+        logoUrl: company.logoUrl
       }
     });
   } catch (error) {
@@ -419,7 +380,7 @@ app.put('/api/employer/profile', authenticateJWT, checkRole('employer'), async (
   }
 });
 
-app.post('/api/employer/logo', authenticateJWT, checkRole('employer'), upload.single('logo'), async (req, res) => {
+app.post('/api/employer/logo', authenticateJWT, checkRole('EMPLOYER'), upload.single('logo'), async (req, res) => {
   try {
     console.log('Logo upload request from user:', req.user);
     
@@ -428,75 +389,203 @@ app.post('/api/employer/logo', authenticateJWT, checkRole('employer'), upload.si
     }
 
     console.log('Uploaded file:', req.file);
-    console.log('Upload directory:', UPLOAD_DIR);
-    
-    // Verify file exists
-    const filePath = path.join(UPLOAD_DIR, req.file.filename);
-    const fileExists = fs.existsSync(filePath);
-    console.log('File exists at', filePath, ':', fileExists);
 
+    // Generate logo URL
     const logoUrl = `/uploads/${req.file.filename}`;
-    const timestamp = new Date().toISOString();
+    console.log('Generated logo URL:', logoUrl);
 
-    console.log('Attempting to find employer with ID:', req.user.id);
-    let query;
-    try {
-      query = { _id: new ObjectId(req.user.id) };
-      console.log('Using ObjectId query:', query);
-    } catch (e) {
-      console.error('Error converting to ObjectId:', e);
-      return res.status(400).json({ message: 'Invalid user ID format' });
+    // Get user from database
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    // First, verify the user exists
-    const user = await db.collection('users').findOne(query);
-    console.log('Found user:', user ? 'Yes' : 'No', user ? `(role: ${user.role})` : '');
-
-    if (!user) {
-      return res.status(404).json({ message: 'Employer not found' });
+    if (!employer.company) {
+      return res.status(404).json({ message: 'Company not found' });
     }
 
-    if (user.role !== 'employer') {
-      return res.status(403).json({ message: 'User is not an employer' });
-    }
-
-    console.log('About to update user with query:', query);
-    console.log('Setting logoUrl to:', logoUrl);
-    
-    let updatedUser;
-    try {
-      updatedUser = await db.collection('users').findOneAndUpdate(
-        query,
-        {
-          $set: {
-            logoUrl,
-            updatedAt: timestamp
-          }
-        },
-        { returnDocument: 'after' }
-      );
-
-      console.log('Update result:', updatedUser);
-
-      // In MongoDB 6.0+, the updated document is directly in the result
-      if (!updatedUser) {
-        console.error('Update failed - no document returned');
-        return res.status(500).json({ message: 'Failed to update employer profile' });
-      }
-    } catch (error) {
-      console.error('MongoDB update error:', error);
-      return res.status(500).json({ message: 'Database error during profile update' });
-    }
+    const updatedCompany = await prisma.company.update({
+      where: { id: employer.company.id },
+      data: { logoUrl }
+    });
 
     res.json({
       message: 'Logo uploaded successfully',
-      logoUrl: updatedUser.logoUrl
+      logoUrl
     });
   } catch (error) {
     console.error('Logo upload error:', error);
     res.status(500).json({ message: 'Error uploading logo', error: error.message });
   }
 });
+// Job Management Endpoints
+app.post('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    const { title, description, location, type, salary, requirements, benefits } = req.body;
+
+    // Get the employer's company
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+
+    if (!employer?.company) {
+      return res.status(400).json({ message: 'Company profile required to post jobs' });
+    }
+
+    const job = await prisma.job.create({
+      data: {
+        title,
+        description,
+        location,
+        type,
+        salary,
+        requirements,
+        benefits,
+        status: 'ACTIVE',
+        company: { connect: { id: employer.company.id } }
+      },
+      include: {
+        company: true,
+        applications: true
+      }
+    });
+
+    res.json(job);
+  } catch (error) {
+    console.error('Error creating job:', error);
+    res.status(500).json({ message: 'Error creating job posting', error: error.message });
+  }
+});
+
+app.get('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+
+    if (!employer?.company) {
+      return res.json([]);
+    }
+
+    const jobs = await prisma.job.findMany({
+      where: { companyId: employer.company.id },
+      include: {
+        applications: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                resumeUrl: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(jobs);
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    res.status(500).json({ message: 'Error fetching jobs', error: error.message });
+  }
+});
+
+app.put('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Verify ownership
+    const job = await prisma.job.findFirst({
+      where: {
+        id,
+        company: {
+          users: {
+            some: { id: req.user.id }
+          }
+        }
+      }
+    });
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found or access denied' });
+    }
+
+    const updatedJob = await prisma.job.update({
+      where: { id },
+      data: updates,
+      include: {
+        company: true,
+        applications: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                resumeUrl: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    res.json(updatedJob);
+  } catch (error) {
+    console.error('Error updating job:', error);
+    res.status(500).json({ message: 'Error updating job posting', error: error.message });
+  }
+});
+
+app.delete('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify ownership
+    const job = await prisma.job.findFirst({
+      where: {
+        id,
+        company: {
+          users: {
+            some: { id: req.user.id }
+          }
+        }
+      }
+    });
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found or access denied' });
+    }
+
+    // Delete all applications first
+    await prisma.jobApplication.deleteMany({
+      where: { jobId: id }
+    });
+
+    // Then delete the job
+    await prisma.job.delete({
+      where: { id }
+    });
+
+    res.json({ message: 'Job deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting job:', error);
+    res.status(500).json({ message: 'Error deleting job posting', error: error.message });
+  }
+});
+
 // Resume upload for candidates
 app.post('/api/candidates/resume', authenticateJWT, checkRole('candidate'), upload.single('resume'), async (req, res) => {
   try {
@@ -608,7 +697,7 @@ app.post('/api/jobs/:jobId/apply', authenticateJWT, checkRole('candidate'), asyn
 });
 
 // Create job
-app.post('/api/jobs', authenticateJWT, checkRole('employer'), async (req, res) => {
+app.post('/api/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
     const {
       title,
@@ -621,46 +710,39 @@ app.post('/api/jobs', authenticateJWT, checkRole('employer'), async (req, res) =
       featured
     } = req.body;
 
-    const timestamp = new Date().toISOString();
-    
-    // Get employer information using MongoDB
-    let query = {};
-    try {
-      query = { _id: new ObjectId(req.user.id) };
-    } catch (e) {
-      query = { id: req.user.id };
-    }
-    
-    const employer = await db.collection('users').findOne(query);
-    
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+
     if (!employer) {
       return res.status(404).json({ message: 'Employer not found' });
     }
 
-    // Create job listing using MongoDB
-    const jobDoc = {
-      id: uuidv4(),
-      employerId: req.user.id,
-      companyName: employer.name,
-      companyLogo: employer.logoUrl || null,
-      title,
-      description,
-      requirements,
-      location,
-      jobType,
-      salary,
-      applicationDeadline,
-      status: 'active',
-      featured: featured || false,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
+    if (!employer.company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
 
-    const result = await db.collection('jobs').insertOne(jobDoc);
+    const job = await prisma.job.create({
+      data: {
+        title,
+        description,
+        requirements,
+        location,
+        jobType,
+        salary,
+        applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
+        status: 'ACTIVE',
+        featured: featured || false,
+        company: {
+          connect: { id: employer.company.id }
+        }
+      }
+    });
 
     res.status(201).json({
       message: 'Job created successfully',
-      job: { ...jobDoc, _id: result.insertedId }
+      job
     });
   } catch (error) {
     console.error('Create job error:', error);
@@ -683,53 +765,66 @@ app.get('/api/jobs', async (req, res) => {
     } = req.query;
     
     // Build query filters
-    let filter = { status: 'active' };
-    
-    // Add salary range filter if provided
-    if (minSalary || maxSalary) {
-      filter.salary = {};
-      if (minSalary) filter.salary.$gte = parseInt(minSalary);
-      if (maxSalary) filter.salary.$lte = parseInt(maxSalary);
-    }
-
-    // Add remote filter
-    if (remote === 'true') {
-      filter.remote = true;
-    }
+    const where = {};
     
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { companyName: { $regex: search, $options: 'i' } }
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { company: { name: { contains: search, mode: 'insensitive' } } }
       ];
     }
     
     if (location) {
-      filter.location = { $regex: location, $options: 'i' };
+      where.location = { contains: location, mode: 'insensitive' };
+    }
+    
+    if (remote === 'true') {
+      where.location = { contains: 'remote', mode: 'insensitive' };
+    }
+    
+    if (minSalary || maxSalary) {
+      where.salary = {};
+      if (minSalary) where.salary.gte = parseInt(minSalary);
+      if (maxSalary) where.salary.lte = parseInt(maxSalary);
     }
     
     if (jobType) {
-      filter.jobType = jobType;
+      where.jobType = jobType;
     }
 
     // Get total count for pagination
-    const total = await db.collection('jobs').countDocuments(filter);
+    const total = await prisma.job.count({ where });
     
     // Get paginated results
-    const jobs = await db.collection('jobs')
-      .find(filter)
-      .sort(sort === 'latest' 
-        ? { featured: -1, createdAt: -1 }
-        : sort === 'salary' 
-        ? { featured: -1, salary: -1, createdAt: -1 }
-        : { featured: -1, score: { $meta: 'textScore' } })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit))
-      .toArray();
+    const jobs = await prisma.job.findMany({
+      where,
+      orderBy: [
+        sort === 'latest' 
+          ? { featured: 'desc' }
+          : sort === 'salary'
+          ? { salary: 'desc' }
+          : { createdAt: 'desc' },
+        { createdAt: 'desc' }
+      ],
+      skip: (parseInt(page) - 1) * parseInt(limit),
+      take: parseInt(limit),
+      include: {
+        company: {
+          select: {
+            name: true,
+            logoUrl: true
+          }
+        }
+      }
+    });
 
     res.json({
-      jobs,
+      jobs: jobs.map(job => ({
+        ...job,
+        companyName: job.company.name,
+        companyLogo: job.company.logoUrl
+      })),
       pagination: {
         total,
         page: parseInt(page),
@@ -745,28 +840,35 @@ app.get('/api/jobs', async (req, res) => {
 app.get('/api/jobs/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    let query = {};
-    try {
-      query = { _id: new ObjectId(id) };
-    } catch (e) {
-      query = { id };
-    }
 
-    const job = await db.collection('jobs').findOne(query);
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        company: {
+          select: {
+            name: true,
+            logoUrl: true
+          }
+        }
+      }
+    });
     
     if (!job) {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    res.json(job);
+    res.json({
+      ...job,
+      companyName: job.company.name,
+      companyLogo: job.company.logoUrl
+    });
   } catch (error) {
     console.error('Get job error:', error);
     res.status(500).json({ message: 'Error fetching job details', error: error.message });
   }
 });
 
-app.put('/api/jobs/:id', authenticateJWT, checkRole('employer'), async (req, res) => {
+app.put('/api/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -781,49 +883,54 @@ app.put('/api/jobs/:id', authenticateJWT, checkRole('employer'), async (req, res
       featured
     } = req.body;
 
-    let query = {};
-    try {
-      query = { _id: new ObjectId(id) };
-    } catch (e) {
-      query = { id };
-    }
-
-    // Check if job exists and belongs to the employer
-    const job = await db.collection('jobs').findOne(query);
-    
-    if (!job) {
-      return res.status(404).json({ message: 'Job not found' });
-    }
-
-    if (job.employerId !== req.user.id) {
-      return res.status(403).json({ message: 'You do not have permission to edit this job' });
-    }
-
-    const timestamp = new Date().toISOString();
-
-    // Update job listing
-    const result = await db.collection('jobs').findOneAndUpdate(
-      query,
-      {
-        $set: {
-          title,
-          description,
-          requirements,
-          location,
-          jobType,
-          salary,
-          applicationDeadline,
-          status,
-          featured,
-          updatedAt: timestamp
+    // Verify job exists and belongs to employer
+    const job = await prisma.job.findFirst({
+      where: {
+        id,
+        company: {
+          users: {
+            some: {
+              id: req.user.id
+            }
+          }
         }
+      }
+    });
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found or not authorized' });
+    }
+
+    const updatedJob = await prisma.job.update({
+      where: { id },
+      data: {
+        title,
+        description,
+        requirements,
+        location,
+        jobType,
+        salary,
+        applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
+        status,
+        featured
       },
-      { returnDocument: 'after' }
-    );
+      include: {
+        company: {
+          select: {
+            name: true,
+            logoUrl: true
+          }
+        }
+      }
+    });
 
     res.json({
       message: 'Job updated successfully',
-      job: result.value
+      job: {
+        ...updatedJob,
+        companyName: updatedJob.company.name,
+        companyLogo: updatedJob.company.logoUrl
+      }
     });
   } catch (error) {
     console.error('Update job error:', error);
@@ -831,30 +938,31 @@ app.put('/api/jobs/:id', authenticateJWT, checkRole('employer'), async (req, res
   }
 });
 
-app.delete('/api/jobs/:id', authenticateJWT, checkRole('employer'), async (req, res) => {
+app.delete('/api/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
     const { id } = req.params;
 
-    let query = {};
-    try {
-      query = { _id: new ObjectId(id) };
-    } catch (e) {
-      query = { id };
-    }
+    // Verify job exists and belongs to employer
+    const job = await prisma.job.findFirst({
+      where: {
+        id,
+        company: {
+          users: {
+            some: {
+              id: req.user.id
+            }
+          }
+        }
+      }
+    });
 
-    // Check if job exists and belongs to the employer
-    const job = await db.collection('jobs').findOne(query);
-    
     if (!job) {
-      return res.status(404).json({ message: 'Job not found' });
+      return res.status(404).json({ message: 'Job not found or not authorized' });
     }
 
-    if (job.employerId !== req.user.id) {
-      return res.status(403).json({ message: 'You do not have permission to delete this job' });
-    }
-
-    // Delete job listing
-    await db.collection('jobs').deleteOne(query);
+    await prisma.job.delete({
+      where: { id }
+    });
 
     res.json({ message: 'Job deleted successfully' });
   } catch (error) {
@@ -864,85 +972,82 @@ app.delete('/api/jobs/:id', authenticateJWT, checkRole('employer'), async (req, 
 });
 
 // Application Routes
-// Job application endpoint will be added here
-app.post('/api/jobs/:id/apply', authenticateJWT, checkRole('candidate'), upload.single('resume'), async (req, res) => {
+app.post('/api/jobs/:id/apply', authenticateJWT, checkRole('JOBSEEKER'), upload.single('resume'), async (req, res) => {
   try {
     const { id } = req.params;
     const { coverLetter } = req.body;
 
     // Find the job
-    let jobQuery = {};
-    try {
-      jobQuery = { _id: new ObjectId(id) };
-    } catch (e) {
-      jobQuery = { id };
-    }
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        company: true
+      }
+    });
 
-    const job = await db.collection('jobs').findOne(jobQuery);
-    
     if (!job) {
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    // Get the candidate information
-    let userQuery = {};
-    try {
-      userQuery = { _id: new ObjectId(req.user.id) };
-    } catch (e) {
-      userQuery = { id: req.user.id };
+    // Check if already applied
+    const existingApplication = await prisma.jobApplication.findFirst({
+      where: {
+        jobId: job.id,
+        userId: req.user.id
+      }
+    });
+
+    if (existingApplication) {
+      return res.status(400).json({ message: 'Already applied to this job' });
     }
 
-    const candidate = await db.collection('users').findOne(userQuery);
-    
+    // Get candidate details
+    const candidate = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
     if (!candidate) {
       return res.status(404).json({ message: 'Candidate not found' });
     }
 
-    // Create the application
-    const timestamp = new Date().toISOString();
-    
-    // Use uploaded resume if available, otherwise use candidate's stored resume
-    const resumeUrl = req.file 
-      ? `/uploads/${req.file.filename}` 
-      : candidate.resumeUrl;
+    // Process resume upload
+    let resumeUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-    const applicationDoc = {
-      id: uuidv4(),
-      jobId: job._id ? job._id.toString() : job.id,
-      userId: req.user.id,
-      jobTitle: job.title,
-      companyName: job.companyName,
-      candidateName: candidate.name,
-      candidateEmail: candidate.email,
-      resumeUrl,
-      coverLetter: coverLetter || '',
-      status: 'pending',
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-
-    const result = await db.collection('applications').insertOne(applicationDoc);
-
-    // Find the employer to send them an email notification
-    let employerQuery = {};
-    try {
-      employerQuery = { _id: new ObjectId(job.employerId) };
-    } catch (e) {
-      employerQuery = { id: job.employerId };
+    if (!resumeUrl) {
+      return res.status(400).json({ message: 'Resume is required' });
     }
 
-    const employer = await db.collection('users').findOne(employerQuery);
-    
-    if (employer) {
-      // In development mode, just log the email notification
-      console.log('Email would be sent to:', employer.email);
-      console.log('Subject:', `New Application for ${job.title}`);
-      console.log('Content:', `You have received a new application from ${candidate.name} for the ${job.title} position. Log in to view the application details.`);
-    }
+    const application = await prisma.jobApplication.create({
+      data: {
+        job: {
+          connect: { id: job.id }
+        },
+        user: {
+          connect: { id: candidate.id }
+        },
+        status: 'PENDING',
+        resumeUrl,
+        coverLetter: coverLetter || null
+      },
+      include: {
+        job: {
+          include: {
+            company: true
+          }
+        },
+        user: true
+      }
+    });
 
     res.status(201).json({
       message: 'Application submitted successfully',
-      application: { ...applicationDoc, _id: result.insertedId }
+      application: {
+        ...application,
+        jobTitle: application.job.title,
+        companyName: application.job.company.name,
+        candidateName: `${application.user.firstName} ${application.user.lastName}`,
+        candidateEmail: application.user.email
+      }
     });
   } catch (error) {
     console.error('Create application error:', error);
@@ -952,35 +1057,64 @@ app.post('/api/jobs/:id/apply', authenticateJWT, checkRole('candidate'), upload.
 
 app.get('/api/applications', authenticateJWT, async (req, res) => {
   try {
-    // Different queries based on user role
-    if (req.user.role === 'employer') {
-      // Get all jobs for this employer
-      const jobs = await db.collection('jobs')
-        .find({ employerId: req.user.id })
-        .toArray();
-
-      if (!jobs || jobs.length === 0) {
-        return res.json({ applications: [] });
-      }
-
-      // Get job IDs - handle both string IDs and ObjectIds
-      const jobIds = jobs.map(job => {
-        return job._id ? job._id.toString() : job.id;
+    if (req.user.role === 'EMPLOYER') {
+      // Get all applications for jobs from the employer's company
+      const applications = await prisma.jobApplication.findMany({
+        where: {
+          job: {
+            company: {
+              users: {
+                some: {
+                  id: req.user.id
+                }
+              }
+            }
+          }
+        },
+        include: {
+          job: {
+            include: {
+              company: true
+            }
+          },
+          user: true
+        }
       });
 
-      // Get applications for these jobs
-      const applications = await db.collection('applications')
-        .find({ jobId: { $in: jobIds } })
-        .toArray();
-
-      res.json({ applications });
+      res.json({
+        applications: applications.map(app => ({
+          ...app,
+          jobTitle: app.job.title,
+          companyName: app.job.company.name,
+          candidateName: `${app.user.firstName} ${app.user.lastName}`,
+          candidateEmail: app.user.email
+        }))
+      });
     } else {
-      // For candidates, get their applications
-      const applications = await db.collection('applications')
-        .find({ userId: req.user.id })
-        .toArray();
+      // For jobseekers, get their applications
+      const applications = await prisma.jobApplication.findMany({
+        where: {
+          userId: req.user.id
+        },
+        include: {
+          job: {
+            include: {
+              company: true
+            }
+          },
+          user: true
+        }
+      });
 
-      res.json({ applications });
+      res.json({
+        applications: applications.map(app => ({
+          ...app,
+          jobTitle: app.job.title,
+          companyName: app.job.company.name,
+          candidateName: `${app.user.firstName} ${app.user.lastName}`,
+          candidateEmail: app.user.email
+        }))
+      });
     }
   } catch (error) {
     console.error('Get applications error:', error);
@@ -1122,66 +1256,54 @@ app.put('/api/applications/:id/status', authenticateJWT, checkRole('employer'), 
 });
 
 // Analytics endpoints
-app.get('/api/analytics/employer', authenticateJWT, checkRole('employer'), async (req, res) => {
+app.get('/api/analytics/employer', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
-    // Get all jobs for this employer
-    const jobs = await db.collection('jobs')
-      .find({ employerId: req.user.id })
-      .toArray();
-
-    if (!jobs || jobs.length === 0) {
-      return res.json({
-        totalJobs: 0,
-        totalApplications: 0,
-        applicationsByStatus: {},
-        applicationsByJob: []
-      });
-    }
-
-    const jobIds = jobs.map(job => job._id ? job._id.toString() : job.id);
-
-    // Get applications stats using MongoDB aggregation
-    const applicationStats = await db.collection('applications')
-      .aggregate([
-        {
-          $match: { jobId: { $in: jobIds } }
-        },
-        {
-          $group: {
-            _id: null,
-            totalApplications: { $sum: 1 },
-            byStatus: {
-              $push: '$status'
-            }
-          }
-        }
-      ]).toArray();
-
-    const stats = applicationStats[0] || { totalApplications: 0, byStatus: [] };
-    
-    // Count applications by status
-    const applicationsByStatus = stats.byStatus.reduce((acc, status) => {
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {
-      pending: 0,
-      reviewed: 0,
-      interview: 0,
-      rejected: 0,
-      hired: 0
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
     });
 
-    // Get applications count by job
-    const applicationsByJob = await Promise.all(jobs.map(async (job) => {
-      const jobId = job._id ? job._id.toString() : job.id;
-      const count = await db.collection('applications')
-        .countDocuments({ jobId });
-      
-      return {
-        jobId,
-        jobTitle: job.title,
-        applicationCount: count
-      };
+    if (!employer || !employer.company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    // Get all jobs and their applications for this employer's company
+    const jobs = await prisma.job.findMany({
+      where: {
+        companyId: employer.company.id
+      },
+      include: {
+        _count: {
+          select: { applications: true }
+        },
+        applications: {
+          select: { status: true }
+        }
+      }
+    });
+
+    // Calculate statistics
+    const stats = {
+      totalJobs: jobs.length,
+      totalApplications: jobs.reduce((sum, job) => sum + job._count.applications, 0),
+      activeJobs: jobs.filter(job => job.status === 'ACTIVE').length,
+      filledJobs: jobs.filter(job => job.status === 'FILLED').length
+    };
+
+    // Group applications by status
+    const applicationsByStatus = {
+      pending: jobs.reduce((sum, job) => sum + job.applications.filter(app => app.status === 'PENDING').length, 0),
+      reviewed: jobs.reduce((sum, job) => sum + job.applications.filter(app => app.status === 'REVIEWED').length, 0),
+      interview: jobs.reduce((sum, job) => sum + job.applications.filter(app => app.status === 'INTERVIEW').length, 0),
+      rejected: jobs.reduce((sum, job) => sum + job.applications.filter(app => app.status === 'REJECTED').length, 0),
+      hired: jobs.reduce((sum, job) => sum + job.applications.filter(app => app.status === 'HIRED').length, 0)
+    };
+
+    // Group applications by job
+    const applicationsByJob = jobs.map(job => ({
+      jobId: job.id,
+      jobTitle: job.title,
+      applicationCount: job._count.applications
     }));
 
     res.json({
@@ -1196,31 +1318,32 @@ app.get('/api/analytics/employer', authenticateJWT, checkRole('employer'), async
   }
 });
 
-app.get('/api/analytics/candidate', authenticateJWT, checkRole('candidate'), async (req, res) => {
+app.get('/api/analytics/candidate', authenticateJWT, checkRole('JOBSEEKER'), async (req, res) => {
   try {
-    // Get all applications for this candidate using MongoDB
-    const applications = await db.collection('applications')
-      .find({ userId: req.user.id })
-      .toArray();
+    // Get all applications for this candidate with their associated jobs
+    const applications = await prisma.jobApplication.findMany({
+      where: {
+        userId: req.user.id
+      },
+      include: {
+        job: {
+          include: {
+            company: true
+          }
+        }
+      }
+    });
     
     // Initialize status counters
     const applicationsByStatus = {
-      pending: 0,
-      reviewed: 0,
-      interview: 0,
-      rejected: 0,
-      hired: 0
+      pending: applications.filter(app => app.status === 'PENDING').length,
+      reviewed: applications.filter(app => app.status === 'REVIEWED').length,
+      interview: applications.filter(app => app.status === 'INTERVIEW').length,
+      rejected: applications.filter(app => app.status === 'REJECTED').length,
+      hired: applications.filter(app => app.status === 'HIRED').length
     };
-    
-    // Count applications by status
-    applications.forEach(app => {
-      if (applicationsByStatus[app.status] !== undefined) {
-        applicationsByStatus[app.status]++;
-      }
-    });
 
-    // Get recent job view history (mock data - would be implemented with a separate table)
-    // This could be implemented with a real collection in MongoDB later
+    // Get recent job views (we'll implement this with a real table later)
     const recentJobViews = [
       {
         jobId: 'job1',
@@ -1239,7 +1362,14 @@ app.get('/api/analytics/candidate', authenticateJWT, checkRole('candidate'), asy
     res.json({
       totalApplications: applications.length,
       applicationsByStatus,
-      recentJobViews
+      recentJobViews,
+      recentApplications: applications.slice(0, 5).map(app => ({
+        id: app.id,
+        jobTitle: app.job.title,
+        companyName: app.job.company.name,
+        status: app.status,
+        appliedAt: app.createdAt
+      }))
     });
   } catch (error) {
     console.error('Candidate analytics error:', error);
@@ -1250,7 +1380,7 @@ app.get('/api/analytics/candidate', authenticateJWT, checkRole('candidate'), asy
 // Start server
 const startServer = async () => {
   try {
-    await connectToMongoDB();
+    await connectToDatabase();
     
     // Serve static files from uploads directory
     app.use('/uploads', express.static(UPLOAD_DIR));

@@ -1,0 +1,119 @@
+:root {
+  /* Jamaican Flag Colors */
+  --jamaica-green: #007E1B;
+  --jamaica-gold: #FFB30F;
+  --jamaica-black: #1A1A1A;
+
+  /* Extended Palette */
+  --light-green: #E8F5E9;
+  --light-gold: #FFF3D6;
+  --off-white: #F9F9F9;
+  --error-red: #CD2B2B;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', 'Roboto', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--off-white);
+}
+
+/* Jamaican Pattern Inspired Border */
+.jamaica-border {
+  border: 2px solid var(--jamaica-green);
+  background-image: linear-gradient(45deg, var(--jamaica-green) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--jamaica-green) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--jamaica-green) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--jamaica-green) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Hover Effects */
+.hover-grow {
+  transition: transform 0.2s ease-in-out;
+}
+
+.hover-grow:hover {
+  transform: scale(1.02);
+}
+
+/* Mobile-First Responsive Design */
+@media (max-width: 600px) {
+  .container {
+    padding: 16px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light-green);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--jamaica-green);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--jamaica-gold);
+}
+
+/* Loading Animation with Jamaican Colors */
+@keyframes jamaica-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 126, 27, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 179, 15, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); }
+}
+
+.loading-pulse {
+  animation: jamaica-pulse 1.5s infinite;
+}
+
+/* Card Styles */
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Styles */
+.btn-primary {
+  background: linear-gradient(45deg, var(--jamaica-green) 30%, #009921 90%);
+  color: white;
+  border: none;
+  padding: 8px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(45deg, #005714 30%, var(--jamaica-green) 90%);
+  transform: translateY(-2px);
+}
+
+/* Navigation Styles */
+.nav-link {
+  color: var(--jamaica-black);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-link:hover {
+  background-color: var(--light-green);
+  color: var(--jamaica-green);
+}

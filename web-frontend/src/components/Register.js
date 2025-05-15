@@ -6,11 +6,17 @@ const Register = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'candidate' // Default role
+    role: 'JOBSEEKER', // Default role
+    // Company fields (only for employers)
+    companyName: '',
+    companyWebsite: '',
+    companyLocation: '',
+    companyDescription: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -70,20 +76,39 @@ const Register = () => {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
-              <div className="mt-1">
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                  First Name
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    required
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                  Last Name
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    required
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
               </div>
             </div>
 
@@ -154,11 +179,84 @@ const Register = () => {
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
-                  <option value="candidate">Job Seeker</option>
-                  <option value="employer">Employer</option>
+                  <option value="JOBSEEKER">Job Seeker</option>
+                  <option value="EMPLOYER">Employer</option>
                 </select>
               </div>
             </div>
+
+            {formData.role === 'EMPLOYER' && (
+              <div className="space-y-6 border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-medium text-gray-900">Company Information</h3>
+                
+                <div>
+                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+                    Company Name
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="companyName"
+                      name="companyName"
+                      type="text"
+                      required={formData.role === 'EMPLOYER'}
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="companyWebsite" className="block text-sm font-medium text-gray-700">
+                    Company Website
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="companyWebsite"
+                      name="companyWebsite"
+                      type="url"
+                      value={formData.companyWebsite}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="companyLocation" className="block text-sm font-medium text-gray-700">
+                    Company Location
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="companyLocation"
+                      name="companyLocation"
+                      type="text"
+                      required={formData.role === 'EMPLOYER'}
+                      value={formData.companyLocation}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="companyDescription" className="block text-sm font-medium text-gray-700">
+                    Company Description
+                  </label>
+                  <div className="mt-1">
+                    <textarea
+                      id="companyDescription"
+                      name="companyDescription"
+                      rows="4"
+                      required={formData.role === 'EMPLOYER'}
+                      value={formData.companyDescription}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <button

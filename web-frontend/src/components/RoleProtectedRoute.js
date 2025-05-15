@@ -67,8 +67,11 @@ export const RoleProtectedRoute = ({
     );
   }
 
-  // Check if user has the required role
-  if (user?.role !== role) {
+  // Check if user has the required role (case-insensitive)
+  const userRole = user?.role?.toLowerCase();
+  const requiredRole = role?.toLowerCase();
+  
+  if (userRole !== requiredRole) {
     return (
       <Navigate
         to={redirectTo}
