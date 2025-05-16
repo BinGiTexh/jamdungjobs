@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import {
   Box,
   Container,
@@ -103,6 +104,7 @@ const HomePage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     setShowContent(true);
@@ -133,7 +135,7 @@ const HomePage = () => {
         >
           <Button
             variant="contained"
-            onClick={() => navigate("/jobs")}
+            onClick={() => navigate(user ? (user.role === 'JOBSEEKER' ? "/candidate/dashboard" : "/employer/dashboard") : "/jobs")}
             sx={{
               background: "linear-gradient(90deg, #2C5530, #FFD700)",
               color: "#000",
@@ -151,54 +153,108 @@ const HomePage = () => {
               minWidth: "180px"
             }}
           >
-            Find Your Next Job
+            {user ? (user.role === 'JOBSEEKER' ? "My Dashboard" : "Employer Dashboard") : "Find Your Next Job"}
           </Button>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/login")}
-            sx={{
-              color: "#FFD700",
-              borderColor: "#FFD700",
-              borderWidth: "2px",
-              "&:hover": {
-                borderColor: "#2C5530",
-                color: "#2C5530",
-                background: "rgba(255, 215, 0, 0.1)",
-                borderWidth: "2px"
-              },
-              transition: "all 0.3s ease",
-              textTransform: "none",
-              fontSize: "1.1rem",
-              fontWeight: 500,
-              padding: "12px 32px",
-              borderRadius: "8px",
-              minWidth: "140px"
-            }}
-          >
-            Sign In
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => navigate("/register")}
-            sx={{
-              background: "linear-gradient(90deg, #FFD700, #2C5530)",
-              color: "#000",
-              "&:hover": {
-                background: "linear-gradient(90deg, #2C5530, #FFD700)",
-                transform: "translateY(-2px)",
-                boxShadow: "0 4px 12px rgba(44, 85, 48, 0.3)"
-              },
-              transition: "all 0.3s ease",
-              textTransform: "none",
-              fontSize: "1.1rem",
-              fontWeight: 600,
-              padding: "12px 32px",
-              borderRadius: "8px",
-              minWidth: "140px"
-            }}
-          >
-            Post a Job
-          </Button>
+          
+          {!user && (
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/login")}
+              sx={{
+                color: "#FFD700",
+                borderColor: "#FFD700",
+                borderWidth: "2px",
+                "&:hover": {
+                  borderColor: "#2C5530",
+                  color: "#2C5530",
+                  background: "rgba(255, 215, 0, 0.1)",
+                  borderWidth: "2px"
+                },
+                transition: "all 0.3s ease",
+                textTransform: "none",
+                fontSize: "1.1rem",
+                fontWeight: 500,
+                padding: "12px 32px",
+                borderRadius: "8px",
+                minWidth: "140px"
+              }}
+            >
+              Sign In
+            </Button>
+          )}
+          
+          {user ? (
+            user.role === 'JOBSEEKER' ? (
+              <Button
+                variant="contained"
+                onClick={() => navigate("/jobs")}
+                sx={{
+                  background: "linear-gradient(90deg, #FFD700, #2C5530)",
+                  color: "#000",
+                  "&:hover": {
+                    background: "linear-gradient(90deg, #2C5530, #FFD700)",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 4px 12px rgba(44, 85, 48, 0.3)"
+                  },
+                  transition: "all 0.3s ease",
+                  textTransform: "none",
+                  fontSize: "1.1rem",
+                  fontWeight: 600,
+                  padding: "12px 32px",
+                  borderRadius: "8px",
+                  minWidth: "140px"
+                }}
+              >
+                Find Jobs
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={() => navigate("/employer/post-job")}
+                sx={{
+                  background: "linear-gradient(90deg, #FFD700, #2C5530)",
+                  color: "#000",
+                  "&:hover": {
+                    background: "linear-gradient(90deg, #2C5530, #FFD700)",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 4px 12px rgba(44, 85, 48, 0.3)"
+                  },
+                  transition: "all 0.3s ease",
+                  textTransform: "none",
+                  fontSize: "1.1rem",
+                  fontWeight: 600,
+                  padding: "12px 32px",
+                  borderRadius: "8px",
+                  minWidth: "140px"
+                }}
+              >
+                Post a Job
+              </Button>
+            )
+          ) : (
+            <Button
+              variant="contained"
+              onClick={() => navigate("/login", { state: { employerRedirect: true } })}
+              sx={{
+                background: "linear-gradient(90deg, #FFD700, #2C5530)",
+                color: "#000",
+                "&:hover": {
+                  background: "linear-gradient(90deg, #2C5530, #FFD700)",
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 4px 12px rgba(44, 85, 48, 0.3)"
+                },
+                transition: "all 0.3s ease",
+                textTransform: "none",
+                fontSize: "1.1rem",
+                fontWeight: 600,
+                padding: "12px 32px",
+                borderRadius: "8px",
+                minWidth: "140px"
+              }}
+            >
+              Post a Job
+            </Button>
+          )}
         </Box>
         
         {/* Hero Section with Role Cards */}
@@ -377,7 +433,7 @@ const HomePage = () => {
                         <Button
                           variant="contained"
                           fullWidth
-                          onClick={() => navigate("/employer/register")}
+                          onClick={() => navigate("/login", { state: { employerRedirect: true } })}
                           sx={{
                             mt: 2,
                             background: "linear-gradient(90deg, #2C5530, #FFD700)",
@@ -385,9 +441,12 @@ const HomePage = () => {
                             "&:hover": {
                               background: "linear-gradient(90deg, #FFD700, #2C5530)",
                               transform: "translateY(-2px)",
+                              boxShadow: "0 4px 12px rgba(255, 215, 0, 0.3)"
                             },
+                            transition: "all 0.3s ease",
                             textTransform: "none",
                             fontSize: "1.1rem",
+                            fontWeight: 600,
                           }}
                         >
                           Start Hiring
@@ -549,7 +608,7 @@ const HomePage = () => {
 
             <Box sx={{ mt: 4, pt: 4, borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
               <Typography variant="body2" sx={{ color: "rgba(255, 255, 255, 0.5)", textAlign: "center" }}>
-                © {new Date().getFullYear()} JamDung Jobs. All rights reserved.
+                © {new Date().getFullYear()} JamDung Jobs. A BinGiTech Company. All rights reserved.
               </Typography>
             </Box>
           </Container>

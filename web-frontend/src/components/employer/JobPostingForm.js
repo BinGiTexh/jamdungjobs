@@ -9,7 +9,11 @@ import {
   Select,
   MenuItem,
   Typography,
-  Paper
+  Paper,
+  Divider,
+  Alert,
+  CircularProgress,
+  Fade
 } from '@mui/material';
 import { LocationAutocomplete } from '../common/LocationAutocomplete';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
@@ -56,20 +60,47 @@ const JobPostingForm = ({ onSubmit, initialData, mode = 'create' }) => {
   const jobStatuses = ['DRAFT', 'ACTIVE', 'CLOSED', 'EXPIRED'];
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <form onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>
-              {mode === 'create' ? 'Create New Job Posting' : 'Edit Job Posting'}
-            </Typography>
-          </Grid>
-
-          {error && (
+    <Fade in={true} timeout={800}>
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          p: { xs: 2, sm: 4 }, 
+          borderRadius: 2,
+          border: '1px solid rgba(255, 215, 0, 0.1)',
+        }}
+      >
+        <form onSubmit={handleSubmit}>
+          <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Typography color="error">{error}</Typography>
+              <Typography 
+                variant="h4" 
+                gutterBottom
+                sx={{ 
+                  fontWeight: 700, 
+                  color: '#2C5530',
+                  mb: 3,
+                  position: 'relative',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    bottom: '-10px',
+                    left: 0,
+                    width: '80px',
+                    height: '4px',
+                    background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                    borderRadius: '2px',
+                  }
+                }}
+              >
+                {mode === 'create' ? 'Create New Job Posting' : 'Edit Job Posting'}
+              </Typography>
             </Grid>
-          )}
+
+            {error && (
+              <Grid item xs={12}>
+                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+              </Grid>
+            )}
 
           <Grid item xs={12}>
             <TextField
@@ -173,20 +204,44 @@ const JobPostingForm = ({ onSubmit, initialData, mode = 'create' }) => {
           </Grid>
 
           <Grid item xs={12}>
+            <Divider sx={{ my: 2 }} />
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button
                 type="submit"
                 variant="contained"
-                color="primary"
                 disabled={loading}
+                sx={{
+                  mt: 2,
+                  py: 1.5,
+                  px: 4,
+                  background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                  color: '#000',
+                  '&:hover': {
+                    background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
+                  },
+                  transition: 'all 0.3s ease',
+                  textTransform: 'none',
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                }}
               >
-                {loading ? 'Saving...' : mode === 'create' ? 'Create Job' : 'Save Changes'}
+                {loading ? (
+                  <>
+                    <CircularProgress size={24} sx={{ mr: 1, color: '#000' }} />
+                    {mode === 'create' ? 'Creating Job...' : 'Saving Changes...'}
+                  </>
+                ) : (
+                  mode === 'create' ? 'Create Job' : 'Save Changes'
+                )}
               </Button>
             </Box>
           </Grid>
         </Grid>
       </form>
     </Paper>
+    </Fade>
   );
 };
 

@@ -1,10 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaMapMarkerAlt } from 'react-icons/fa';
+import { 
+  TextField, 
+  Autocomplete, 
+  Box, 
+  Typography, 
+  Grid,
+  Slider,
+  InputAdornment,
+  CircularProgress
+} from '@mui/material';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 
-export const LocationAutocomplete = ({ value, onChange, placeholder = "Location" }) => {
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+export const LocationAutocomplete = ({ value, onChange, placeholder = "Location", radius, onRadiusChange }) => {
+  const [inputValue, setInputValue] = useState('');
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [searchRadius, setSearchRadius] = useState(radius || 10); // Default 10 km
   const autocompleteRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -76,18 +88,22 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
 
             console.log('Requesting predictions for:', input);
             try {
+              setLoading(true);
               autocompleteRef.current.getPlacePredictions(
                 {
                   input,
-                  types: ['(cities)'],
-                  componentRestrictions: { country: 'jm' }
+                  types: ['(cities)', 'locality', 'sublocality', 'neighborhood'],
+                  // Allow locations in Jamaica by default, but don't restrict to only Jamaica
+                  // componentRestrictions: { country: 'jm' }
                 },
                 (predictions, status) => {
+                  setLoading(false);
                   resolve({ predictions, status });
                 }
               );
             } catch (error) {
               console.error('Error getting predictions:', error);
+              setLoading(false);
               resolve({ predictions: [], status: 'ERROR' });
             }
           }, 300); // 300ms delay
@@ -97,15 +113,14 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
     []
   );
 
-  const handleInput = async (e) => {
-    const input = e.target.value;
-    onChange(input);
+  const handleInputChange = async (event, newInputValue) => {
+    setInputValue(newInputValue);
 
-    if (input.length >= 2) {
-      const { predictions, status } = await debouncedPredictions(input);
+    if (newInputValue.length >= 2) {
+      const { predictions, status } = await debouncedPredictions(newInputValue);
       handleAutocompleteResults(predictions, status);
     } else {
-      setSuggestions([]);
+      setOptions([]);
     }
   };
 
@@ -126,71 +141,183 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
 
     try {
       if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-        const mappedSuggestions = predictions.map(p => ({
+        const mappedOptions = predictions.map(p => ({
           id: p.place_id,
           description: p.description,
           mainText: p.structured_formatting.main_text,
           secondaryText: p.structured_formatting.secondary_text
         }));
-        console.log('Mapped suggestions:', mappedSuggestions);
-        setSuggestions(mappedSuggestions);
-        setShowSuggestions(true);
+        console.log('Mapped options:', mappedOptions);
+        setOptions(mappedOptions);
       } else {
         console.log('No valid predictions received, status:', status);
-        setSuggestions([]);
-        setShowSuggestions(false);
+        setOptions([]);
       }
     } catch (error) {
       console.error('Error processing predictions:', error);
-      setSuggestions([]);
-      setShowSuggestions(false);
+      setOptions([]);
     }
   };
 
-  const handleSuggestionClick = (suggestion) => {
-    onChange(suggestion.mainText);
-    setSuggestions([]);
-    setShowSuggestions(false);
+  const handleOptionSelect = (event, option) => {
+    if (option) {
+      // Pass both the location name and the place_id to the parent component
+      onChange({
+        name: option.mainText,
+        placeId: option.id,
+        radius: searchRadius
+      });
+    } else {
+      onChange(null);
+    }
+  };
+  
+  const handleRadiusChange = (event, newValue) => {
+    setSearchRadius(newValue);
+    
+    // If we have a selected location, update the parent component with the new radius
+    if (value && typeof value === 'object' && value.name) {
+      onChange({
+        ...value,
+        radius: newValue
+      });
+    }
+    
+    // If onRadiusChange callback is provided, call it
+    if (onRadiusChange) {
+      onRadiusChange(newValue);
+    }
   };
 
-  // Close suggestions when clicking outside
+  // Initialize inputValue from value prop if it exists
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (inputRef.current && !inputRef.current.contains(event.target)) {
-        setShowSuggestions(false);
+    if (value && typeof value === 'object' && value.name) {
+      setInputValue(value.name);
+      if (value.radius) {
+        setSearchRadius(value.radius);
       }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+    } else if (typeof value === 'string') {
+      setInputValue(value);
+    }
+  }, [value]);
 
   return (
-    <div className="relative" ref={inputRef}>
-      <FaMapMarkerAlt className="absolute left-3 top-3 text-gray-400" />
-      <input
-        type="text"
-        value={value}
-        onChange={handleInput}
-        placeholder={placeholder}
-        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {suggestions.map((suggestion) => (
-            <div
-              key={suggestion.id}
-              onClick={() => handleSuggestionClick(suggestion)}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-            >
-              <div className="font-medium">{suggestion.mainText}</div>
-              <div className="text-sm text-gray-500">{suggestion.secondaryText}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <Grid container spacing={2}>
+      <Grid item xs={12}>
+        <Autocomplete
+          id="location-autocomplete"
+          options={options}
+          getOptionLabel={(option) => typeof option === 'string' ? option : option.mainText}
+          filterOptions={(x) => x} // Disable built-in filtering
+          autoComplete
+          includeInputInList
+          filterSelectedOptions
+          value={value && typeof value === 'object' ? value : null}
+          onChange={handleOptionSelect}
+          inputValue={inputValue}
+          onInputChange={handleInputChange}
+          loading={loading}
+          noOptionsText="No locations found"
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={placeholder}
+              fullWidth
+              InputProps={{
+                ...params.InputProps,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LocationOnIcon sx={{ color: '#FFD700' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <React.Fragment>
+                    {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                    {params.InputProps.endAdornment}
+                  </React.Fragment>
+                ),
+                sx: {
+                  color: 'white',
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 215, 0, 0.5)',
+                    borderWidth: '2px',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 215, 0, 0.8)',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#FFD700',
+                    borderWidth: '2px',
+                  },
+                }
+              }}
+              InputLabelProps={{
+                sx: { color: '#FFD700', fontWeight: 500 },
+              }}
+            />
+          )}
+          renderOption={(props, option) => (
+            <li {...props}>
+              <Grid container alignItems="center">
+                <Grid item>
+                  <Box
+                    component={LocationOnIcon}
+                    sx={{ color: 'text.secondary', mr: 2 }}
+                  />
+                </Grid>
+                <Grid item xs>
+                  <Typography variant="body1" color="text.primary">
+                    {option.mainText}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {option.secondaryText}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </li>
+          )}
+        />
+      </Grid>
+      
+      {/* Radius slider */}
+      <Grid item xs={12}>
+        <Typography id="radius-slider" gutterBottom sx={{ color: '#FFD700', fontWeight: 500 }}>
+          Search Radius: {searchRadius} km
+        </Typography>
+        <Slider
+          value={searchRadius}
+          onChange={handleRadiusChange}
+          aria-labelledby="radius-slider"
+          valueLabelDisplay="auto"
+          step={5}
+          marks
+          min={5}
+          max={50}
+          sx={{
+            color: '#FFD700',
+            '& .MuiSlider-thumb': {
+              backgroundColor: '#FFD700',
+              '&:hover, &.Mui-focusVisible': {
+                boxShadow: '0px 0px 0px 8px rgba(255, 215, 0, 0.16)',
+              },
+            },
+            '& .MuiSlider-track': {
+              backgroundColor: '#FFD700',
+            },
+            '& .MuiSlider-rail': {
+              backgroundColor: 'rgba(255, 215, 0, 0.3)',
+            },
+            '& .MuiSlider-mark': {
+              backgroundColor: 'rgba(255, 215, 0, 0.5)',
+            },
+            '& .MuiSlider-valueLabel': {
+              backgroundColor: '#2C5530',
+              color: '#FFD700',
+            },
+          }}
+        />
+      </Grid>
+    </Grid>
   );
 };

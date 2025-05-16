@@ -1,17 +1,40 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import {
+  Container,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Grid,
+  Paper,
+  FormControl,
+  FormControlLabel,
+  RadioGroup,
+  Radio,
+  Alert,
+  CircularProgress,
+  Divider,
+  Fade
+} from '@mui/material';
 
 const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { register } = useAuth();
+  
+  // Check if we have a role in the location state (e.g., coming from "Post a Job")
+  const defaultRole = location.state?.role || 'JOBSEEKER';
+  const redirectPath = location.state?.from || '/dashboard';
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'JOBSEEKER', // Default role
+    role: defaultRole,
     // Company fields (only for employers)
     companyName: '',
     companyWebsite: '',
@@ -20,6 +43,9 @@ const Register = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Set a message if coming from another page
+  const [message, setMessage] = useState(location.state?.message || '');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,7 +77,9 @@ const Register = () => {
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...registrationData } = formData;
       await register(registrationData);
-      navigate('/dashboard');
+      
+      // If we came from the employer job posting flow, redirect back there
+      navigate(redirectPath);
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -60,217 +88,480 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Create your account
-        </h2>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded relative" role="alert">
-              {error}
-            </div>
-          )}
-
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  First Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    required
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Last Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    required
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Account Type
-              </label>
-              <div className="mt-1">
-                <select
-                  id="role"
-                  name="role"
-                  required
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="JOBSEEKER">Job Seeker</option>
-                  <option value="EMPLOYER">Employer</option>
-                </select>
-              </div>
-            </div>
-
-            {formData.role === 'EMPLOYER' && (
-              <div className="space-y-6 border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-medium text-gray-900">Company Information</h3>
-                
-                <div>
-                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-                    Company Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="companyName"
-                      name="companyName"
-                      type="text"
-                      required={formData.role === 'EMPLOYER'}
-                      value={formData.companyName}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#0A0A0A',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background image with Jamaican styling */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundImage: 'url("/images/generated/jamaican-design-1747273968.png")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.3,
+          zIndex: 1,
+        }}
+      />
+      
+      <Container component="main" maxWidth="md" sx={{ 
+        position: 'relative', 
+        zIndex: 2,
+        py: 8,
+      }}>
+        <Fade in={true} timeout={800}>
+          <Box
+            sx={{
+              mt: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <Typography 
+              component="h1" 
+              variant="h3" 
+              sx={{ 
+                fontWeight: 700, 
+                color: '#FFD700',
+                mb: 3,
+                position: 'relative',
+                textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: '-10px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '80px',
+                  height: '4px',
+                  background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                  borderRadius: '2px',
+                }
+              }}
+            >
+              Create Your Account
+            </Typography>
+            
+            <Paper 
+              elevation={3} 
+              sx={{ 
+                p: { xs: 2, sm: 4 }, 
+                mt: 4, 
+                width: '100%',
+                borderRadius: 2,
+                backgroundColor: 'rgba(10, 10, 10, 0.8)',
+                border: '1px solid rgba(255, 215, 0, 0.1)',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%)',
+                  opacity: 0.1,
+                  zIndex: 0,
+                },
+              }}
+            >
+              {error && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {error}
+                </Alert>
+              )}
+              
+              {message && (
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  {message}
+                </Alert>
+              )}
+              
+              <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, position: 'relative', zIndex: 1 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="firstName"
+                      required
+                      fullWidth
+                      id="firstName"
+                      label="First Name"
+                      autoFocus
+                      value={formData.firstName}
                       onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      InputProps={{
+                        sx: {
+                          color: 'white',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#FFD700',
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                      }}
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="companyWebsite" className="block text-sm font-medium text-gray-700">
-                    Company Website
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="companyWebsite"
-                      name="companyWebsite"
-                      type="url"
-                      value={formData.companyWebsite}
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      required
+                      fullWidth
+                      id="lastName"
+                      label="Last Name"
+                      name="lastName"
+                      value={formData.lastName}
                       onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      InputProps={{
+                        sx: {
+                          color: 'white',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#FFD700',
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                      }}
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="companyLocation" className="block text-sm font-medium text-gray-700">
-                    Company Location
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="companyLocation"
-                      name="companyLocation"
-                      type="text"
-                      required={formData.role === 'EMPLOYER'}
-                      value={formData.companyLocation}
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      required
+                      fullWidth
+                      id="email"
+                      label="Email Address"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      value={formData.email}
                       onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      InputProps={{
+                        sx: {
+                          color: 'white',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#FFD700',
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                      }}
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="companyDescription" className="block text-sm font-medium text-gray-700">
-                    Company Description
-                  </label>
-                  <div className="mt-1">
-                    <textarea
-                      id="companyDescription"
-                      name="companyDescription"
-                      rows="4"
-                      required={formData.role === 'EMPLOYER'}
-                      value={formData.companyDescription}
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      required
+                      fullWidth
+                      name="password"
+                      label="Password"
+                      type="password"
+                      id="password"
+                      autoComplete="new-password"
+                      value={formData.password}
                       onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      helperText="Password must be at least 6 characters long"
+                      InputProps={{
+                        sx: {
+                          color: 'white',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#FFD700',
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                      }}
+                      FormHelperTextProps={{
+                        sx: { color: 'rgba(255, 255, 255, 0.5)' },
+                      }}
                     />
-                  </div>
-                </div>
-              </div>
-            )}
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      required
+                      fullWidth
+                      name="confirmPassword"
+                      label="Confirm Password"
+                      type="password"
+                      id="confirmPassword"
+                      autoComplete="new-password"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      InputProps={{
+                        sx: {
+                          color: 'white',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#FFD700',
+                          },
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <FormControl component="fieldset" sx={{ my: 2 }}>
+                      <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>I am registering as:</Typography>
+                      <RadioGroup
+                        row
+                        aria-label="role"
+                        name="role"
+                        value={formData.role}
+                        onChange={handleChange}
+                      >
+                        <FormControlLabel 
+                          value="JOBSEEKER" 
+                          control={<Radio sx={{ 
+                            color: 'rgba(255, 215, 0, 0.5)',
+                            '&.Mui-checked': {
+                              color: '#FFD700',
+                            },
+                          }} />} 
+                          label={<Typography sx={{ color: 'white' }}>Job Seeker</Typography>} 
+                        />
+                        <FormControlLabel 
+                          value="EMPLOYER" 
+                          control={<Radio sx={{ 
+                            color: 'rgba(255, 215, 0, 0.5)',
+                            '&.Mui-checked': {
+                              color: '#FFD700',
+                            },
+                          }} />} 
+                          label={<Typography sx={{ color: 'white' }}>Employer</Typography>} 
+                        />
+                      </RadioGroup>
+                    </FormControl>
+                  </Grid>
+                  
+                  {formData.role === 'EMPLOYER' && (
+                    <>
+                      <Grid item xs={12}>
+                        <Divider sx={{ 
+                          my: 3, 
+                          '&::before, &::after': {
+                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                          },
+                        }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#FFD700' }}>
+                            Company Information
+                          </Typography>
+                        </Divider>
+                      </Grid>
+                      
+                      <Grid item xs={12}>
+                        <TextField
+                          required
+                          fullWidth
+                          id="companyName"
+                          label="Company Name"
+                          name="companyName"
+                          value={formData.companyName}
+                          onChange={handleChange}
+                          InputProps={{
+                            sx: {
+                              color: 'white',
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'rgba(255, 215, 0, 0.3)',
+                              },
+                              '&:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'rgba(255, 215, 0, 0.6)',
+                              },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: '#FFD700',
+                              },
+                            },
+                          }}
+                          InputLabelProps={{
+                            sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                          }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          id="companyWebsite"
+                          label="Company Website"
+                          name="companyWebsite"
+                          type="url"
+                          value={formData.companyWebsite}
+                          onChange={handleChange}
+                          placeholder="https://example.com"
+                          InputProps={{
+                            sx: {
+                              color: 'white',
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'rgba(255, 215, 0, 0.3)',
+                              },
+                              '&:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'rgba(255, 215, 0, 0.6)',
+                              },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: '#FFD700',
+                              },
+                            },
+                          }}
+                          InputLabelProps={{
+                            sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                          }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={12}>
+                        <TextField
+                          required
+                          fullWidth
+                          id="companyLocation"
+                          label="Company Location"
+                          name="companyLocation"
+                          value={formData.companyLocation}
+                          onChange={handleChange}
+                          InputProps={{
+                            sx: {
+                              color: 'white',
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'rgba(255, 215, 0, 0.3)',
+                              },
+                              '&:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'rgba(255, 215, 0, 0.6)',
+                              },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: '#FFD700',
+                              },
+                            },
+                          }}
+                          InputLabelProps={{
+                            sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                          }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={12}>
+                        <TextField
+                          required
+                          fullWidth
+                          id="companyDescription"
+                          label="Company Description"
+                          name="companyDescription"
+                          multiline
+                          rows={4}
+                          value={formData.companyDescription}
+                          onChange={handleChange}
+                          InputProps={{
+                            sx: {
+                              color: 'white',
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'rgba(255, 215, 0, 0.3)',
+                              },
+                              '&:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'rgba(255, 215, 0, 0.6)',
+                              },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: '#FFD700',
+                              },
+                            },
+                          }}
+                          InputLabelProps={{
+                            sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                          }}
+                        />
+                      </Grid>
+                    </>
+                  )}
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {loading ? 'Creating Account...' : 'Create Account'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+                  <Grid item xs={12}>
+                    <Button
+                      type="submit"
+                      fullWidth
+                      variant="contained"
+                      disabled={loading}
+                      sx={{
+                        mt: 3,
+                        mb: 2,
+                        py: 1.5,
+                        background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                        color: '#000',
+                        '&:hover': {
+                          background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
+                        },
+                        transition: 'all 0.3s ease',
+                        textTransform: 'none',
+                        fontSize: '1.1rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {loading ? (
+                        <>
+                          <CircularProgress size={24} sx={{ mr: 1, color: '#000' }} />
+                          Creating Account...
+                        </>
+                      ) : (
+                        'Create Account'
+                      )}
+                    </Button>
+                    <Grid container justifyContent="center">
+                      <Grid item>
+                        <Link to="/login" style={{ textDecoration: 'none' }}>
+                          <Typography variant="body2" sx={{ mt: 2, color: '#FFD700', '&:hover': { textDecoration: 'underline' } }}>
+                            Already have an account? Sign in
+                          </Typography>
+                        </Link>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </Box>
+            </Paper>
+          </Box>
+        </Fade>
+      </Container>
+    </Box>
   );
 };
 

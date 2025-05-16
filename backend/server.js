@@ -132,13 +132,16 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
     
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
     // Create user
     const newUser = await prisma.user.create({
       data: {
         firstName: firstName,
         lastName: lastName,
         email: email,
-        passwordHash: password, // In production, this would be hashed
+        passwordHash: hashedPassword,
         role: role || 'JOBSEEKER',
       }
     });
@@ -170,9 +173,18 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Compare password with hashed password
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    console.log('Password comparison:', { password, hash: user.passwordHash, isValid: isValidPassword });
+    // If the password is stored as plain text (for existing accounts)
+    let isValidPassword = false;
+    
+    // Try bcrypt compare first (for new accounts with proper hashing)
+    try {
+      isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    } catch (e) {
+      // If bcrypt compare fails, check if passwords match directly (for existing accounts)
+      isValidPassword = password === user.passwordHash;
+    }
+    
+    console.log('Password validation result:', isValidPassword);
 
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
