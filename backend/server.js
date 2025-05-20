@@ -83,25 +83,43 @@ const upload = multer({
 
 // JWT Authentication Middleware
 const authenticateJWT = (req, res, next) => {
+  console.log('Authenticating request to:', req.path);
   const authHeader = req.headers.authorization;
 
   if (authHeader) {
-    const token = authHeader.split(' ')[1];
-    console.log('Received token:', token);
-    console.log('Using JWT_SECRET:', process.env.JWT_SECRET || 'local_development_secret');
+    console.log('Auth header format:', authHeader.substring(0, 10) + '...');
+    
+    // Handle different auth header formats
+    let token;
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+      console.log('Extracted Bearer token, length:', token.length);
+    } else {
+      // If no Bearer prefix, use the whole header as token
+      token = authHeader;
+      console.log('Using full header as token, length:', token.length);
+    }
+    
+    if (!token || token === 'undefined' || token === 'null') {
+      console.error('Invalid token format in authorization header');
+      return res.status(401).json({ message: 'Invalid token format' });
+    }
 
-    jwt.verify(token, process.env.JWT_SECRET || 'local_development_secret', (err, user) => {
-      if (err) {
-        console.log('JWT verification error:', err);
-        return res.status(403).json({ message: 'Invalid or expired token', error: err.message });
-      }
+    const secret = process.env.JWT_SECRET || 'local_development_secret';
+    console.log('Using JWT_SECRET:', secret.substring(0, 3) + '...');
 
-      console.log('Decoded JWT user:', user);
-      req.user = user;
-      next();
-    });
+    try {
+      const decoded = jwt.verify(token, secret);
+      console.log('Decoded JWT user:', decoded);
+      req.user = decoded;
+      return next();
+    } catch (err) {
+      console.error('JWT verification error:', err.name, err.message);
+      return res.status(403).json({ message: 'Invalid or expired token', error: err.message });
+    }
   } else {
-    res.status(401).json({ message: 'Authorization header missing' });
+    console.error('Authorization header missing for path:', req.path);
+    return res.status(401).json({ message: 'Authorization header missing' });
   }
 };
 
@@ -395,6 +413,8 @@ app.put('/api/employer/profile', authenticateJWT, checkRole('EMPLOYER'), async (
 // Candidate Profile API Endpoints
 app.get('/api/candidate/profile', authenticateJWT, checkRole('JOBSEEKER'), async (req, res) => {
   try {
+    console.log('Get profile request from user:', req.user.id);
+    
     const candidate = await prisma.user.findUnique({
       where: { id: req.user.id },
       include: {
@@ -403,10 +423,11 @@ app.get('/api/candidate/profile', authenticateJWT, checkRole('JOBSEEKER'), async
     });
 
     if (!candidate) {
+      console.log('Candidate not found for user ID:', req.user.id);
       return res.status(404).json({ message: 'Candidate not found' });
     }
 
-    // Format the response
+    // Format the response - ONLY include this user's data
     const profile = {
       firstName: candidate.firstName,
       lastName: candidate.lastName,
@@ -416,11 +437,13 @@ app.get('/api/candidate/profile', authenticateJWT, checkRole('JOBSEEKER'), async
       location: candidate.candidateProfile?.location || '',
       skills: candidate.candidateProfile?.skills || [],
       education: candidate.candidateProfile?.education || [],
-      photoUrl: candidate.candidateProfile?.photoUrl || null,
-      resumeUrl: candidate.candidateProfile?.resumeUrl || null,
+      // Only include photo and resume if they belong to this user's profile
+      photoUrl: candidate.candidateProfile?.photoUrl || '',
+      resumeUrl: candidate.candidateProfile?.resumeUrl || '',
       resumeFileName: candidate.candidateProfile?.resumeFileName || ''
     };
 
+    console.log('Sending profile data for user:', req.user.id);
     res.json(profile);
   } catch (error) {
     console.error('Get candidate profile error:', error);
@@ -573,15 +596,30 @@ app.post('/api/candidate/photo', authenticateJWT, checkRole('JOBSEEKER'), upload
 
 app.post('/api/candidate/resume', authenticateJWT, checkRole('JOBSEEKER'), upload.single('resume'), async (req, res) => {
   try {
-    console.log('Resume upload request from user:', req.user);
+    console.log('Resume upload request from user:', req.user.id);
     
     if (!req.file) {
       return res.status(400).json({ message: 'No resume file uploaded' });
     }
 
+    console.log('Resume file details:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    });
+
     // Read the file and convert to base64
     const resumeBuffer = fs.readFileSync(req.file.path);
-    const resumeBase64 = `data:${req.file.mimetype};base64,${resumeBuffer.toString('base64')}`;
+    
+    // Ensure we use the correct MIME type for PDF files
+    let mimeType = req.file.mimetype;
+    if (req.file.originalname.toLowerCase().endsWith('.pdf') && mimeType !== 'application/pdf') {
+      mimeType = 'application/pdf';
+      console.log('Corrected MIME type to application/pdf for PDF file');
+    }
+    
+    const resumeBase64 = `data:${mimeType};base64,${resumeBuffer.toString('base64')}`;
+    console.log('Resume encoded as base64 with MIME type:', mimeType);
     
     // Delete the temporary file
     fs.unlinkSync(req.file.path);
@@ -600,6 +638,7 @@ app.post('/api/candidate/resume', authenticateJWT, checkRole('JOBSEEKER'), uploa
       }
     });
 
+    console.log('Resume saved to database for user:', req.user.id);
     res.json({
       message: 'Resume uploaded successfully',
       resumeUrl: resumeBase64,
@@ -614,17 +653,49 @@ app.post('/api/candidate/resume', authenticateJWT, checkRole('JOBSEEKER'), uploa
 // Get candidate resume
 app.get('/api/candidate/resume', authenticateJWT, async (req, res) => {
   try {
+    // Enhanced logging for debugging authentication issues
+    console.log('Resume request received');
+    console.log('Auth header:', req.headers.authorization ? 'Present' : 'Missing');
+    console.log('User in request:', req.user ? `ID: ${req.user.id}` : 'No user');
+    
+    if (!req.user || !req.user.id) {
+      console.error('Authentication failed - no valid user in request');
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    console.log('Resume request from authenticated user:', req.user.id);
+    
     // Find the candidate profile
     const candidateProfile = await prisma.candidateProfile.findUnique({
       where: { userId: req.user.id }
     });
 
-    if (!candidateProfile || !candidateProfile.resumeUrl) {
+    if (!candidateProfile) {
+      console.log('Candidate profile not found for user:', req.user.id);
+      return res.status(404).json({ message: 'Candidate profile not found' });
+    }
+    
+    if (!candidateProfile.resumeUrl) {
+      console.log('Resume not found for user:', req.user.id);
       return res.status(404).json({ message: 'Resume not found' });
     }
-
+    
+    // Ensure the resume URL has the correct MIME type for PDF
+    let resumeUrl = candidateProfile.resumeUrl;
+    
+    // Check if it's a base64 string without the PDF MIME type
+    if (resumeUrl.startsWith('data:') && !resumeUrl.includes('application/pdf')) {
+      // Extract the base64 part (after the comma)
+      const base64Part = resumeUrl.split(',')[1];
+      // Reconstruct with the correct PDF MIME type
+      resumeUrl = `data:application/pdf;base64,${base64Part}`;
+      console.log('Fixed resume URL format for PDF');
+    }
+    
+    console.log('Sending resume data with filename:', candidateProfile.resumeFileName);
+    
     res.json({
-      resumeUrl: candidateProfile.resumeUrl,
+      resumeUrl: resumeUrl,
       resumeFileName: candidateProfile.resumeFileName
     });
   } catch (error) {
@@ -637,6 +708,7 @@ app.get('/api/candidate/resume', authenticateJWT, async (req, res) => {
 app.get('/api/candidate/:candidateId/resume', authenticateJWT, async (req, res) => {
   try {
     const { candidateId } = req.params;
+    console.log(`Resume request for candidate ${candidateId} from user:`, req.user.id);
     
     // Check if user is authorized to view this resume
     // If user is an employer, they should only be able to view resumes of candidates who applied to their jobs
@@ -664,6 +736,7 @@ app.get('/api/candidate/:candidateId/resume', authenticateJWT, async (req, res) 
     }
     
     if (!isAuthorized) {
+      console.log('User not authorized to view this resume');
       return res.status(403).json({ message: 'Not authorized to view this resume' });
     }
     
@@ -673,11 +746,26 @@ app.get('/api/candidate/:candidateId/resume', authenticateJWT, async (req, res) 
     });
 
     if (!candidateProfile || !candidateProfile.resumeUrl) {
+      console.log(`Resume not found for candidate: ${candidateId}`);
       return res.status(404).json({ message: 'Resume not found' });
     }
+    
+    // Ensure the resume URL has the correct MIME type for PDF
+    let resumeUrl = candidateProfile.resumeUrl;
+    
+    // Check if it's a base64 string without the PDF MIME type
+    if (resumeUrl.startsWith('data:') && !resumeUrl.includes('application/pdf')) {
+      // Extract the base64 part (after the comma)
+      const base64Part = resumeUrl.split(',')[1];
+      // Reconstruct with the correct PDF MIME type
+      resumeUrl = `data:application/pdf;base64,${base64Part}`;
+      console.log('Fixed resume URL format for PDF');
+    }
+    
+    console.log(`Sending resume data for candidate ${candidateId} with filename:`, candidateProfile.resumeFileName);
 
     res.json({
-      resumeUrl: candidateProfile.resumeUrl,
+      resumeUrl: resumeUrl,
       resumeFileName: candidateProfile.resumeFileName
     });
   } catch (error) {

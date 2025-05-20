@@ -114,19 +114,19 @@ const ApplicationsList = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'APPLIED':
-        return { bg: '#e3f2fd', color: '#1565c0' }; // Blue
+        return { bg: 'rgba(21, 101, 192, 0.2)', color: '#64b5f6' }; // Blue
       case 'REVIEWING':
-        return { bg: '#fff8e1', color: '#f57f17' }; // Amber
+        return { bg: 'rgba(245, 127, 23, 0.2)', color: '#ffd54f' }; // Amber
       case 'INTERVIEW':
-        return { bg: '#e8f5e9', color: '#2e7d32' }; // Green
+        return { bg: 'rgba(46, 125, 50, 0.2)', color: '#81c784' }; // Green
       case 'OFFERED':
-        return { bg: '#f3e5f5', color: '#7b1fa2' }; // Purple
+        return { bg: 'rgba(123, 31, 162, 0.2)', color: '#ce93d8' }; // Purple
       case 'REJECTED':
-        return { bg: '#ffebee', color: '#c62828' }; // Red
+        return { bg: 'rgba(198, 40, 40, 0.2)', color: '#ef9a9a' }; // Red
       case 'WITHDRAWN':
-        return { bg: '#fafafa', color: '#616161' }; // Grey
+        return { bg: 'rgba(97, 97, 97, 0.2)', color: '#bdbdbd' }; // Grey
       default:
-        return { bg: '#e0e0e0', color: '#212121' }; // Default grey
+        return { bg: 'rgba(33, 33, 33, 0.2)', color: '#e0e0e0' }; // Default grey
     }
   };
 
@@ -144,41 +144,43 @@ const ApplicationsList = () => {
 
   return (
     <Fade in={true} timeout={800}>
-      <Box sx={{ width: '100%' }}>
+      <Box sx={{ color: 'white' }}>
         {/* Title moved to parent ApplicationsPage component */}
 
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs 
-            value={tabValue} 
+        <Box sx={{ borderBottom: 1, borderColor: 'rgba(255, 215, 0, 0.3)', mb: 3 }}>
+          <Tabs
+            value={tabValue}
             onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
             sx={{
-              '& .MuiTab-root': {
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '1rem',
-              },
-              '& .Mui-selected': {
-                color: '#2C5530',
-              },
               '& .MuiTabs-indicator': {
                 backgroundColor: '#FFD700',
-                height: 3,
               },
             }}
           >
-            <Tab label="All Applications" />
-            <Tab label="Active" />
-            <Tab label="Offered" />
-            <Tab label="Closed" />
+            <Tab label="All Applications" sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-selected': { color: '#FFD700' } }} />
+            <Tab label="Active" sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-selected': { color: '#FFD700' } }} />
+            <Tab label="Offered" sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-selected': { color: '#FFD700' } }} />
+            <Tab label="Closed" sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-selected': { color: '#FFD700' } }} />
           </Tabs>
         </Box>
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress sx={{ color: '#2C5530' }} />
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <CircularProgress sx={{ color: '#FFD700' }} />
           </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ 
+            mb: 3,
+            backgroundColor: 'rgba(30, 30, 30, 0.9)',
+            color: '#ff6b6b',
+            border: '1px solid #ff6b6b'
+          }}>
+            {error}
+          </Alert>
         ) : filteredApplications.length === 0 ? (
           <Paper 
             elevation={1} 
@@ -232,15 +234,21 @@ const ApplicationsList = () => {
             </Button>
           </Paper>
         ) : (
-          <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 2 }}>
-            <Table>
-              <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+          <TableContainer component={Paper} sx={{ 
+            mb: 4, 
+            backgroundColor: 'rgba(20, 20, 20, 0.85)',
+            border: '1px solid rgba(255, 215, 0, 0.3)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+          }}>
+            <Table sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255, 215, 0, 0.1)' } }}>
+              <TableHead sx={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Job Title</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Company</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Applied On</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
+                  <TableCell sx={{ color: '#FFD700', fontWeight: 600 }}>Job Title</TableCell>
+                  <TableCell sx={{ color: '#FFD700', fontWeight: 600 }}>Company</TableCell>
+                  <TableCell sx={{ color: '#FFD700', fontWeight: 600 }}>Applied On</TableCell>
+                  <TableCell sx={{ color: '#FFD700', fontWeight: 600 }}>Status</TableCell>
+                  <TableCell align="right" sx={{ color: '#FFD700', fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -248,9 +256,9 @@ const ApplicationsList = () => {
                   const statusStyle = getStatusColor(application.status);
                   return (
                     <TableRow key={application.id} hover>
-                      <TableCell>{application.job.title}</TableCell>
-                      <TableCell>{application.job.company.name}</TableCell>
-                      <TableCell>{formatDate(application.createdAt)}</TableCell>
+                      <TableCell sx={{ color: 'white' }}>{application.job.title}</TableCell>
+                      <TableCell sx={{ color: 'white' }}>{application.job.company.name}</TableCell>
+                      <TableCell sx={{ color: 'white' }}>{formatDate(application.createdAt)}</TableCell>
                       <TableCell>
                         <Chip 
                           label={application.status.replace('_', ' ')} 
@@ -267,7 +275,7 @@ const ApplicationsList = () => {
                             <IconButton 
                               size="small" 
                               onClick={() => handleViewDetails(application)}
-                              sx={{ color: '#2C5530' }}
+                              sx={{ color: '#FFD700' }}
                             >
                               <VisibilityIcon fontSize="small" />
                             </IconButton>
@@ -276,7 +284,7 @@ const ApplicationsList = () => {
                             <IconButton 
                               size="small" 
                               onClick={() => handleDownloadResume(application.id, application.resumeUrl)}
-                              sx={{ color: '#2C5530' }}
+                              sx={{ color: '#007E1B' }}
                             >
                               <DownloadIcon fontSize="small" />
                             </IconButton>
@@ -286,7 +294,7 @@ const ApplicationsList = () => {
                               <IconButton 
                                 size="small" 
                                 onClick={() => handleDeleteApplication(application.id)}
-                                sx={{ color: '#c62828' }}
+                                sx={{ color: '#ff6b6b' }}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -308,39 +316,50 @@ const ApplicationsList = () => {
           onClose={handleCloseDialog}
           maxWidth="md"
           fullWidth
+          PaperProps={{
+            style: {
+              backgroundColor: 'rgba(20, 20, 20, 0.95)',
+              border: '1px solid rgba(255, 215, 0, 0.3)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+              color: 'white'
+            }
+          }}
         >
           {selectedApplication && (
             <>
               <DialogTitle sx={{ 
                 fontWeight: 700, 
-                color: '#2C5530',
-                borderBottom: '1px solid #e0e0e0',
-                pb: 2
+                borderBottom: '1px solid rgba(255, 215, 0, 0.3)',
+                pb: 2,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                color: '#FFD700'
               }}>
                 Application Details
               </DialogTitle>
               <DialogContent sx={{ mt: 2 }}>
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="textSecondary">Job Title</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ color: 'rgba(255, 215, 0, 0.7)' }}>Job Title</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 2, color: 'white' }}>
                       {selectedApplication.job.title}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="textSecondary">Company</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ color: 'rgba(255, 215, 0, 0.7)' }}>Company</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 2, color: 'white' }}>
                       {selectedApplication.job.company.name}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="textSecondary">Applied On</Typography>
-                    <Typography variant="body1" sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ color: 'rgba(255, 215, 0, 0.7)' }}>Applied On</Typography>
+                    <Typography variant="body1" sx={{ mb: 2, color: 'white' }}>
                       {formatDate(selectedApplication.createdAt)}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="textSecondary">Status</Typography>
+                    <Typography variant="subtitle2" sx={{ color: 'rgba(255, 215, 0, 0.7)' }}>Status</Typography>
                     <Chip 
                       label={selectedApplication.status.replace('_', ' ')} 
                       sx={{ 
@@ -352,18 +371,18 @@ const ApplicationsList = () => {
                     />
                   </Grid>
                   <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="textSecondary">Cover Letter</Typography>
-                    <Paper variant="outlined" sx={{ p: 2, mb: 2, backgroundColor: '#f9f9f9' }}>
-                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                    <Typography variant="subtitle2" sx={{ color: 'rgba(255, 215, 0, 0.7)' }}>Cover Letter</Typography>
+                    <Paper variant="outlined" sx={{ p: 2, mb: 2, backgroundColor: 'rgba(30, 30, 30, 0.7)', border: '1px solid rgba(255, 215, 0, 0.2)' }}>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line', color: 'white' }}>
                         {selectedApplication.coverLetter || 'No cover letter provided'}
                       </Typography>
                     </Paper>
                   </Grid>
                   {selectedApplication.additionalInfo && (
                     <Grid item xs={12}>
-                      <Typography variant="subtitle2" color="textSecondary">Additional Information</Typography>
-                      <Paper variant="outlined" sx={{ p: 2, mb: 2, backgroundColor: '#f9f9f9' }}>
-                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                      <Typography variant="subtitle2" sx={{ color: 'rgba(255, 215, 0, 0.7)' }}>Additional Information</Typography>
+                      <Paper variant="outlined" sx={{ p: 2, mb: 2, backgroundColor: 'rgba(30, 30, 30, 0.7)', border: '1px solid rgba(255, 215, 0, 0.2)' }}>
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line', color: 'white' }}>
                           {selectedApplication.additionalInfo}
                         </Typography>
                       </Paper>
@@ -371,13 +390,15 @@ const ApplicationsList = () => {
                   )}
                 </Grid>
               </DialogContent>
-              <DialogActions sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
+              <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(255, 215, 0, 0.3)' }}>
                 <Button 
                   onClick={handleCloseDialog}
                   sx={{
-                    color: '#2C5530',
+                    color: '#FFD700',
+                    borderColor: '#FFD700',
+                    border: '1px solid',
                     '&:hover': {
-                      backgroundColor: 'rgba(44, 85, 48, 0.05)'
+                      backgroundColor: 'rgba(255, 215, 0, 0.1)'
                     }
                   }}
                 >
@@ -388,10 +409,12 @@ const ApplicationsList = () => {
                   onClick={() => handleDownloadResume(selectedApplication.id, selectedApplication.resumeUrl)}
                   startIcon={<DownloadIcon />}
                   sx={{
-                    background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                    color: '#000',
+                    background: 'linear-gradient(45deg, #007E1B 30%, #009921 90%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(0, 126, 27, 0.5)',
                     '&:hover': {
-                      background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                      background: 'linear-gradient(45deg, #005714 30%, #007E1B 90%)',
+                      boxShadow: '0 4px 12px rgba(0, 126, 27, 0.7)',
                     },
                     textTransform: 'none',
                   }}
