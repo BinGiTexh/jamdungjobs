@@ -392,6 +392,300 @@ app.put('/api/employer/profile', authenticateJWT, checkRole('EMPLOYER'), async (
   }
 });
 
+// Candidate Profile API Endpoints
+app.get('/api/candidate/profile', authenticateJWT, checkRole('JOBSEEKER'), async (req, res) => {
+  try {
+    const candidate = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        candidateProfile: true
+      }
+    });
+
+    if (!candidate) {
+      return res.status(404).json({ message: 'Candidate not found' });
+    }
+
+    // Format the response
+    const profile = {
+      firstName: candidate.firstName,
+      lastName: candidate.lastName,
+      email: candidate.email,
+      title: candidate.candidateProfile?.title || '',
+      bio: candidate.candidateProfile?.bio || '',
+      location: candidate.candidateProfile?.location || '',
+      skills: candidate.candidateProfile?.skills || [],
+      education: candidate.candidateProfile?.education || [],
+      photoUrl: candidate.candidateProfile?.photoUrl || null,
+      resumeUrl: candidate.candidateProfile?.resumeUrl || null,
+      resumeFileName: candidate.candidateProfile?.resumeFileName || ''
+    };
+
+    res.json(profile);
+  } catch (error) {
+    console.error('Get candidate profile error:', error);
+    res.status(500).json({ message: 'Error fetching candidate profile', error: error.message });
+  }
+});
+
+app.put('/api/candidate/profile', authenticateJWT, checkRole('JOBSEEKER'), upload.fields([
+  { name: 'photoFile', maxCount: 1 },
+  { name: 'resumeFile', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    console.log('Profile update request from user:', req.user.id);
+    const { 
+      firstName, 
+      lastName, 
+      title, 
+      bio, 
+      location,
+      skills,
+      education,
+      photoUrl: existingPhotoUrl,
+      resumeFileName: existingResumeFileName
+    } = req.body;
+
+    // Parse JSON strings if needed
+    const parsedSkills = typeof skills === 'string' ? JSON.parse(skills) : skills || [];
+    const parsedEducation = typeof education === 'string' ? JSON.parse(education) : education || [];
+
+    // Process uploaded files
+    let photoUrl = existingPhotoUrl;
+    let resumeUrl = null;
+    let resumeFileName = existingResumeFileName;
+
+    // Handle photo file upload
+    if (req.files && req.files.photoFile && req.files.photoFile[0]) {
+      const photoFile = req.files.photoFile[0];
+      // Read the file and convert to base64
+      const photoBuffer = fs.readFileSync(photoFile.path);
+      photoUrl = `data:${photoFile.mimetype};base64,${photoBuffer.toString('base64')}`;
+      
+      // Delete the temporary file
+      fs.unlinkSync(photoFile.path);
+    }
+
+    // Handle resume file upload
+    if (req.files && req.files.resumeFile && req.files.resumeFile[0]) {
+      const resumeFile = req.files.resumeFile[0];
+      // Read the file and convert to base64
+      const resumeBuffer = fs.readFileSync(resumeFile.path);
+      resumeUrl = `data:${resumeFile.mimetype};base64,${resumeBuffer.toString('base64')}`;
+      resumeFileName = resumeFile.originalname;
+      
+      // Delete the temporary file
+      fs.unlinkSync(resumeFile.path);
+    }
+
+    // Update user's basic info
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        firstName,
+        lastName
+      }
+    });
+
+    // Update or create candidate profile
+    const candidateProfile = await prisma.candidateProfile.upsert({
+      where: { userId: req.user.id },
+      create: {
+        userId: req.user.id,
+        title,
+        bio,
+        location,
+        skills: parsedSkills,
+        education: parsedEducation,
+        photoUrl,
+        resumeUrl,
+        resumeFileName
+      },
+      update: {
+        title,
+        bio,
+        location,
+        skills: parsedSkills,
+        education: parsedEducation,
+        photoUrl,
+        resumeUrl: resumeUrl || undefined,
+        resumeFileName: resumeFileName || undefined
+      }
+    });
+
+    res.json({
+      message: 'Profile updated successfully',
+      profile: {
+        firstName,
+        lastName,
+        title,
+        bio,
+        location,
+        skills: parsedSkills,
+        education: parsedEducation,
+        photoUrl,
+        resumeUrl,
+        resumeFileName
+      }
+    });
+  } catch (error) {
+    console.error('Update candidate profile error:', error);
+    res.status(500).json({ message: 'Error updating candidate profile', error: error.message });
+  }
+});
+
+app.post('/api/candidate/photo', authenticateJWT, checkRole('JOBSEEKER'), upload.single('photo'), async (req, res) => {
+  try {
+    console.log('Photo upload request from user:', req.user);
+    
+    if (!req.file) {
+      return res.status(400).json({ message: 'No photo file uploaded' });
+    }
+
+    // Read the file and convert to base64
+    const photoBuffer = fs.readFileSync(req.file.path);
+    const photoBase64 = `data:${req.file.mimetype};base64,${photoBuffer.toString('base64')}`;
+    
+    // Delete the temporary file
+    fs.unlinkSync(req.file.path);
+
+    // Update the candidate profile with the photo URL
+    await prisma.candidateProfile.upsert({
+      where: { userId: req.user.id },
+      create: {
+        userId: req.user.id,
+        photoUrl: photoBase64
+      },
+      update: {
+        photoUrl: photoBase64
+      }
+    });
+
+    res.json({
+      message: 'Photo uploaded successfully',
+      photoUrl: photoBase64
+    });
+  } catch (error) {
+    console.error('Photo upload error:', error);
+    res.status(500).json({ message: 'Error uploading photo', error: error.message });
+  }
+});
+
+app.post('/api/candidate/resume', authenticateJWT, checkRole('JOBSEEKER'), upload.single('resume'), async (req, res) => {
+  try {
+    console.log('Resume upload request from user:', req.user);
+    
+    if (!req.file) {
+      return res.status(400).json({ message: 'No resume file uploaded' });
+    }
+
+    // Read the file and convert to base64
+    const resumeBuffer = fs.readFileSync(req.file.path);
+    const resumeBase64 = `data:${req.file.mimetype};base64,${resumeBuffer.toString('base64')}`;
+    
+    // Delete the temporary file
+    fs.unlinkSync(req.file.path);
+
+    // Update the candidate profile with the resume URL and filename
+    await prisma.candidateProfile.upsert({
+      where: { userId: req.user.id },
+      create: {
+        userId: req.user.id,
+        resumeUrl: resumeBase64,
+        resumeFileName: req.file.originalname
+      },
+      update: {
+        resumeUrl: resumeBase64,
+        resumeFileName: req.file.originalname
+      }
+    });
+
+    res.json({
+      message: 'Resume uploaded successfully',
+      resumeUrl: resumeBase64,
+      resumeFileName: req.file.originalname
+    });
+  } catch (error) {
+    console.error('Resume upload error:', error);
+    res.status(500).json({ message: 'Error uploading resume', error: error.message });
+  }
+});
+
+// Get candidate resume
+app.get('/api/candidate/resume', authenticateJWT, async (req, res) => {
+  try {
+    // Find the candidate profile
+    const candidateProfile = await prisma.candidateProfile.findUnique({
+      where: { userId: req.user.id }
+    });
+
+    if (!candidateProfile || !candidateProfile.resumeUrl) {
+      return res.status(404).json({ message: 'Resume not found' });
+    }
+
+    res.json({
+      resumeUrl: candidateProfile.resumeUrl,
+      resumeFileName: candidateProfile.resumeFileName
+    });
+  } catch (error) {
+    console.error('Error retrieving resume:', error);
+    res.status(500).json({ message: 'Error retrieving resume', error: error.message });
+  }
+});
+
+// Get resume by candidate ID (for employers viewing applications)
+app.get('/api/candidate/:candidateId/resume', authenticateJWT, async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+    
+    // Check if user is authorized to view this resume
+    // If user is an employer, they should only be able to view resumes of candidates who applied to their jobs
+    // If user is the candidate, they can view their own resume
+    let isAuthorized = false;
+    
+    if (req.user.role === 'JOBSEEKER') {
+      // Candidate can view their own resume
+      isAuthorized = req.user.id === candidateId;
+    } else if (req.user.role === 'EMPLOYER') {
+      // Check if candidate has applied to any of this employer's jobs
+      const applications = await prisma.jobApplication.findMany({
+        where: {
+          candidateId: candidateId,
+          job: {
+            companyId: req.user.companyId
+          }
+        }
+      });
+      
+      isAuthorized = applications.length > 0;
+    } else if (req.user.role === 'ADMIN') {
+      // Admins can view all resumes
+      isAuthorized = true;
+    }
+    
+    if (!isAuthorized) {
+      return res.status(403).json({ message: 'Not authorized to view this resume' });
+    }
+    
+    // Find the candidate profile
+    const candidateProfile = await prisma.candidateProfile.findUnique({
+      where: { userId: candidateId }
+    });
+
+    if (!candidateProfile || !candidateProfile.resumeUrl) {
+      return res.status(404).json({ message: 'Resume not found' });
+    }
+
+    res.json({
+      resumeUrl: candidateProfile.resumeUrl,
+      resumeFileName: candidateProfile.resumeFileName
+    });
+  } catch (error) {
+    console.error('Error retrieving resume:', error);
+    res.status(500).json({ message: 'Error retrieving resume', error: error.message });
+  }
+});
+
 app.post('/api/employer/logo', authenticateJWT, checkRole('EMPLOYER'), upload.single('logo'), async (req, res) => {
   try {
     console.log('Logo upload request from user:', req.user);

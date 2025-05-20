@@ -28,8 +28,12 @@ import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import { SalaryDisplay } from '../common/SalaryDisplay';
 import axios from 'axios';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import GetAppIcon from '@mui/icons-material/GetApp';
+import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import Avatar from '@mui/material/Avatar';
 
 // Styled components for Jamaican theme
 const StyledContainer = styled(Container)(({ theme }) => ({
@@ -76,6 +80,7 @@ const CandidateDashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [applications, setApplications] = useState([]);
   const [savedJobs, setSavedJobs] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
 
   const handleUnsaveJob = async (jobId) => {
     try {
@@ -89,19 +94,57 @@ const CandidateDashboard = () => {
   };
 
   const [profile, setProfile] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    title: '',
-    bio: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
     location: '',
+    title: '',
     skills: [],
-    experience: [],
+    bio: '',
     education: [],
-    resumeUrl: null
+    resumeUrl: null,
+    photoUrl: null,
+    resumeFile: null,
+    resumeFileName: ''
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [showResumePreview, setShowResumePreview] = useState(false);
+
+  // Load the pre-converted base64 files for demo purposes
+  const loadDemoFiles = async () => {
+    try {
+      // In a real app, these would come from the server
+      // For demo purposes, we're using pre-converted files
+      const photoBase64 = localStorage.getItem('candidatePhotoUrl');
+      const resumeFileName = 'malik_cameron_resume.pdf';
+      
+      if (!photoBase64) {
+        // For demo purposes, we'll fetch the photo from our scripts directory
+        // In a real app, this would be handled by the file upload UI
+        try {
+          const photoResponse = await fetch('/scripts/photo_base64.txt');
+          if (photoResponse.ok) {
+            const photoData = await photoResponse.text();
+            localStorage.setItem('candidatePhotoUrl', photoData);
+            console.log('Demo photo loaded successfully');
+          }
+        } catch (err) {
+          console.log('Could not load demo photo, using UI upload instead');
+        }
+      }
+      
+      return {
+        photoUrl: localStorage.getItem('candidatePhotoUrl'),
+        resumeFileName: localStorage.getItem('candidateResumeFileName') || resumeFileName
+      };
+    } catch (error) {
+      console.error('Error loading demo files:', error);
+      return { photoUrl: null, resumeFileName: '' };
+    }
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -110,10 +153,21 @@ const CandidateDashboard = () => {
         // Use individual try/catch blocks for each API call to handle them independently
         try {
           const profileRes = await axios.get('/api/candidate/profile');
-          setProfile(profileRes.data);
+          
+          // Load demo files for the photo and resume
+          const demoFiles = await loadDemoFiles();
+          
+          // Merge API data with demo files
+          setProfile({
+            ...profileRes.data,
+            photoUrl: demoFiles.photoUrl,
+            resumeFileName: demoFiles.resumeFileName
+          });
         } catch (profileError) {
           console.error('Error fetching profile data:', profileError);
           // Set default profile data instead of showing error
+          const demoFiles = await loadDemoFiles();
+          
           setProfile({
             firstName: '',
             lastName: '',
@@ -121,7 +175,9 @@ const CandidateDashboard = () => {
             bio: '',
             location: '',
             skills: [],
-            resumeUrl: null
+            education: [],
+            photoUrl: demoFiles.photoUrl,
+            resumeFileName: demoFiles.resumeFileName
           });
         }
         
@@ -160,9 +216,215 @@ const CandidateDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  // Handle photo upload
+  const handlePhotoUpload = (file) => {
+    if (!file) return;
+    
+    // Create a FileReader to read the image file as a data URL
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      // e.target.result contains the data URL (base64 encoded image)
+      const photoDataUrl = e.target.result;
+      
+      // Update the profile state with the photo URL
+      setProfile({ ...profile, photoUrl: photoDataUrl });
+    };
+    
+    // Read the file as a data URL
+    reader.readAsDataURL(file);
+  };
+  
+  // Handle resume file upload
+  const handleResumeUpload = (file) => {
+    if (!file) return;
+    
+    // Store the file object and filename
+    setProfile({ 
+      ...profile, 
+      resumeFile: file,
+      resumeFileName: file.name 
+    });
+  };
+  
+  // Handle view resume
+  const handleViewResume = () => {
+    console.log('Resume URL:', profile.resumeUrl);
+    console.log('Resume File Name:', profile.resumeFileName);
+    
+    // Check if we need to fetch the resume URL from the server
+    if (!profile.resumeUrl && profile.resumeFileName) {
+      // Fetch the resume URL from the server
+      axios.get(`${process.env.REACT_APP_API_URL}/api/candidate/resume`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+      .then(response => {
+        console.log('Fetched resume data:', response.data);
+        
+        // Ensure the resume URL has the correct format for PDF display
+        let resumeUrl = response.data.resumeUrl;
+        
+        // Check if the URL starts with data: and contains application/pdf
+        if (resumeUrl && !resumeUrl.includes('application/pdf')) {
+          // If it's base64 but missing the correct MIME type, fix it
+          if (resumeUrl.startsWith('data:')) {
+            // Extract the base64 part
+            const base64Part = resumeUrl.split(',')[1];
+            // Reconstruct with the correct PDF MIME type
+            resumeUrl = `data:application/pdf;base64,${base64Part}`;
+            console.log('Fixed resume URL format for PDF display');
+          }
+        }
+        
+        setProfile(prev => ({
+          ...prev,
+          resumeUrl: resumeUrl
+        }));
+        setShowResumePreview(true);
+      })
+      .catch(error => {
+        console.error('Error fetching resume:', error);
+        setMessage({
+          type: 'error',
+          text: 'Error loading resume. Please try again.'
+        });
+        setShowResumePreview(true); // Still show the dialog with error message
+      });
+    } else if (profile.resumeUrl) {
+      // If we already have a resume URL, ensure it has the correct format
+      let resumeUrl = profile.resumeUrl;
+      
+      // Check if the URL starts with data: and contains application/pdf
+      if (resumeUrl && !resumeUrl.includes('application/pdf')) {
+        // If it's base64 but missing the correct MIME type, fix it
+        if (resumeUrl.startsWith('data:')) {
+          // Extract the base64 part
+          const base64Part = resumeUrl.split(',')[1];
+          // Reconstruct with the correct PDF MIME type
+          resumeUrl = `data:application/pdf;base64,${base64Part}`;
+          console.log('Fixed existing resume URL format for PDF display');
+          
+          // Update the profile with the fixed URL
+          setProfile(prev => ({
+            ...prev,
+            resumeUrl: resumeUrl
+          }));
+        }
+      }
+      
+      setShowResumePreview(true);
+    } else {
+      setShowResumePreview(true);
+    }
+  };
+
+  // Handle download resume
+  const handleDownloadResume = () => {
+    console.log('Downloading resume:', profile.resumeFileName);
+    console.log('Resume URL available:', !!profile.resumeUrl);
+    
+    // Check if we need to fetch the resume URL from the server
+    if (!profile.resumeUrl && profile.resumeFileName) {
+      // Fetch the resume URL from the server
+      axios.get(`${process.env.REACT_APP_API_URL}/api/candidate/resume`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+      .then(response => {
+        console.log('Fetched resume data for download:', response.data);
+        
+        // Ensure the resume URL has the correct format for PDF download
+        let resumeUrl = response.data.resumeUrl;
+        
+        // Check if the URL starts with data: and contains application/pdf
+        if (resumeUrl && !resumeUrl.includes('application/pdf')) {
+          // If it's base64 but missing the correct MIME type, fix it
+          if (resumeUrl.startsWith('data:')) {
+            // Extract the base64 part
+            const base64Part = resumeUrl.split(',')[1];
+            // Reconstruct with the correct PDF MIME type
+            resumeUrl = `data:application/pdf;base64,${base64Part}`;
+            console.log('Fixed resume URL format for PDF download');
+          }
+        }
+        
+        // Create an anchor element and set the href to the resume URL
+        const downloadLink = document.createElement('a');
+        downloadLink.href = resumeUrl;
+        downloadLink.download = profile.resumeFileName || 'resume.pdf';
+        
+        // Append to the document body, click it, and then remove it
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        // Update the profile state with the resume URL
+        setProfile(prev => ({
+          ...prev,
+          resumeUrl: resumeUrl
+        }));
+      })
+      .catch(error => {
+        console.error('Error fetching resume for download:', error);
+        setMessage({
+          type: 'error',
+          text: 'Error downloading resume. Please try again.'
+        });
+      });
+    } else if (profile.resumeUrl) {
+      // Ensure the existing resume URL has the correct format
+      let resumeUrl = profile.resumeUrl;
+      
+      // Check if the URL starts with data: and contains application/pdf
+      if (resumeUrl && !resumeUrl.includes('application/pdf')) {
+        // If it's base64 but missing the correct MIME type, fix it
+        if (resumeUrl.startsWith('data:')) {
+          // Extract the base64 part
+          const base64Part = resumeUrl.split(',')[1];
+          // Reconstruct with the correct PDF MIME type
+          resumeUrl = `data:application/pdf;base64,${base64Part}`;
+          console.log('Fixed existing resume URL format for PDF download');
+          
+          // Update the profile with the fixed URL
+          setProfile(prev => ({
+            ...prev,
+            resumeUrl: resumeUrl
+          }));
+        }
+      }
+      
+      // Create an anchor element and set the href to the resume URL
+      const downloadLink = document.createElement('a');
+      downloadLink.href = resumeUrl;
+      downloadLink.download = profile.resumeFileName || 'resume.pdf';
+      
+      // Append to the document body, click it, and then remove it
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } else {
+      setMessage({
+        type: 'error',
+        text: 'No resume available to download.'
+      });
+    }
+  };
+
   const handleProfileUpdate = async () => {
     try {
       setLoading(true);
+      
+      // Store the photo and resume in localStorage
+      if (profile.photoUrl) {
+        localStorage.setItem('candidatePhotoUrl', profile.photoUrl);
+      }
+      
+      if (profile.resumeFileName) {
+        localStorage.setItem('candidateResumeFileName', profile.resumeFileName);
+      }
       
       // For demo purposes, simulate a successful profile update
       console.log('Simulating profile update with data:', profile);
@@ -171,16 +433,20 @@ const CandidateDashboard = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Update the local state to reflect the changes
-      setMessage({ type: 'success', text: 'Profile updated successfully' });
+      setIsEditing(false);
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
-      setMessage({ type: 'error', text: 'Failed to update profile' });
+      setMessage({ type: 'error', text: 'Failed to update profile. Please try again.' });
+      setTimeout(() => setMessage(null), 3000);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResumeUpload = async (file) => {
+  // Legacy resume upload handler - keeping for reference
+  const handleLegacyResumeUpload = async (file) => {
     try {
       // For demo purposes, just simulate a successful upload
       // This is a workaround since we're having issues with the actual file upload
@@ -334,203 +600,462 @@ const CandidateDashboard = () => {
           {activeTab === 0 && (
             <StyledPaper>
               <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="First Name"
-                    value={profile.firstName || ''}
-                    onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
-                    margin="normal"
-                    InputProps={{
-                      sx: {
-                        color: 'white',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.3)',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.6)',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ color: '#FFD700' }}>Profile Information</Typography>
+                  {!isEditing ? (
+                    <Button
+                      variant="outlined"
+                      onClick={() => setIsEditing(true)}
+                      sx={{
+                        color: '#FFD700',
+                        borderColor: '#FFD700',
+                        '&:hover': {
                           borderColor: '#FFD700',
-                        },
-                      },
-                    }}
-                    InputLabelProps={{
-                      sx: { color: 'rgba(255, 255, 255, 0.7)' },
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Last Name"
-                    value={profile.lastName || ''}
-                    onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
-                    margin="normal"
-                    InputProps={{
-                      sx: {
-                        color: 'white',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.3)',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.6)',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFD700',
-                        },
-                      },
-                    }}
-                    InputLabelProps={{
-                      sx: { color: 'rgba(255, 255, 255, 0.7)' },
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Professional Title"
-                    value={profile.title || ''}
-                    onChange={(e) => setProfile({ ...profile, title: e.target.value })}
-                    margin="normal"
-                    placeholder="e.g., Senior Web Developer"
-                    InputProps={{
-                      sx: {
-                        color: 'white',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.3)',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.6)',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFD700',
-                        },
-                      },
-                    }}
-                    InputLabelProps={{
-                      sx: { color: 'rgba(255, 255, 255, 0.7)' },
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Bio"
-                    value={profile.bio || ''}
-                    onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                    margin="normal"
-                    multiline
-                    rows={4}
-                    placeholder="Tell employers about yourself, your experience, and what you're looking for"
-                    InputProps={{
-                      sx: {
-                        color: 'white',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.3)',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.6)',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#FFD700',
-                        },
-                      },
-                    }}
-                    InputLabelProps={{
-                      sx: { color: 'rgba(255, 255, 255, 0.7)' },
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <LocationAutocomplete
-                    value={profile.location || ''}
-                    onChange={(location) => setProfile({ ...profile, location })}
-                    label="Location"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <SkillsAutocomplete
-                    value={profile.skills || []}
-                    onChange={(skills) => setProfile({ ...profile, skills })}
-                    label="Skills"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="subtitle1" sx={{ mr: 2, color: 'rgba(255, 255, 255, 0.9)' }}>
-                      Resume:
-                    </Typography>
-                    {profile.resumeUrl ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Chip
-                          label="Resume Uploaded"
-                          sx={{ mr: 2, bgcolor: 'rgba(44, 85, 48, 0.2)', color: '#E8F5E9', border: '1px solid rgba(44, 85, 48, 0.3)' }}
-                        />
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => window.open(profile.resumeUrl, '_blank')}
-                          sx={{
-                            color: '#FFD700',
-                            borderColor: '#FFD700',
-                            '&:hover': {
-                              borderColor: '#FFD700',
-                              backgroundColor: 'rgba(255, 215, 0, 0.1)'
-                            }
-                          }}
-                        >
-                          View
-                        </Button>
-                        <IconButton
-                          onClick={() => setShowResumeDialog(true)}
-                          sx={{ ml: 1, color: '#FFD700' }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Box>
-                    ) : (
+                          backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                        }
+                      }}
+                    >
+                      Edit Profile
+                    </Button>
+                  ) : (
+                    <Box sx={{ display: 'flex', gap: 2 }}>
                       <Button
                         variant="outlined"
-                        onClick={() => setShowResumeDialog(true)}
-                        startIcon={<CloudUploadIcon />}
+                        onClick={() => setIsEditing(false)}
                         sx={{
-                          color: '#FFD700',
-                          borderColor: '#FFD700',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
                           '&:hover': {
-                            borderColor: '#FFD700',
-                            backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)'
                           }
                         }}
                       >
-                        Upload Resume
+                        Cancel
                       </Button>
+                      <Button
+                        variant="contained"
+                        onClick={handleProfileUpdate}
+                        disabled={loading}
+                        sx={{
+                          background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                          color: '#000',
+                          fontWeight: 600,
+                          '&:hover': {
+                            background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                          }
+                        }}
+                      >
+                        Save Changes
+                      </Button>
+                    </Box>
+                  )}
+                </Grid>
+
+                {isEditing ? (
+                  // Edit Form
+                  <>
+                    {/* Photo Upload Section */}
+                    <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 150,
+                            height: 150,
+                            borderRadius: '50%',
+                            border: '2px solid rgba(255, 215, 0, 0.5)',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                            mb: 2,
+                            mx: 'auto',
+                            position: 'relative',
+                          }}
+                        >
+                          {profile.photoUrl ? (
+                            <Avatar
+                              src={profile.photoUrl}
+                              alt="Profile Photo"
+                              sx={{ width: '100%', height: '100%' }}
+                            />
+                          ) : (
+                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                              No photo selected
+                            </Typography>
+                          )}
+                        </Box>
+                        
+                        <input
+                          accept="image/*"
+                          type="file"
+                          id="photo-upload"
+                          style={{ display: 'none' }}
+                          onChange={(e) => e.target.files[0] && handlePhotoUpload(e.target.files[0])}
+                        />
+                        <label htmlFor="photo-upload">
+                          <Button
+                            variant="outlined"
+                            component="span"
+                            startIcon={<CloudUploadIcon />}
+                            size="small"
+                            sx={{
+                              color: '#FFD700',
+                              borderColor: '#FFD700',
+                              '&:hover': {
+                                borderColor: '#FFD700',
+                                backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                              }
+                            }}
+                          >
+                            Upload Photo
+                          </Button>
+                        </label>
+                        <Typography variant="caption" display="block" sx={{ mt: 1, color: 'rgba(255, 255, 255, 0.5)' }}>
+                          Recommended: Square image, 300x300 pixels or larger
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="First Name"
+                        value={profile.firstName || ''}
+                        onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
+                        InputProps={{
+                          sx: {
+                            color: 'white',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 215, 0, 0.3)',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 215, 0, 0.6)',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#FFD700',
+                            },
+                          },
+                        }}
+                        InputLabelProps={{
+                          sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Last Name"
+                        value={profile.lastName || ''}
+                        onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+                        InputProps={{
+                          sx: {
+                            color: 'white',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 215, 0, 0.3)',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 215, 0, 0.6)',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#FFD700',
+                            },
+                          },
+                        }}
+                        InputLabelProps={{
+                          sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Professional Title"
+                        value={profile.title || ''}
+                        onChange={(e) => setProfile({ ...profile, title: e.target.value })}
+                        placeholder="e.g., Senior Software Developer"
+                        InputProps={{
+                          sx: {
+                            color: 'white',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 215, 0, 0.3)',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 215, 0, 0.6)',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#FFD700',
+                            },
+                          },
+                        }}
+                        InputLabelProps={{
+                          sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <LocationAutocomplete
+                        value={profile.location || ''}
+                        onChange={(location) => setProfile({ ...profile, location })}
+                        label="Location"
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Bio"
+                        value={profile.bio || ''}
+                        onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                        multiline
+                        rows={4}
+                        InputProps={{
+                          sx: {
+                            color: 'white',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 215, 0, 0.3)',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 215, 0, 0.6)',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#FFD700',
+                            },
+                          },
+                        }}
+                        InputLabelProps={{
+                          sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <SkillsAutocomplete
+                        value={profile.skills || []}
+                        onChange={(skills) => setProfile({ ...profile, skills })}
+                        label="Skills"
+                      />
+                    </Grid>
+                    
+                    {/* Resume Upload Section */}
+                    <Grid item xs={12}>
+                      <Box sx={{ 
+                        border: '1px dashed rgba(255, 215, 0, 0.5)', 
+                        borderRadius: 1, 
+                        p: 2, 
+                        mb: 2,
+                        backgroundColor: 'rgba(255, 215, 0, 0.05)'
+                      }}>
+                        <Typography variant="subtitle2" sx={{ color: '#FFD700', mb: 1 }}>
+                          Upload Resume (Optional)
+                        </Typography>
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                          <input
+                            accept=".pdf,.doc,.docx"
+                            type="file"
+                            id="resume-upload"
+                            style={{ display: 'none' }}
+                            onChange={(e) => e.target.files[0] && handleResumeUpload(e.target.files[0])}
+                          />
+                          <label htmlFor="resume-upload">
+                            <Button
+                              variant="outlined"
+                              component="span"
+                              startIcon={<CloudUploadIcon />}
+                              sx={{
+                                color: '#2C5530',
+                                borderColor: '#2C5530',
+                                '&:hover': {
+                                  borderColor: '#2C5530',
+                                  backgroundColor: 'rgba(44, 85, 48, 0.1)'
+                                }
+                              }}
+                            >
+                              Select File
+                            </Button>
+                          </label>
+                          
+                          {profile.resumeFileName && (
+                            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                              Selected: {profile.resumeFileName}
+                            </Typography>
+                          )}
+                        </Box>
+                        
+                        <Typography variant="caption" display="block" sx={{ mt: 1, color: 'rgba(255, 255, 255, 0.5)' }}>
+                          Supported formats: PDF, DOC, DOCX (Max size: 5MB)
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </>
+                ) : (
+                  // Display View
+                  <>
+                    {/* Profile Photo */}
+                    {profile.photoUrl && (
+                      <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                        <Avatar
+                          src={profile.photoUrl}
+                          alt={`${profile.firstName} ${profile.lastName}`}
+                          sx={{ 
+                            width: 150, 
+                            height: 150, 
+                            border: '3px solid #FFD700',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                          }}
+                        />
+                      </Grid>
                     )}
-                  </Box>
-                </Grid>
-                <Grid item xs={12}>
-                  <Button
-                    variant="contained"
-                    onClick={handleProfileUpdate}
-                    disabled={loading}
-                    sx={{
-                      mt: 3,
-                      mb: 2,
-                      py: 1.5,
-                      background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                      color: '#000',
-                      fontWeight: 600,
-                      '&:hover': {
-                        background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
-                      },
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    {loading ? 'Saving...' : 'Save Profile'}
-                  </Button>
-                </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>Name</Typography>
+                        <Typography variant="body1" sx={{ color: '#fff' }}>
+                          {profile.firstName} {profile.lastName}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>Professional Title</Typography>
+                        <Typography variant="body1" sx={{ color: '#fff' }}>
+                          {profile.title || 'Not specified'}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>Location</Typography>
+                        <Typography variant="body1" sx={{ color: '#fff' }}>
+                          {profile.location || 'Not specified'}
+                        </Typography>
+                      </Box>
+                      
+                      {profile.resumeFileName && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>Resume</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <CloudUploadIcon sx={{ color: '#2C5530' }} />
+                            <Typography variant="body1" sx={{ color: '#fff' }}>
+                              {profile.resumeFileName}
+                            </Typography>
+                          </Box>
+                          
+                          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                            {/* View Resume Button */}
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<VisibilityIcon />}
+                              onClick={() => handleViewResume()}
+                              sx={{
+                                color: '#FFD700',
+                                borderColor: '#FFD700',
+                                '&:hover': {
+                                  borderColor: '#FFD700',
+                                  backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                                }
+                              }}
+                            >
+                              View
+                            </Button>
+                            
+                            {/* Download Resume Button */}
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<GetAppIcon />}
+                              onClick={() => handleDownloadResume()}
+                              sx={{
+                                color: '#2C5530',
+                                borderColor: '#2C5530',
+                                '&:hover': {
+                                  borderColor: '#2C5530',
+                                  backgroundColor: 'rgba(44, 85, 48, 0.1)'
+                                }
+                              }}
+                            >
+                              Download
+                            </Button>
+                          </Box>
+                          
+                          {/* Resume Preview Dialog */}
+                          <Dialog
+                            open={showResumePreview}
+                            onClose={() => setShowResumePreview(false)}
+                            maxWidth="md"
+                            fullWidth
+                          >
+                            <DialogTitle sx={{ 
+                              backgroundColor: '#2C5530', 
+                              color: '#FFD700',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <Typography variant="h6">{profile.resumeFileName}</Typography>
+                              <IconButton 
+                                onClick={() => setShowResumePreview(false)}
+                                sx={{ color: '#FFD700' }}
+                              >
+                                <CloseIcon />
+                              </IconButton>
+                            </DialogTitle>
+                            <DialogContent sx={{ p: 0, height: '80vh' }}>
+                              {profile.resumeUrl ? (
+                                <>
+                                  {/* Display PDF using object tag instead of iframe for better compatibility */}
+                                  <object
+                                    data={profile.resumeUrl}
+                                    type="application/pdf"
+                                    width="100%"
+                                    height="100%"
+                                  >
+                                    <p>Your browser doesn't support PDF preview. <a href={profile.resumeUrl} target="_blank" rel="noopener noreferrer">Click here to download the PDF</a>.</p>
+                                  </object>
+                                </>
+                              ) : (
+                                <Box sx={{ p: 3, textAlign: 'center' }}>
+                                  <Typography variant="body1" color="error">
+                                    Unable to load resume preview. The resume data may not be in the correct format.
+                                  </Typography>
+                                </Box>
+                              )}
+                            </DialogContent>
+                          </Dialog>
+                        </Box>
+                      )}
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>Bio</Typography>
+                        <Typography variant="body1" sx={{ color: '#fff' }}>
+                          {profile.bio || 'No bio provided'}
+                        </Typography>
+                      </Box>
+                      
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>Skills</Typography>
+                        {profile.skills?.length > 0 ? (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {profile.skills.map((skill, index) => (
+                              <Chip
+                                key={index}
+                                label={skill}
+                                sx={{
+                                  backgroundColor: 'rgba(44, 85, 48, 0.2)',
+                                  color: '#E8F5E9',
+                                  border: '1px solid rgba(44, 85, 48, 0.3)'
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        ) : (
+                          <Typography variant="body1" sx={{ color: '#fff' }}>No skills listed</Typography>
+                        )}
+                      </Box>
+                    </Grid>
+                  </>
+                )}
               </Grid>
             </StyledPaper>
           )}
@@ -560,6 +1085,38 @@ const CandidateDashboard = () => {
                           </Typography>
                         </Grid>
                         <Grid item xs={12} sm={4} sx={{ textAlign: 'right' }}>
+                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                            <Button
+                              variant="outlined"
+                              onClick={() => setShowResumeDialog(true)}
+                              startIcon={<CloudUploadIcon />}
+                              sx={{
+                                color: '#FFD700',
+                                borderColor: '#FFD700',
+                                '&:hover': {
+                                  borderColor: '#FFD700',
+                                  backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                                }
+                              }}
+                            >
+                              Upload Resume
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              component="a"
+                              href="/resume-builder"
+                              sx={{
+                                color: '#2C5530',
+                                borderColor: '#2C5530',
+                                '&:hover': {
+                                  borderColor: '#2C5530',
+                                  backgroundColor: 'rgba(44, 85, 48, 0.1)'
+                                }
+                              }}
+                            >
+                              Build Resume
+                            </Button>
+                          </Box>
                           <Button
                             variant="outlined"
                             size="small"
