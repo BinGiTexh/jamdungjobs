@@ -25,7 +25,8 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import { buildApiUrl } from '../../config';
-import { LocationAutocomplete } from '../common/LocationAutocomplete';
+import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
+import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import api from '../../utils/axiosConfig';
 import axios from 'axios';
 import ApplicationsList from '../jobseeker/ApplicationsList';
@@ -224,7 +225,6 @@ const CandidateDashboard = () => {
   const [showResumePreview, setShowResumePreview] = useState(false);
   
   // Form state
-  const [newSkill, setNewSkill] = useState('');
   const [editedProfile, setEditedProfile] = useState({...profile});
   
   // File upload state
@@ -258,12 +258,37 @@ const CandidateDashboard = () => {
     }));
   };
   
-  // Handle location selection
+  // Handle Jamaica-specific location selection
   const handleLocationSelect = (location) => {
-    setEditedProfile(prev => ({
-      ...prev,
-      location
-    }));
+    // Format the location for display and storage
+    if (location && typeof location === 'object') {
+      // Create a formatted location string that includes parish information
+      const formattedLocation = location.parish
+        ? `${location.name}, ${location.parish}, Jamaica`
+        : `${location.name}, Jamaica`;
+      
+      // Store both the formatted string and the structured data
+      setEditedProfile(prev => ({
+        ...prev,
+        location: formattedLocation,
+        // Store the structured location data for potential future use
+        locationData: {
+          name: location.name,
+          parish: location.parish,
+          placeId: location.placeId || `jamaica-${location.parish ? location.parish.toLowerCase().replace(/\s+/g, '-') : ''}-${location.name.toLowerCase().replace(/\s+/g, '-')}`,
+          type: location.type || 'location'
+        }
+      }));
+      
+      console.log('Selected Jamaica location:', location);
+    } else {
+      // Handle case where location is cleared or invalid
+      setEditedProfile(prev => ({
+        ...prev,
+        location: '',
+        locationData: null
+      }));
+    }
   };
 
   // Constants for localStorage keys (must match the ones in AuthContext.js)
@@ -330,7 +355,16 @@ const CandidateDashboard = () => {
       const token = localStorage.getItem(TOKEN_KEY);
       
       // Make API call to update profile using PUT instead of POST
-      const response = await api.put('/api/candidate/profile', editedProfile, {
+    // Ensure locationData is included in the profile update
+    const profileData = {
+      ...editedProfile,
+      // Make sure locationData is included if it exists
+      locationData: editedProfile.locationData || null
+    };
+    
+    console.log('Sending profile data with location:', profileData);
+    
+    const response = await api.put('/api/candidate/profile', profileData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -353,24 +387,6 @@ const CandidateDashboard = () => {
     }
   };
   
-  // Handle adding a new skill
-  const handleAddSkill = () => {
-    if (newSkill.trim() && !editedProfile.skills.includes(newSkill.trim())) {
-      setEditedProfile(prev => ({
-        ...prev,
-        skills: [...prev.skills, newSkill.trim()]
-      }));
-      setNewSkill('');
-    }
-  };
-  
-  // Handle removing a skill
-  const handleRemoveSkill = (skillToRemove) => {
-    setEditedProfile(prev => ({
-      ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
-    }));
-  };
   
   // Handle file selection for resume upload
   const handleFileSelect = (event) => {
@@ -926,7 +942,7 @@ const CandidateDashboard = () => {
               <StyledChip 
                 key={index} 
                 label={skill} 
-                onDelete={editMode ? () => handleRemoveSkill(skill) : undefined}
+                onDelete={editMode ? undefined : undefined}
               />
             ))}
             
@@ -938,21 +954,20 @@ const CandidateDashboard = () => {
           </Box>
           
           {editMode && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-              <StyledTextField
-                label="Add a skill"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                size="small"
-                sx={{ mr: 1 }}
+            <Box sx={{ mt: 2 }}>
+              <SkillsAutocomplete
+                value={editedProfile.skills}
+                onChange={(newSkills) => {
+                  setEditedProfile(prev => ({
+                    ...prev,
+                    skills: newSkills
+                  }));
+                }}
+                label="Skills"
+                placeholder="Search or add skills"
+                multiple={true}
+                freeSolo={true}
               />
-              <StyledButton 
-                variant="contained" 
-                size="small"
-                onClick={handleAddSkill}
-              >
-                Add
-              </StyledButton>
             </Box>
           )}
           
@@ -961,10 +976,11 @@ const CandidateDashboard = () => {
           </Typography>
           
           {editMode ? (
-            <LocationAutocomplete
+            <JamaicaLocationProfileAutocomplete
               value={editedProfile.location || ''}
               onChange={handleLocationSelect}
-              placeholder="Enter your location"
+              placeholder="Enter your location in Jamaica"
+              sx={{ mb: 2 }}
             />
           ) : (
             <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>

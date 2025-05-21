@@ -27,7 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import { JobTitleInput } from './common/JobTitleInput';
-import { LocationAutocomplete } from './common/LocationAutocomplete';
+import { JamaicaLocationAutocomplete } from './common/JamaicaLocationAutocomplete';
 import { SkillsAutocomplete } from './common/SkillsAutocomplete';
 import { SalaryRangeInput } from './common/SalaryRangeInput';
 import { SalaryDisplay } from './common/SalaryDisplay';
@@ -141,15 +141,28 @@ const JobSearch = () => {
       setLoading(true);
       
       // Prepare search params
-      const searchParams = {
-        ...filters,
-        // Format location data for the API
-        location: filters.location ? filters.location.name : '',
-        placeId: filters.location ? filters.location.placeId : '',
-        locationRadius: filters.location ? filters.location.radius : filters.locationRadius
-      };
+      let searchParams = { ...filters };
       
-      console.log('Searching with params:', searchParams);
+      // Format Jamaica-specific location data for the API
+      if (filters.location) {
+        // Convert the location object to a string for the API
+        // The backend will parse this back into an object
+        const locationString = filters.location.name || '';
+        const parishString = filters.location.parish ? `, ${filters.location.parish}` : '';
+        
+        searchParams.location = `${locationString}${parishString}`;
+        searchParams.locationRadius = filters.location.radius || filters.locationRadius;
+        
+        // Also include the structured data for the backend to use if it can parse JSON
+        searchParams.locationData = JSON.stringify({
+          name: filters.location.name,
+          parish: filters.location.parish,
+          placeId: filters.location.placeId,
+          radius: filters.location.radius || filters.locationRadius
+        });
+      }
+      
+      console.log('Searching with Jamaica-specific params:', searchParams);
       
       const response = await axios.get('/api/jobs/search', { params: searchParams });
       let jobResults = response.data.jobs || response.data;
@@ -292,7 +305,7 @@ const JobSearch = () => {
               </Grid>
 
               <Grid item xs={12} md={4}>
-                <LocationAutocomplete
+                <JamaicaLocationAutocomplete
                   value={filters.location}
                   onChange={(locationData) => {
                     handleFilterChange('location', locationData);
@@ -303,7 +316,7 @@ const JobSearch = () => {
                   }}
                   radius={filters.locationRadius}
                   onRadiusChange={(radius) => handleFilterChange('locationRadius', radius)}
-                  placeholder="Location (city, neighborhood)"
+                  placeholder="Location in Jamaica"
                   sx={formFieldStyle}
                 />
               </Grid>
