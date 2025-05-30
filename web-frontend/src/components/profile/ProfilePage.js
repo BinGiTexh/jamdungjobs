@@ -109,18 +109,18 @@ const ProfilePage = () => {
     setSuccess('');
 
     try {
-      const endpoint = user?.role === 'employer' 
-        ? 'http://localhost:5000/api/employer/profile'
+      // Use the new endpoint for employer profiles
+      const endpoint = user?.role === 'EMPLOYER' 
+        ? 'http://localhost:5000/api/employer/create-company'
         : 'http://localhost:5000/api/users/me';
       
-      const dataToSubmit = user?.role === 'employer'
+      const dataToSubmit = user?.role === 'EMPLOYER'
         ? {
-            companyName: formData.companyName,
-            companyWebsite: formData.companyWebsite,
-            companyLocation: formData.companyLocation,
-            companyDescription: formData.companyDescription,
-            name: formData.name,
-            phone: formData.phone
+            // Only include fields that exist in the Prisma schema
+            name: formData.companyName, // Company name field
+            website: formData.companyWebsite,
+            location: formData.companyLocation,
+            description: formData.companyDescription, // Changed to match the expected field name
           }
         : {
             name: formData.name,

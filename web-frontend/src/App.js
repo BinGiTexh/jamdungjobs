@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import EmployerDashboard from './components/employer/EmployerDashboard';
+import EmployerDashboardNew from './components/employer/EmployerDashboardNew';
 import CandidateDashboard from './components/candidate/CandidateDashboard';
 import Register from './components/Register';
 import JobSearch from './components/JobSearch';
-import { buildAssetUrl } from './config';
-import { FindJobsModal } from './components/FindJobsModal';
 import HomePage from './components/home/HomePage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import JobApplyPage from './pages/JobApplyPage';
 import EmployerApplicationsPage from './pages/EmployerApplicationsPage';
-import EmployerPostJobPage from './pages/EmployerPostJobPage';
+import EmployerPostJobPage from './pages/EmployerPostJobPageNew';
 import ProfilePage from './components/profile/ProfilePage';
 import ResumeBuilderPage from './components/candidate/ResumeBuilderPage';
+import AboutUs from './components/AboutUs';
+import DashboardRedirect from './components/DashboardRedirect';
 import { 
   Box, 
   Typography, 
@@ -24,11 +25,8 @@ import {
   Paper, 
   TextField, 
   Button, 
-  Alert, 
-  useTheme, 
-  useMediaQuery 
+  Alert
 } from '@mui/material';
-
 // Inline component definitions to avoid missing module errors
 const LoginPage = () => {
   const { login, error, loading } = useAuth();
@@ -36,8 +34,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // Removed unused theme and isMobile variables
   
   // Check if we're coming from the employer hiring button
   const isEmployerRedirect = location.state?.employerRedirect;
@@ -251,13 +248,6 @@ const LoginPage = () => {
                 </Typography>
               </Box>
             </form>
-            
-            <Typography variant="body1" align="center" sx={{ mt: 2, color: 'rgba(255, 255, 255, 0.7)' }}>
-              Don't have an account?{' '}
-              <Link to="/register" style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 500 }}>
-                Register
-              </Link>
-            </Typography>
           </Box>
         </Paper>
       </Container>
@@ -265,34 +255,10 @@ const LoginPage = () => {
   );
 };
 
-const DashboardPage = () => {
-  const { user, logout } = useAuth();
-  
-  return (
-    <div style={{ padding: '20px' }}>
-      <h2>Dashboard</h2>
-      <p>Welcome, {user?.email}!</p>
-      <button 
-        onClick={logout}
-        style={{
-          padding: '10px',
-          backgroundColor: '#dc3545',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          marginTop: '20px'
-        }}
-      >
-        Logout
-      </button>
-    </div>
-  );
-};
-
+// Simple page components
 const JobSearchPage = () => <JobSearch />;
 
-
+// RegisterPage component
 const RegisterPage = () => {
   const { isAuthenticated } = useAuth();
   
@@ -303,9 +269,10 @@ const RegisterPage = () => {
   return <Register />;
 };
 
+// Navigation component
 const Navigation = () => {
   const { user, logout } = useAuth();
-  const location = useLocation();
+  // Removed unused location variable
 
   return (
     <nav className="nav-container">
@@ -322,6 +289,7 @@ const Navigation = () => {
                 <Link to="/employer/jobs">Job Listings</Link>
                 <Link to="/employer/applications">Applications</Link>
                 <Link to="/employer/profile">Company Profile</Link>
+                <Link to="/about">About Us</Link>
                 <button 
                   onClick={logout}
                   style={{
@@ -341,6 +309,7 @@ const Navigation = () => {
                 <Link to="/candidate/dashboard">Dashboard</Link>
                 <Link to="/jobs">Find Jobs</Link>
                 <Link to="/applications">My Applications</Link>
+                <Link to="/about">About Us</Link>
                 <button 
                   onClick={logout}
                   style={{
@@ -357,9 +326,16 @@ const Navigation = () => {
               </>
             )
           ) : (
-            // Hide navigation links when user is not logged in since we have buttons on the homepage
+            // Minimal navigation for non-logged in users
             <>
-              {/* Navigation links for non-logged in users removed */}
+              <Link to="/about" style={{
+                color: '#FFD700',
+                textDecoration: 'none',
+                fontWeight: 500,
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                border: '1px solid #FFD700'
+              }}>About Us</Link>
             </>
           )}
         </div>
@@ -368,6 +344,7 @@ const Navigation = () => {
   );
 };
 
+// Main App component
 function App() {
   return (
     <AuthProvider>
@@ -382,13 +359,14 @@ function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/jobs" element={<JobSearchPage />} />
               <Route path="/jobs/:jobId/apply" element={<JobApplyPage />} />
+              <Route path="/about" element={<AboutUs />} />
 
-              {/* Protected Routes */}
+              {/* Protected Routes - Redirect based on role */}
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <DashboardPage />
+                    <DashboardRedirect />
                   </ProtectedRoute>
                 }
               />
@@ -396,6 +374,15 @@ function App() {
               {/* Employer Routes */}
               <Route
                 path="/employer/dashboard"
+                element={
+                  <RoleProtectedRoute role="EMPLOYER">
+                    <EmployerDashboardNew />
+                  </RoleProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/employer/dashboard-old"
                 element={
                   <RoleProtectedRoute role="EMPLOYER">
                     <EmployerDashboard />

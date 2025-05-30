@@ -117,8 +117,8 @@ const JobApplyPage = () => {
         <JobApplicationForm 
           jobId={job.id} 
           jobTitle={job.title} 
-          onSuccess={handleApplicationSuccess} 
-          onCancel={handleCancel} 
+          onSuccess={handleApplicationSuccess}
+          onCancel={() => navigate(-1)}
         />
       )}
     </Container>

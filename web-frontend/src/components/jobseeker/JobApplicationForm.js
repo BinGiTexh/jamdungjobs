@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -14,12 +14,21 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  IconButton,
-  Tooltip
+  Stepper,
+  Step,
+  StepLabel,
+  Card,
+  CardContent,
+  Chip,
+  Radio,
+  RadioGroup,
+  FormControlLabel
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import DeleteIcon from '@mui/icons-material/Delete';
-import InfoIcon from '@mui/icons-material/Info';
+import DescriptionIcon from '@mui/icons-material/Description';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
 import { buildApiUrl } from '../../config';
@@ -38,9 +47,15 @@ const VisuallyHiddenInput = styled('input')({
 });
 
 const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
+  // Step state for the multi-step form
+  const [activeStep, setActiveStep] = useState(0);
+  const [savedResumes, setSavedResumes] = useState([]);
+  const [resumeOption, setResumeOption] = useState('upload');
+  
   const [formData, setFormData] = useState({
     coverLetter: '',
     resumeFile: null,
+    savedResumeId: '',
     phoneNumber: '',
     availability: 'IMMEDIATE',
     salary: '',
@@ -50,6 +65,35 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [resumeFileName, setResumeFileName] = useState('');
+  
+  // Define the steps
+  const steps = ['Resume & Details', 'Review & Submit'];
+  
+  // Availability options
+  const availabilityOptions = [
+    { value: 'IMMEDIATE', label: 'Immediately' },
+    { value: 'ONE_WEEK', label: 'One Week' },
+    { value: 'TWO_WEEKS', label: 'Two Weeks' },
+    { value: 'ONE_MONTH', label: 'One Month' },
+    { value: 'NEGOTIABLE', label: 'Negotiable' }
+  ];
+  
+  // Fetch user's saved resumes
+  useEffect(() => {
+    const fetchSavedResumes = async () => {
+      try {
+        const response = await axios.get(buildApiUrl('/candidate/resumes'));
+        if (response.data && response.data.length > 0) {
+          setSavedResumes(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching saved resumes:', err);
+        // Don't show error for this, just fall back to upload only
+      }
+    };
+    
+    fetchSavedResumes();
+  }, []);
 
   const handleChange = (field) => (event) => {
     setFormData(prev => ({
@@ -93,24 +137,68 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
     setResumeFileName('');
   };
 
+  // Handle next step
+  const handleNext = () => {
+    // Validate current step
+    if (activeStep === 0) {
+      // First step validation
+      if (resumeOption === 'upload' && !formData.resumeFile && savedResumes.length === 0) {
+        setError('Please upload your resume or select a saved resume');
+        return;
+      } else if (resumeOption === 'saved' && !formData.savedResumeId && savedResumes.length > 0) {
+        setError('Please select a saved resume');
+        return;
+      }
+    }
+    
+    setActiveStep((prevStep) => prevStep + 1);
+    setError(null);
+  };
+  
+  // Handle back step
+  const handleBack = () => {
+    setActiveStep((prevStep) => prevStep - 1);
+    setError(null);
+  };
+  
+  // Handle resume option change
+  const handleResumeOptionChange = (event) => {
+    setResumeOption(event.target.value);
+    if (event.target.value === 'upload') {
+      setFormData(prev => ({ ...prev, savedResumeId: '' }));
+    } else {
+      setFormData(prev => ({ ...prev, resumeFile: null }));
+      setResumeFileName('');
+    }
+  };
+  
+  // Handle saved resume selection
+  const handleSavedResumeSelect = (resumeId) => {
+    setFormData(prev => ({ ...prev, savedResumeId: resumeId }));
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
     setError(null);
-
-    // Validation
-    if (!formData.resumeFile) {
-      setError('Please upload your resume');
-      setLoading(false);
-      return;
-    }
 
     try {
       // Create form data for file upload
       const applicationData = new FormData();
       applicationData.append('jobId', jobId);
       applicationData.append('coverLetter', formData.coverLetter);
-      applicationData.append('resume', formData.resumeFile);
+      
+      // Handle resume based on option selected
+      if (resumeOption === 'upload' && formData.resumeFile) {
+        applicationData.append('resume', formData.resumeFile);
+      } else if (resumeOption === 'saved' && formData.savedResumeId) {
+        applicationData.append('savedResumeId', formData.savedResumeId);
+      } else {
+        setError('Please provide a resume');
+        setLoading(false);
+        return;
+      }
+      
       applicationData.append('phoneNumber', formData.phoneNumber);
       applicationData.append('availability', formData.availability);
       applicationData.append('salary', formData.salary);
@@ -133,19 +221,167 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
     } catch (err) {
       console.error('Application submission error:', err);
       setError(err.response?.data?.message || 'Failed to submit application. Please try again.');
+      setActiveStep(0); // Go back to first step on error
     } finally {
       setLoading(false);
     }
   };
-
-  const availabilityOptions = [
-    { value: 'IMMEDIATE', label: 'Immediately' },
-    { value: 'ONE_WEEK', label: 'One week notice' },
-    { value: 'TWO_WEEKS', label: 'Two weeks notice' },
-    { value: 'ONE_MONTH', label: 'One month notice' },
-    { value: 'NEGOTIABLE', label: 'Negotiable' }
-  ];
-
+  
+  // Render resume selection options
+  const renderResumeOptions = () => (
+    <Box sx={{ mt: 2 }}>
+      {savedResumes.length > 0 && (
+        <FormControl component="fieldset" sx={{ mb: 2, width: '100%' }}>
+          <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+            Resume Options
+          </Typography>
+          <RadioGroup
+            value={resumeOption}
+            onChange={handleResumeOptionChange}
+            sx={{ display: 'flex', flexDirection: 'row' }}
+          >
+            <FormControlLabel value="upload" control={<Radio />} label="Upload New Resume" />
+            <FormControlLabel value="saved" control={<Radio />} label="Use Saved Resume" />
+          </RadioGroup>
+        </FormControl>
+      )}
+      
+      {resumeOption === 'upload' && (
+        <Box sx={{ mb: 3 }}>
+          <Button
+            component="label"
+            variant="outlined"
+            startIcon={<CloudUploadIcon />}
+            sx={{
+              mb: 2,
+              borderColor: '#2C5530',
+              color: '#2C5530',
+              '&:hover': {
+                borderColor: '#FFD700',
+                color: '#FFD700',
+                backgroundColor: 'rgba(44, 85, 48, 0.05)'
+              }
+            }}
+          >
+            Upload Resume
+            <VisuallyHiddenInput type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx" />
+          </Button>
+          
+          {formData.resumeFile && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip 
+                label={resumeFileName} 
+                onDelete={removeFile} 
+                variant="outlined"
+                sx={{ 
+                  borderColor: '#2C5530',
+                  color: '#2C5530',
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+      )}
+      
+      {resumeOption === 'saved' && savedResumes.length > 0 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {savedResumes.map(resume => (
+            <Card 
+              key={resume.id} 
+              variant="outlined"
+              sx={{ 
+                cursor: 'pointer',
+                borderColor: formData.savedResumeId === resume.id ? '#FFD700' : 'rgba(0,0,0,0.12)',
+                borderWidth: formData.savedResumeId === resume.id ? 2 : 1,
+                '&:hover': {
+                  borderColor: '#FFD700',
+                  boxShadow: '0 2px 8px rgba(255, 215, 0, 0.2)'
+                }
+              }}
+              onClick={() => handleSavedResumeSelect(resume.id)}
+            >
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <DescriptionIcon color="primary" />
+                <Box>
+                  <Typography variant="subtitle1">{resume.fileName}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Uploaded on {new Date(resume.uploadDate).toLocaleDateString()}
+                  </Typography>
+                </Box>
+                {formData.savedResumeId === resume.id && (
+                  <CheckCircleIcon sx={{ ml: 'auto', color: '#FFD700' }} />
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+  
+  // Render application preview
+  const renderApplicationPreview = () => (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+        Application Preview
+      </Typography>
+      
+      <Box sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', p: 3, borderRadius: 2, mb: 3 }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" color="text.secondary">Job Title</Typography>
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>{jobTitle}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1" color="text.secondary">Resume</Typography>
+            <Typography variant="body1">
+              {resumeOption === 'upload' ? resumeFileName : 
+               savedResumes.find(r => r.id === formData.savedResumeId)?.fileName || 'No resume selected'}
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1" color="text.secondary">Phone Number</Typography>
+            <Typography variant="body1">{formData.phoneNumber || 'Not provided'}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1" color="text.secondary">Availability</Typography>
+            <Typography variant="body1">
+              {availabilityOptions.find(opt => opt.value === formData.availability)?.label || 'Not specified'}
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1" color="text.secondary">Expected Salary</Typography>
+            <Typography variant="body1">{formData.salary || 'Not specified'}</Typography>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" color="text.secondary">Cover Letter</Typography>
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                {formData.coverLetter || 'No cover letter provided'}
+              </Typography>
+            </Paper>
+          </Grid>
+          
+          {formData.additionalInfo && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" color="text.secondary">Additional Information</Typography>
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                  {formData.additionalInfo}
+                </Typography>
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
+    </Box>
+  );
+  
   return (
     <Fade in={true} timeout={800}>
       <Paper 
@@ -156,7 +392,15 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
           border: '1px solid rgba(255, 215, 0, 0.1)',
         }}
       >
-        <form onSubmit={handleSubmit}>
+        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+        
+        <form onSubmit={(e) => { e.preventDefault(); activeStep === steps.length - 1 ? handleSubmit() : handleNext(); }}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Typography 
@@ -188,129 +432,123 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
               </Grid>
             )}
-
-            <Grid item xs={12}>
-              <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                <Typography variant="h6" sx={{ mr: 1 }}>Resume</Typography>
-                <Tooltip title="PDF or Word document, max 5MB">
-                  <InfoIcon fontSize="small" color="action" />
-                </Tooltip>
-              </Box>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Button
-                  component="label"
-                  variant="contained"
-                  startIcon={<CloudUploadIcon />}
-                  sx={{
-                    background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                    color: '#000',
-                    '&:hover': {
-                      background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                    },
-                    textTransform: 'none',
-                  }}
-                >
-                  Upload Resume
-                  <VisuallyHiddenInput type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx" />
-                </Button>
+            
+            {activeStep === 0 ? (
+              <>
+                <Grid item xs={12}>
+                  {renderResumeOptions()}
+                </Grid>
                 
-                {resumeFileName && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
-                    <Typography variant="body2" sx={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {resumeFileName}
-                    </Typography>
-                    <IconButton size="small" onClick={removeFile} color="error">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
-              </Box>
-            </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={6}
+                    label="Cover Letter"
+                    value={formData.coverLetter}
+                    onChange={handleChange('coverLetter')}
+                    placeholder="Introduce yourself and explain why you're a good fit for this position..."
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    value={formData.phoneNumber}
+                    onChange={handleChange('phoneNumber')}
+                    placeholder="+1 (876) 123-4567"
+                  />
+                </Grid>
 
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={6}
-                label="Cover Letter"
-                value={formData.coverLetter}
-                onChange={handleChange('coverLetter')}
-                placeholder="Introduce yourself and explain why you're a good fit for this position..."
-              />
-            </Grid>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Availability</InputLabel>
+                    <Select
+                      value={formData.availability}
+                      onChange={handleChange('availability')}
+                      label="Availability"
+                    >
+                      {availabilityOptions.map(option => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
 
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Phone Number"
-                value={formData.phoneNumber}
-                onChange={handleChange('phoneNumber')}
-                placeholder="+1 (876) 123-4567"
-              />
-            </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Expected Salary"
+                    value={formData.salary}
+                    onChange={handleChange('salary')}
+                    placeholder="e.g., $60,000 - $70,000"
+                  />
+                </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Availability</InputLabel>
-                <Select
-                  value={formData.availability}
-                  onChange={handleChange('availability')}
-                  label="Availability"
-                >
-                  {availabilityOptions.map(option => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Expected Salary"
-                value={formData.salary}
-                onChange={handleChange('salary')}
-                placeholder="e.g., $60,000 - $70,000"
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Additional Information"
-                value={formData.additionalInfo}
-                onChange={handleChange('additionalInfo')}
-                placeholder="Any other information you'd like to share with the employer..."
-              />
-            </Grid>
-
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Additional Information"
+                    value={formData.additionalInfo}
+                    onChange={handleChange('additionalInfo')}
+                    placeholder="Any other information you'd like to share with the employer..."
+                  />
+                </Grid>
+              </>
+            ) : (
+              <Grid item xs={12}>
+                {renderApplicationPreview()}
+              </Grid>
+            )}
+            
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                <Button
-                  variant="outlined"
-                  onClick={onCancel}
-                  sx={{
-                    borderColor: '#2C5530',
-                    color: '#2C5530',
-                    '&:hover': {
-                      borderColor: '#FFD700',
-                      color: '#FFD700',
-                      backgroundColor: 'rgba(44, 85, 48, 0.05)'
-                    }
-                  }}
-                >
-                  Cancel
-                </Button>
+                {activeStep === 0 ? (
+                  <Button
+                    variant="outlined"
+                    onClick={onCancel}
+                    sx={{
+                      borderColor: '#2C5530',
+                      color: '#2C5530',
+                      '&:hover': {
+                        borderColor: '#FFD700',
+                        color: '#FFD700',
+                        backgroundColor: 'rgba(44, 85, 48, 0.05)'
+                      }
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    onClick={handleBack}
+                    startIcon={<ArrowBackIcon />}
+                    sx={{
+                      borderColor: '#2C5530',
+                      color: '#2C5530',
+                      '&:hover': {
+                        borderColor: '#FFD700',
+                        color: '#FFD700',
+                        backgroundColor: 'rgba(44, 85, 48, 0.05)'
+                      }
+                    }}
+                  >
+                    Back
+                  </Button>
+                )}
+                
                 <Button
                   type="submit"
                   variant="contained"
                   disabled={loading}
+                  endIcon={activeStep < steps.length - 1 ? <ArrowForwardIcon /> : undefined}
                   sx={{
                     py: 1.5,
                     px: 4,
@@ -333,7 +571,7 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
                       Submitting...
                     </>
                   ) : (
-                    'Submit Application'
+                    activeStep === steps.length - 1 ? 'Submit Application' : 'Continue'
                   )}
                 </Button>
               </Box>
