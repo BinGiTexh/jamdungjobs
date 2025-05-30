@@ -35,6 +35,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import { format } from 'date-fns';
 import axios from 'axios';
 import { buildApiUrl } from '../../config';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
 const ApplicationsReview = ({ jobId }) => {
   const [applications, setApplications] = useState([]);
@@ -53,15 +54,25 @@ const ApplicationsReview = ({ jobId }) => {
 
   const fetchApplications = async () => {
     setLoading(true);
+    // Define endpoint outside try block so it's accessible in catch block
+    const endpoint = jobId 
+      ? buildApiUrl(`/jobs/${jobId}/applications`) 
+      : buildApiUrl('/applications/employer');
+    
     try {
-      const endpoint = jobId 
-        ? buildApiUrl(`/jobs/${jobId}/applications`) 
-        : buildApiUrl('/applications/employer');
-      
       const response = await axios.get(endpoint);
       setApplications(response.data);
+      logDev('debug', 'Applications fetched successfully', { 
+        count: response.data?.length || 0,
+        forJobId: jobId || 'all'
+      });
     } catch (err) {
-      console.error('Error fetching applications:', err);
+      logError('Error fetching applications', err, {
+        module: 'ApplicationsReview',
+        endpoint: endpoint,
+        jobId: jobId || 'all',
+        status: err.response?.status
+      });
       setError('Failed to load applications. Please try again later.');
     } finally {
       setLoading(false);
@@ -99,7 +110,12 @@ const ApplicationsReview = ({ jobId }) => {
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Error downloading resume:', err);
+      logError('Error downloading resume', err, {
+        module: 'ApplicationsReview',
+        function: 'handleDownloadResume',
+        applicationId,
+        status: err.response?.status
+      });
       setError('Failed to download resume. Please try again.');
     }
   };
@@ -121,8 +137,20 @@ const ApplicationsReview = ({ jobId }) => {
       if (selectedApplication && selectedApplication.id === applicationId) {
         setSelectedApplication({ ...selectedApplication, status: newStatus });
       }
+      logDev('debug', 'Application status updated', {
+        applicationId,
+        oldStatus: selectedApplication?.status,
+        newStatus: newStatus
+      });
     } catch (err) {
-      console.error('Error updating application status:', err);
+      logError('Error updating application status', err, {
+        module: 'ApplicationsReview',
+        function: 'handleStatusChange',
+        applicationId,
+        newStatus,
+        oldStatus: selectedApplication?.status,
+        status: err.response?.status
+      });
       setError('Failed to update application status. Please try again.');
     } finally {
       setStatusUpdateLoading(false);
@@ -140,8 +168,19 @@ const ApplicationsReview = ({ jobId }) => {
       setFeedback('');
       setFeedbackDialogOpen(false);
       // Show success message or update UI as needed
+      logDev('debug', 'Feedback sent successfully', {
+        applicationId: selectedApplication.id,
+        recipientId: selectedApplication.user?.id
+      });
     } catch (err) {
-      console.error('Error sending feedback:', err);
+      logError('Error sending feedback', err, {
+        module: 'ApplicationsReview',
+        function: 'handleSendFeedback',
+        applicationId: selectedApplication?.id,
+        recipientId: selectedApplication?.user?.id,
+        messageLength: feedback?.length,
+        status: err.response?.status
+      });
       setError('Failed to send feedback. Please try again.');
     }
   };

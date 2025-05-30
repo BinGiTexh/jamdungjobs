@@ -27,6 +27,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import BusinessIcon from '@mui/icons-material/Business';
 import DescriptionIcon from '@mui/icons-material/Description';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -171,6 +172,8 @@ const CreateJobListing = ({ onSuccess }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    logDev('debug', 'Job form field change', { field: name, context: 'createJobListing' });
+    
     setJobData(prev => ({
       ...prev,
       [name]: value
@@ -186,6 +189,11 @@ const CreateJobListing = ({ onSuccess }) => {
   };
 
   const handleLocationSelect = (location) => {
+    logDev('debug', 'Job location selected', { 
+      location: location ? sanitizeForLogging(location) : 'none',
+      context: 'createJobListing'
+    });
+    
     setJobData(prev => ({
       ...prev,
       location
@@ -200,6 +208,12 @@ const CreateJobListing = ({ onSuccess }) => {
   };
 
   const handleSkillsChange = (skills) => {
+    logDev('debug', 'Job skills updated', { 
+      skillCount: skills.length, 
+      skills: sanitizeForLogging(skills),
+      context: 'createJobListing'
+    });
+    
     setJobData(prev => ({
       ...prev,
       skills
@@ -226,22 +240,26 @@ const CreateJobListing = ({ onSuccess }) => {
     }
     
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    
+    logDev('debug', 'Job form validation result', { 
+      isValid, 
+      errors: isValid ? 'none' : sanitizeForLogging(newErrors),
+      context: 'createJobListing'
+    });
+    
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      setMessage({
-        type: 'error',
-        text: 'Please correct the errors in the form'
-      });
-      return;
-    }
-    
+    logDev('info', 'Job listing form submission attempt', { 
+      title: jobData.title,
+      company: jobData.company,
+      context: 'createJobListing' 
+    });
     setLoading(true);
-    
     try {
       // Format the job data for the API
       const formattedJobData = {
@@ -256,7 +274,20 @@ const CreateJobListing = ({ onSuccess }) => {
           : null
       };
       
+      logDev('info', 'Creating job listing', { 
+        title: formattedJobData.title,
+        company: formattedJobData.company,
+        skillCount: formattedJobData.skills.length,
+        context: 'createJobListing' 
+      });
+      
       const response = await axios.post('/api/employer/jobs', formattedJobData);
+      
+      logDev('info', 'Job listing created successfully', { 
+        jobId: response.data.id || 'unknown',
+        title: formattedJobData.title,
+        context: 'createJobListing' 
+      });
       
       setMessage({
         type: 'success',
@@ -286,7 +317,14 @@ const CreateJobListing = ({ onSuccess }) => {
         onSuccess(response.data);
       }
     } catch (error) {
-      console.error('Error creating job listing:', error);
+      logError('Error creating job listing', { 
+        error: sanitizeForLogging(error),
+        title: jobData.title,
+        company: jobData.company, 
+        errorMessage: error.response?.data?.message,
+        context: 'createJobListing'
+      });
+      
       setMessage({
         type: 'error',
         text: error.response?.data?.message || 'Failed to create job listing'
@@ -297,7 +335,11 @@ const CreateJobListing = ({ onSuccess }) => {
   };
 
   const togglePreview = () => {
-    setPreviewMode(!previewMode);
+    const newPreviewMode = !previewMode;
+    logDev('debug', `${newPreviewMode ? 'Entering' : 'Exiting'} job preview mode`, { 
+      context: 'createJobListing' 
+    });
+    setPreviewMode(newPreviewMode);
   };
 
   const renderJobPreview = () => {

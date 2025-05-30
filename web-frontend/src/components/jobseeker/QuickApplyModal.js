@@ -24,6 +24,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import axios from 'axios';
 import { buildApiUrl } from '../../config';
 import { useAuth } from '../../context/AuthContext';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
 const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
   const { currentUser } = useAuth();
@@ -49,8 +50,15 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
   useEffect(() => {
     if (open && currentUser) {
       fetchProfileData();
+      
+      // Log modal opening in development
+      logDev('debug', 'Quick apply modal opened', { 
+        jobId: job?.id,
+        jobTitle: job?.title,
+        userId: currentUser?.id
+      });
     }
-  }, [open, currentUser]);
+  }, [open, currentUser, job]);
 
   const fetchProfileData = async () => {
     setLoading(true);
@@ -69,8 +77,20 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
 
       // Calculate profile completeness
       calculateProfileCompleteness(response.data);
+      
+      // Log profile data fetched successfully
+      logDev('debug', 'Profile data fetched for quick apply', {
+        hasResume: response.data.resumes && response.data.resumes.length > 0,
+        hasPhone: !!response.data.phoneNumber,
+        userId: currentUser?.id
+      });
     } catch (error) {
-      console.error('Error fetching profile data:', error);
+      logError('Error fetching profile data for quick apply', error, {
+        module: 'QuickApplyModal',
+        function: 'fetchProfileData',
+        userId: currentUser?.id,
+        status: error.response?.status
+      });
       setError('Failed to load your profile data. Please try again.');
     } finally {
       setLoading(false);
@@ -105,6 +125,13 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
       percentage,
       missingFields
     });
+    
+    // Log profile completeness in development
+    logDev('debug', 'Profile completeness calculated', {
+      percentage,
+      missingFields,
+      userId: currentUser?.id
+    });
   };
 
   const handleChange = (field) => (event) => {
@@ -112,11 +139,27 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
       ...prev,
       [field]: event.target.value
     }));
+    
+    // Log field changes in development
+    logDev('debug', 'Application form field changed', {
+      field,
+      fieldType: typeof event.target.value,
+      valueLength: typeof event.target.value === 'string' ? event.target.value.length : 'N/A'
+    });
   };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setError(null);
+    
+    // Log submission attempt in development
+    logDev('debug', 'Validating application before submission', sanitizeForLogging({
+      jobId: job?.id,
+      resumeProvided: !!applicationData.resumeId,
+      phoneProvided: !!applicationData.phoneNumber,
+      coverLetterLength: applicationData.coverLetter?.length || 0,
+      profileCompleteness: profileCompleteness.percentage
+    }));
 
     try {
       // Create application data
@@ -129,20 +172,50 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
         salary: applicationData.salary,
         additionalInfo: applicationData.additionalInfo
       };
+      
+      // Log application payload in development (sanitized)
+      logDev('debug', 'Submitting application', sanitizeForLogging(payload));
 
-      // Submit application
-      const response = await axios.post(buildApiUrl('/applications/quick-apply'), payload);
-
+      // Make the API call to submit the application
+      const response = await axios.post('/api/applications', payload);
+      
       if (response.status === 201) {
         setSuccess(true);
+        
+        // Log successful submission
+        logDev('info', 'Application submitted successfully', {
+          jobId: job?.id,
+          applicationId: response.data?.id,
+          userId: currentUser?.id
+        });
+        
         // Call onSuccess after a delay to allow user to see success message
         setTimeout(() => {
           onSuccess(response.data);
         }, 2000);
       }
     } catch (err) {
-      console.error('Quick application submission error:', err);
-      setError(err.response?.data?.message || 'Failed to submit application. Please try again.');
+      // Log submission error with context
+      logError('Application submission failed', err, {
+        module: 'QuickApplyModal',
+        function: 'handleSubmit',
+        jobId: job?.id,
+        userId: currentUser?.id,
+        status: err.response?.status,
+        errorMessage: err.response?.data?.message
+      });
+      
+      // Determine specific error type for better user feedback
+      let errorMessage = 'Failed to submit application. Please try again.';
+      if (err.response?.status === 400) {
+        errorMessage = err.response.data?.message || 'Missing required information for application.';
+      } else if (err.response?.status === 409) {
+        errorMessage = 'You have already applied for this job.';
+      } else if (err.response?.status === 403) {
+        errorMessage = 'You do not have permission to apply for this job.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -187,7 +260,15 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
 
   if (success) {
     return (
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={open} 
+        onClose={() => {
+          logDev('debug', 'Success dialog closed');
+          onClose();
+        }} 
+        maxWidth="sm" 
+        fullWidth
+      >
         <DialogContent>
           <Box sx={{ py: 2, textAlign: 'center' }}>
             <CheckCircleIcon sx={{ fontSize: 60, color: '#4caf50', mb: 2 }} />
@@ -217,7 +298,18 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={() => {
+        logDev('debug', 'Application form closed without submission', {
+          jobId: job?.id,
+          formState: Object.keys(applicationData).length > 0 ? 'partially_filled' : 'empty' 
+        });
+        onClose();
+      }} 
+      maxWidth="md" 
+      fullWidth
+    >
       <DialogTitle sx={{ 
         borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
         background: 'linear-gradient(90deg, rgba(44, 85, 48, 0.1), rgba(255, 215, 0, 0.1))'
@@ -282,9 +374,15 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
               <InputLabel>Select Resume</InputLabel>
               <Select
                 value={applicationData.resumeId}
-                onChange={handleChange('resumeId')}
-                label="Select Resume"
-              >
+              onChange={(e) => {
+                handleChange('resumeId')(e);
+                logDev('debug', 'Resume selected', { 
+                  resumeId: e.target.value,
+                  available: profileData?.resumes?.length || 0
+                });
+              }}
+              label="Select Resume"
+            >
                 {profileData?.resumes?.length > 0 ? (
                   profileData.resumes.map(resume => (
                     <MenuItem key={resume.id} value={resume.id}>
@@ -382,7 +480,14 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
         </Button>
         <Button
           variant="contained"
-          onClick={handleSubmit}
+          onClick={() => {
+            logDev('debug', 'Submit button clicked', {
+              profileCompleteness: profileCompleteness.percentage,
+              hasResume: !!applicationData.resumeId,
+              hasPhone: !!applicationData.phoneNumber
+            });
+            handleSubmit();
+          }}
           disabled={submitting || !applicationData.resumeId || profileCompleteness.percentage < 50}
           sx={{
             background: 'linear-gradient(90deg, #2C5530, #FFD700)',
