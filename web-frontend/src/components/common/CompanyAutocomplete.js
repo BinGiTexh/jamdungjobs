@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaBuilding } from 'react-icons/fa';
 import { BaseAutocomplete } from './BaseAutocomplete';
+import { logDev, logError } from '../../utils/loggingUtils';
 
 export const CompanyAutocomplete = ({ value, onChange }) => {
   const [suggestions, setSuggestions] = useState([]);
@@ -18,7 +19,11 @@ export const CompanyAutocomplete = ({ value, onChange }) => {
         location: company.location
       }));
     } catch (error) {
-      console.error('Error fetching company suggestions:', error);
+      logError('Error fetching company suggestions', error, {
+        module: 'CompanyAutocomplete',
+        function: 'fetchCompanySuggestions',
+        query
+      });
       return [];
     } finally {
       setLoading(false);
@@ -29,6 +34,10 @@ export const CompanyAutocomplete = ({ value, onChange }) => {
     onChange(input);
     if (input.length >= 2) {
       const results = await fetchCompanySuggestions(input);
+      logDev('debug', 'Company suggestions fetched', {
+        query: input,
+        resultsCount: results.length
+      });
       setSuggestions(results);
     } else {
       setSuggestions([]);
@@ -58,7 +67,14 @@ export const CompanyAutocomplete = ({ value, onChange }) => {
       value={value}
       onChange={(suggestion) => onChange(suggestion.name)}
       onClear={() => onChange('')}
-      onInputChange={handleInputChange}
+      onInputChange={(input) => {
+        handleInputChange(input);
+        if (input.length >= 2) {
+          logDev('debug', 'Company search input changed', { 
+            inputLength: input.length 
+          });
+        }
+      }}
       placeholder="Company name"
       icon={FaBuilding}
       suggestions={suggestions}

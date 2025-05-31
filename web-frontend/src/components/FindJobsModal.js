@@ -7,6 +7,7 @@ import { JobTitleAutocomplete } from './common/JobTitleAutocomplete';
 import { SalaryRangeAutocomplete } from './common/SalaryRangeAutocomplete';
 import { CompanyAutocomplete } from './common/CompanyAutocomplete';
 import { SkillsAutocomplete } from './common/SkillsAutocomplete';
+import { logDev, logError, sanitizeForLogging } from '../utils/logging';
 
 const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote'];
 const sortOptions = [
@@ -39,7 +40,10 @@ const QuickApplyModal = ({ job, onClose, onSuccess }) => {
         throw new Error(data.message);
       }
     } catch (error) {
-      console.error('Application error:', error);
+      logError('Failed to submit application', { 
+        jobId: sanitizeForLogging(job.id),
+        error: sanitizeForLogging(error)
+      });
       alert(error.message || 'Failed to submit application');
     } finally {
       setSubmitting(false);
@@ -134,7 +138,11 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
         setSavedJobs(new Set(userData.savedJobs || []));
       }
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      logError('Error fetching jobs', { 
+        searchParams: sanitizeForLogging(searchParams),
+        page: sanitizeForLogging(page),
+        error: sanitizeForLogging(error)
+      });
     } finally {
       setLoading(false);
     }
@@ -164,7 +172,12 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
         });
       }
     } catch (error) {
-      console.error('Error saving job:', error);
+      logError('Error saving job', { 
+        jobId: sanitizeForLogging(jobId),
+        userId: sanitizeForLogging(user?.id),
+        action: sanitizeForLogging(savedJobs.has(jobId) ? 'unsave' : 'save'),
+        error: sanitizeForLogging(error)
+      });
     }
   };
 
@@ -191,12 +204,19 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
+      logDev('Opening FindJobsModal', { 
+        searchParams: sanitizeForLogging(searchParams),
+        page: sanitizeForLogging(page)
+      });
       fetchJobs();
     }
   }, [isOpen, page, searchParams]);
 
   const handleSearch = (e) => {
     e.preventDefault();
+    logDev('Searching for jobs', { 
+      searchParams: sanitizeForLogging(searchParams)
+    });
     setPage(1);
     fetchJobs();
   };

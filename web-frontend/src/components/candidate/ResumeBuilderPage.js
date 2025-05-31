@@ -12,7 +12,7 @@ import {
   useMediaQuery,
   useTheme,
   styled,
-  Alert
+  CircularProgress
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import ResumeBuilder from './ResumeBuilder';
@@ -20,7 +20,7 @@ import ResumePreview from './ResumePreview';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import GetAppIcon from '@mui/icons-material/GetApp';
 import SaveIcon from '@mui/icons-material/Save';
-import axios from 'axios';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
 // Styled components for Jamaican theme
 const StyledContainer = styled(Container)(({ theme }) => ({
@@ -82,9 +82,11 @@ const ResumeBuilderPage = () => {
   // Load existing resume data if available
   useEffect(() => {
     const fetchResumeData = async () => {
+      logDev('debug', 'Fetching resume data', { 
+        userId: user?.id,
+        source: 'localStorage' 
+      });
       try {
-        setLoading(true);
-        
         // Check if we have saved resume data in localStorage
         const savedResume = localStorage.getItem('candidateResumeData');
         
@@ -94,21 +96,34 @@ const ResumeBuilderPage = () => {
         } else {
           // In a real application, you would fetch from API
           // For demo purposes, we'll just use the default data with user info
-          console.log('No saved resume found, using default template');
+          logDev('debug', 'No saved resume found, using default template', {
+            userId: user?.id,
+            defaultFields: Object.keys(resumeData)
+          });
         }
       } catch (error) {
-        console.error('Error loading resume data:', error);
-      } finally {
-        setLoading(false);
+        logError('Error fetching resume data', error, {
+          module: 'ResumeBuilderPage',
+          function: 'fetchResumeData',
+          userId: user?.id
+        });
       }
     };
-
+    
     fetchResumeData();
   }, [user]);
 
   const handleSaveResume = (data) => {
     try {
       setLoading(true);
+      
+      logDev('debug', 'Saving resume data', {
+        userId: user?.id,
+        sections: Object.keys(data),
+        skillsCount: data.skills?.length || 0,
+        educationCount: data.education?.length || 0,
+        experienceCount: data.workExperience?.length || 0
+      });
       
       // Save to localStorage for persistence during demo
       localStorage.setItem('candidateResumeData', JSON.stringify(data));
@@ -125,20 +140,31 @@ const ResumeBuilderPage = () => {
       setTimeout(() => {
         setMessage(null);
       }, 3000);
+      
+      setLoading(false);
     } catch (error) {
-      console.error('Error saving resume:', error);
+      logError('Error saving resume', error, {
+        module: 'ResumeBuilderPage',
+        function: 'handleSaveResume',
+        userId: user?.id,
+        dataSize: JSON.stringify(data).length
+      });
       setMessage({
         type: 'error',
         text: 'Failed to save resume. Please try again.'
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleExportResume = async (data, format) => {
     try {
       setLoading(true);
+      
+      logDev('debug', 'Exporting resume', { 
+        userId: user?.id,
+        format,
+        sections: Object.keys(data)
+      });
       
       // Update resume data first
       setResumeData(data);
@@ -156,23 +182,36 @@ const ResumeBuilderPage = () => {
         
         // In a real implementation, we would send the data to the server
         // and generate a PDF there, then provide a download link
-        console.log('Resume data for export:', data);
+        logDev('info', 'Resume data prepared for export', sanitizeForLogging({
+          userId: user?.id,
+          format: 'pdf',
+          sections: Object.keys(data),
+          personalInfo: {
+            name: data.personalInfo?.fullName,
+            email: data.personalInfo?.email ? '[EMAIL REDACTED]' : 'Not provided',
+            phone: data.personalInfo?.phone ? '[PHONE REDACTED]' : 'Not provided'
+          }
+        }));
       } else {
         // For other formats (future implementation)
-        console.log('Export format not supported yet:', format);
+        logDev('warn', 'Export format not supported', { format });
         setMessage({
           type: 'error',
           text: `Export as ${format} not supported yet.`
         });
       }
       
-      setLoading(false);
-      
       setTimeout(() => {
         setMessage(null);
       }, 3000);
     } catch (error) {
-      console.error('Error exporting resume:', error);
+      logError('Error exporting resume', error, {
+        module: 'ResumeBuilderPage',
+        function: 'handleExportResume',
+        userId: user?.id,
+        format,
+        dataSize: JSON.stringify(data).length
+      });
       setLoading(false);
       setMessage({
         type: 'error',
@@ -182,10 +221,12 @@ const ResumeBuilderPage = () => {
   };
 
   const handlePreviewOpen = () => {
+    logDev('debug', 'Opening resume preview', { userId: user?.id });
     setPreviewOpen(true);
   };
 
   const handlePreviewClose = () => {
+    logDev('debug', 'Closing resume preview', { userId: user?.id });
     setPreviewOpen(false);
   };
 
@@ -294,12 +335,14 @@ const ResumeBuilderPage = () => {
                         }}
                       >
                         Export PDF
+                        {loading && <CircularProgress size={16} sx={{ ml: 1 }} />}
                       </Button>
                       <Button
                         variant="outlined"
                         size="small"
                         startIcon={<SaveIcon />}
                         onClick={() => handleSaveResume(resumeData)}
+                        disabled={loading}
                         sx={{
                           ml: 1,
                           color: '#2C5530',
@@ -393,6 +436,7 @@ const ResumeBuilderPage = () => {
             }}
           >
             Export PDF
+            {loading && <CircularProgress size={16} sx={{ ml: 1 }} />}
           </Button>
           <Button
             onClick={handlePreviewClose}

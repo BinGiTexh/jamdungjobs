@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import axios from 'axios';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
 const ProfilePage = () => {
   const { user } = useAuth();
@@ -29,7 +30,7 @@ const ProfilePage = () => {
       try {
         setError('');
         setLoading(true);
-        console.log("Fetching profile data for user role:", user?.role);
+        logDev('debug', "Fetching profile data for user role:", user?.role);
         
         const endpoint = user?.role === 'EMPLOYER' 
           ? 'http://localhost:5000/api/employer/profile'
@@ -43,7 +44,12 @@ const ProfilePage = () => {
 
         if (response.status === 200) {
           const data = response.data;
-          console.log('Profile data:', data);
+          logDev('debug', 'Profile data loaded:', sanitizeForLogging({
+            role: user?.role,
+            hasData: !!data,
+            hasSkills: data?.skills?.length > 0,
+            fields: Object.keys(data || {})
+          }));
           setProfileData(data);
           
           // Initialize form data with fetched profile data
@@ -60,11 +66,23 @@ const ProfilePage = () => {
             companyDescription: data.companyDescription || ''
           });
         } else {
-          console.error('Failed to fetch profile:', response.status);
+          logError('Failed to fetch profile', new Error(`HTTP status: ${response.status}`), {
+            module: 'ProfilePage',
+            function: 'fetchProfileData',
+            userId: user?.id,
+            role: user?.role,
+            status: response.status
+          });
           setError('Failed to load profile data. Please try again later.');
         }
       } catch (err) {
-        console.error('Error fetching profile:', err);
+        logError('Error fetching profile', err, {
+          module: 'ProfilePage',
+          function: 'fetchProfileData',
+          userId: user?.id,
+          role: user?.role,
+          endpoint: user?.role === 'EMPLOYER' ? 'employer/profile' : 'users/me'
+        });
         setError('An error occurred while loading your profile.');
       } finally {
         setLoading(false);
@@ -78,12 +96,15 @@ const ProfilePage = () => {
     }
   }, [user]);
   
-  // For debugging purposes - remove in production
+  // Development-only logging
   useEffect(() => {
-    console.log("Current user:", user);
-    console.log("Profile data:", profileData);
-    console.log("Form data:", formData);
-    console.log("Loading state:", loading);
+    logDev('debug', 'Profile state updated', sanitizeForLogging({
+      userAuthenticated: !!user,
+      userRole: user?.role,
+      profileLoaded: !!profileData,
+      formFields: Object.keys(formData),
+      loadingState: loading
+    }));
   }, [user, profileData, formData, loading]);
 
   const handleInputChange = (e) => {
@@ -100,6 +121,12 @@ const ProfilePage = () => {
       ...prev,
       skills: newSkills
     }));
+    
+    // Log skill changes in development
+    logDev('debug', 'Skills updated', {
+      skillCount: newSkills.length,
+      skills: newSkills
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -107,6 +134,13 @@ const ProfilePage = () => {
     setLoading(true);
     setError('');
     setSuccess('');
+    
+    // Log form submission attempt
+    logDev('debug', 'Submitting profile update', sanitizeForLogging({
+      userRole: user?.role,
+      formFields: Object.keys(formData),
+      isEmployer: user?.role === 'EMPLOYER'
+    }));
 
     try {
       // Use the new endpoint for employer profiles
@@ -138,6 +172,10 @@ const ProfilePage = () => {
       });
 
       if (response.status === 200) {
+        logDev('info', 'Profile updated successfully', {
+          userId: user?.id,
+          role: user?.role
+        });
         setProfileData(response.data);
         setSuccess('Profile updated successfully!');
         setIsEditing(false);
@@ -145,6 +183,14 @@ const ProfilePage = () => {
         throw new Error('Failed to update profile');
       }
     } catch (err) {
+      logError('Error updating profile', err, {
+        module: 'ProfilePage',
+        function: 'handleSubmit',
+        userId: user?.id,
+        role: user?.role,
+        status: err.response?.status,
+        endpoint: user?.role === 'EMPLOYER' ? 'employer/create-company' : 'users/me'
+      });
       setError(err.message || 'An error occurred while updating the profile');
     } finally {
       setLoading(false);
@@ -153,6 +199,10 @@ const ProfilePage = () => {
   
   // Cancel editing and revert to original values
   const handleCancel = () => {
+    logDev('debug', 'Edit profile canceled', {
+      userId: user?.id,
+      role: user?.role
+    });
     setFormData({
       name: profileData?.name || user?.name || '',
       phone: profileData?.phone || '',

@@ -1,5 +1,6 @@
 // Currency conversion utilities
 import axios from 'axios';
+import { logDev, logError } from './loggingUtils';
 
 // Default exchange rate if API fails (approximately 155 JMD to 1 USD as of 2025)
 const DEFAULT_JMD_RATE = 155;
@@ -29,7 +30,15 @@ export const getUSDtoJMDRate = async () => {
     }
     throw new Error('Invalid response from exchange rate API');
   } catch (error) {
-    console.error('Failed to fetch exchange rate:', error);
+    logError('Failed to fetch exchange rate', error, {
+      module: 'currencyUtils',
+      function: 'getUSDtoJMDRate',
+      defaultRate: DEFAULT_JMD_RATE
+    });
+    
+    // Log development details about fallback behavior
+    logDev('warn', `Using fallback exchange rate of ${DEFAULT_JMD_RATE} JMD to 1 USD`);
+    
     // Return default rate if API fails
     return DEFAULT_JMD_RATE;
   }
@@ -54,6 +63,7 @@ export const convertUSDtoJMD = async (usdAmount, rate = null) => {
  */
 export const formatSalaryWithJMD = async (salary, rate = null) => {
   if (!salary || typeof salary !== 'object') {
+    logDev('warn', 'Invalid salary object provided to formatSalaryWithJMD', { salary });
     return { usd: 'Salary not specified', jmd: '', rate: 0 };
   }
   

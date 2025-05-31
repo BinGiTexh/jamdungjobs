@@ -1,0 +1,157 @@
+// This is your Prisma schema file
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  role              Role              @default(JOBSEEKER)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Profile information
+  title             String?
+  bio               String?
+  location          String?
+  phoneNumber       String?
+  
+  // Relations
+  company           Company?          @relation("CompanyEmployees", fields: [companyId], references: [id])
+  companyId         String?
+  applications      JobApplication[]
+  savedJobs         SavedJob[]
+  candidateProfile  CandidateProfile?
+  
+  @@map("users")
+}
+
+model CandidateProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  title           String?
+  bio             String?
+  location        String?
+  skills          Json?     // Array of skills
+  education       Json?     // Array of education objects
+  photoUrl        String?   // Base64 encoded photo
+  resumeUrl       String?   // Base64 encoded resume
+  resumeFileName  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  user            User      @relation(fields: [userId], references: [id])
+  
+  @@map("candidate_profiles")
+}
+
+model Company {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  location    String?
+  website     String?
+  logoUrl     String?   // URL to logo image
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  employees   User[]    @relation("CompanyEmployees")
+  jobs        Job[]
+  
+  @@map("companies")
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  location    String
+  type        JobType
+  status      JobStatus @default(ACTIVE)
+  salary      Json?     // For salary range: { min: number, max: number, currency: string }
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  company     Company   @relation(fields: [companyId], references: [id])
+  companyId   String
+  applications JobApplication[]
+  savedBy     SavedJob[]
+  
+  // Skills and requirements
+  skills      String[]
+  experience  String?
+  education   String?
+  
+  @@map("jobs")
+}
+
+model JobApplication {
+  id          String    @id @default(uuid())
+  status      ApplicationStatus @default(PENDING)
+  resumeUrl   String?
+  coverLetter String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  job         Job       @relation(fields: [jobId], references: [id])
+  jobId       String
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  
+  @@map("job_applications")
+}
+
+model SavedJob {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  
+  // Relations
+  job       Job       @relation(fields: [jobId], references: [id])
+  jobId     String
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  
+  @@unique([jobId, userId])
+  @@map("saved_jobs")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYER
+  JOBSEEKER
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  TEMPORARY
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  EXPIRED
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  SHORTLISTED
+  REJECTED
+  ACCEPTED
+}

@@ -27,6 +27,13 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import { LocationAutocomplete } from '../common/LocationAutocomplete';
 
+// Function to log only in development environment
+const logDev = (level, ...args) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console[level](...args);
+  }
+};
+
 // Styled components for Jamaican theme
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -338,9 +345,9 @@ const ResumeBuilder = ({ onSave, onExport }) => {
     if (onExport && typeof onExport === 'function') {
       onExport(resumeData, format);
     } else {
-      console.log('Export functionality will be implemented in the next phase');
-      console.log('Resume data:', resumeData);
-      console.log('Export format:', format);
+      logDev('info', 'Export functionality will be implemented in the next phase');
+      logDev('debug', 'Resume data:', resumeData);
+      logDev('debug', 'Export format:', format);
     }
   };
 

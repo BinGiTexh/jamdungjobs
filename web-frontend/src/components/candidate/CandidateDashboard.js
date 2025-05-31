@@ -30,6 +30,8 @@ import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import api from '../../utils/axiosConfig';
 import axios from 'axios';
 import ApplicationsList from '../jobseeker/ApplicationsList';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+
 
 // Import icons
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -280,7 +282,7 @@ const CandidateDashboard = () => {
         }
       }));
       
-      console.log('Selected Jamaica location:', location);
+      logDev('debug', 'Selected Jamaica location:', location);
     } else {
       // Handle case where location is cleared or invalid
       setEditedProfile(prev => ({
@@ -295,16 +297,16 @@ const CandidateDashboard = () => {
   const TOKEN_KEY = 'jamdung_auth_token';
   
   useEffect(() => {
-    // Debug token information
+    // Get token information
     const token = localStorage.getItem(TOKEN_KEY);
-    console.log('Token exists:', !!token);
+    logDev('debug', 'Token exists:', !!token);
     if (token) {
-      console.log('Token first 10 chars:', token.substring(0, 10) + '...');
+      logDev('debug', 'Token first 10 chars:', token.substring(0, 10) + '...');
     } else {
       // Check for legacy token
       const legacyToken = localStorage.getItem('token');
       if (legacyToken) {
-        console.log('Legacy token exists, migrating...');
+        logDev('debug', 'Legacy token exists, migrating...');
         localStorage.setItem(TOKEN_KEY, legacyToken);
       }
     }
@@ -322,7 +324,7 @@ const CandidateDashboard = () => {
             ...profileRes.data
           });
         } catch (profileError) {
-          console.error('Error fetching profile:', profileError);
+          logError('Error fetching profile', { error: sanitizeForLogging(profileError), context: 'candidateDashboard' });
           // Don't show an error message for this specifically, as we'll show a general one below if needed
         }
         
@@ -334,7 +336,7 @@ const CandidateDashboard = () => {
           });
         }
       } catch (error) {
-        console.error('Error in dashboard initialization:', error);
+        logError('Error in dashboard initialization', { error: sanitizeForLogging(error), context: 'candidateDashboard' });
         // Only show error if it's a critical failure
         setMessage({ type: 'error', text: 'Something went wrong. Please try again later.' });
       } finally {
@@ -349,7 +351,7 @@ const CandidateDashboard = () => {
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
-      console.log('Updating profile with data:', editedProfile);
+      logDev('debug', 'Updating profile with data:', editedProfile);
       
       // Get the token for explicit authorization
       const token = localStorage.getItem(TOKEN_KEY);
@@ -362,7 +364,7 @@ const CandidateDashboard = () => {
       locationData: editedProfile.locationData || null
     };
     
-    console.log('Sending profile data with location:', profileData);
+    logDev('debug', 'Sending profile data with location:', profileData);
     
     const response = await api.put('/api/candidate/profile', profileData, {
         headers: {
@@ -371,7 +373,7 @@ const CandidateDashboard = () => {
         }
       });
       
-      console.log('Profile update response:', response.data);
+      logDev('debug', 'Profile update response:', response.data);
       
       // Update local state
       setProfile(editedProfile);
@@ -380,7 +382,7 @@ const CandidateDashboard = () => {
       // Show success message
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logError('Error updating profile', { error: sanitizeForLogging(error), userId: profile.id, context: 'candidateDashboard' });
       setMessage({ type: 'error', text: `Failed to update profile: ${error.message}` });
     } finally {
       setLoading(false);
@@ -399,7 +401,7 @@ const CandidateDashboard = () => {
       }
       
       setSelectedFile(file);
-      console.log('File selected:', file.name);
+      logDev('debug', 'File selected:', file.name);
     }
   };
   
@@ -433,7 +435,7 @@ const CandidateDashboard = () => {
         }
       });
       
-      console.log('Upload response:', response.data);
+      logDev('debug', 'Upload response:', response.data);
       
       // Update profile with new resume info
       setProfile(prev => ({
@@ -448,7 +450,7 @@ const CandidateDashboard = () => {
       // Show success message
       setMessage({ type: 'success', text: 'Resume uploaded successfully!' });
     } catch (error) {
-      console.error('Error uploading resume:', error);
+      logError('Error uploading resume', { error: sanitizeForLogging(error), fileName: selectedFile?.name, userId: profile.id, context: 'candidateDashboard' });
       setMessage({ type: 'error', text: 'Failed to upload resume. Please try again.' });
     } finally {
       setIsUploading(false);
@@ -457,28 +459,28 @@ const CandidateDashboard = () => {
   
   // Handle view resume
   const handleViewResume = () => {
-    console.log('Viewing resume, file name:', profile.resumeFileName);
-    console.log('Resume URL available:', !!profile.resumeUrl);
+    logDev('debug', 'Viewing resume, file name:', profile.resumeFileName);
+    logDev('debug', 'Resume URL available:', !!profile.resumeUrl);
     
-    // Debug authentication token
+    // Get authentication token
     const token = localStorage.getItem(TOKEN_KEY);
-    console.log('Auth token exists:', !!token);
+    logDev('debug', 'Auth token exists:', !!token);
     if (token) {
-      console.log('Token first 10 chars:', token.substring(0, 10) + '...');
-      console.log('Token length:', token.length);
+      logDev('debug', 'Token first 10 chars:', token.substring(0, 10) + '...');
+      logDev('debug', 'Token length:', token.length);
     } else {
-      console.error('No authentication token found in localStorage');
+      logError('No authentication token found in localStorage', { context: 'candidateDashboard', action: 'viewResume' });
       // Check for legacy token
       const legacyToken = localStorage.getItem('token');
       if (legacyToken) {
-        console.log('Legacy token exists, migrating...');
+        logDev('debug', 'Legacy token exists, migrating...');
         localStorage.setItem(TOKEN_KEY, legacyToken);
       }
     }
     
     // Check if we need to fetch the resume URL from the server
     if (!profile.resumeUrl && profile.resumeFileName) {
-      console.log('No resume URL in state, fetching from server...');
+      logDev('debug', 'No resume URL in state, fetching from server...');
       // Show loading message
       setMessage({
         type: 'info',
@@ -487,7 +489,7 @@ const CandidateDashboard = () => {
       
       // Get the token directly from localStorage for this specific request
       const authToken = localStorage.getItem(TOKEN_KEY);
-      console.log('Using token directly for resume request:', authToken ? 'Token exists' : 'No token');
+      logDev('debug', 'Using token directly for resume request:', authToken ? 'Token exists' : 'No token');
       
       // Fetch the resume URL from the server with explicit authorization header
       api.get('/api/candidate/resume', {
@@ -496,10 +498,10 @@ const CandidateDashboard = () => {
         }
       })
         .then(response => {
-          console.log('Fetched resume data from server');
+          logDev('debug', 'Fetched resume data from server');
           
           if (!response.data.resumeUrl) {
-            console.error('Server returned empty resume URL');
+            logError('Server returned empty resume URL', { context: 'candidateDashboard', userId: profile.id, action: 'viewResume' });
             setMessage({
               type: 'error',
               text: 'Resume data not found on server.'
@@ -517,18 +519,18 @@ const CandidateDashboard = () => {
           setShowResumePreview(true);
         })
         .catch(error => {
-          console.error('Error fetching resume:', error);
+          logError('Error fetching resume', { error: sanitizeForLogging(error), context: 'candidateDashboard', userId: profile.id, action: 'viewResume' });
           setMessage({
             type: 'error',
             text: 'Unable to load resume preview. The resume data may not be in the correct format.'
           });
         });
     } else if (profile.resumeUrl) {
-      console.log('Resume URL already in state, using it directly');
+      logDev('debug', 'Resume URL already in state, using it directly');
       
       // Check if the URL is a base64 string and ensure it has the correct MIME type
       if (profile.resumeUrl.startsWith('data:') && !profile.resumeUrl.includes('application/pdf')) {
-        console.log('Fixing resume URL format for PDF');
+        logDev('debug', 'Fixing resume URL format for PDF');
         
         // Extract the base64 part (after the comma)
         const base64Part = profile.resumeUrl.split(',')[1];
@@ -558,14 +560,14 @@ const CandidateDashboard = () => {
   
   // Handle download resume
   const handleDownloadResume = () => {
-    console.log('Downloading resume:', profile.resumeFileName);
-    console.log('Resume URL available:', !!profile.resumeUrl);
+    logDev('debug', 'Downloading resume:', profile.resumeFileName);
+    logDev('debug', 'Resume URL available:', !!profile.resumeUrl);
     
     // Check if we need to fetch the resume URL from the server
     if (!profile.resumeUrl && profile.resumeFileName) {
       // Get the token directly from localStorage for this specific request
       const authToken = localStorage.getItem(TOKEN_KEY);
-      console.log('Using token directly for resume download request:', authToken ? 'Token exists' : 'No token');
+      logDev('debug', 'Using token directly for resume download request:', authToken ? 'Token exists' : 'No token');
       
       // Fetch the resume URL from the server with explicit authorization header
       api.get('/api/candidate/resume', {
@@ -592,7 +594,7 @@ const CandidateDashboard = () => {
         downloadFile(response.data.resumeUrl);
       })
       .catch(error => {
-        console.error('Error fetching resume for download:', error);
+        logError('Error fetching resume for download', { error: sanitizeForLogging(error), context: 'candidateDashboard', userId: profile.id, action: 'downloadResume' });
         setMessage({
           type: 'error',
           text: 'Unable to download resume. Please try again later.'
@@ -694,13 +696,13 @@ const CandidateDashboard = () => {
           }
         });
       } catch (saveError) {
-        console.error('Error saving profile after photo upload:', saveError);
+        logError('Error saving profile after photo upload', { error: sanitizeForLogging(saveError), context: 'candidateDashboard', userId: profile.id, action: 'profilePictureUpload' });
       }
       
       // Show success message
       setMessage({ type: 'success', text: 'Profile picture updated successfully!' });
     } catch (error) {
-      console.error('Error uploading profile picture:', error);
+      logError('Error uploading profile picture', { error: sanitizeForLogging(error), context: 'candidateDashboard', userId: profile.id });
       setMessage({ type: 'error', text: 'Failed to upload profile picture. Please try again.' });
     } finally {
       setLoading(false);

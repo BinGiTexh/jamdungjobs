@@ -956,6 +956,175 @@ app.put('/api/applications/:id/status', authenticateJWT, checkRole('employer'), 
   }
 });
 
+// Employer company profile endpoints
+app.post('/api/employer/company-profile', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    console.log('Employer company profile update requested:', req.body);
+    
+    // Get company name from either name or companyName field
+    const name = req.body.name || req.body.companyName;
+    if (!name) {
+      return res.status(400).json({ message: 'Company name is required' });
+    }
+    
+    const { 
+      description, 
+      website, 
+      logoUrl
+    } = req.body;
+    
+    // Store additional fields even if not in Prisma schema
+    // We'll return them in the response to maintain frontend compatibility
+    const additionalFields = {
+      industry: req.body.industry || '',
+      location: req.body.location || '',
+      founded: req.body.founded || '',
+      size: req.body.size || '',
+      specialties: req.body.specialties || []
+    };
+    
+    // Find user with company data
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    let company;
+    
+    // Get the current timestamp for logging
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] Updating company profile for user ${req.user.id}`);
+
+    try {
+      if (user.company) {
+        // Update existing company - only include fields in the Prisma schema
+        console.log(`[${timestamp}] Updating existing company ${user.company.id}`);
+        company = await prisma.company.update({
+          where: { id: user.company.id },
+          data: {
+            name,
+            description: description !== undefined ? description : undefined,
+            website: website !== undefined ? website : undefined,
+            logoUrl: logoUrl !== undefined ? logoUrl : undefined
+            // updatedAt is handled automatically by Prisma
+          }
+        });
+        console.log(`[${timestamp}] Company updated successfully`);
+      } else {
+        // Create new company - only include fields in the Prisma schema
+        console.log(`[${timestamp}] Creating new company for user ${req.user.id}`);
+        company = await prisma.company.create({
+          data: {
+            name,
+            description: description || '',
+            website: website || '',
+            logoUrl: logoUrl || null,
+            employees: {
+              connect: { id: req.user.id }
+            }
+          }
+        });
+        console.log(`[${timestamp}] Company created successfully with ID ${company.id}`);
+      
+        // Update user with company relation if necessary
+        console.log(`[${timestamp}] Connecting user ${req.user.id} to company ${company.id}`);
+        if (!user.companyId) {
+          await prisma.user.update({
+            where: { id: req.user.id },
+            data: { companyId: company.id }
+          });
+          console.log(`[${timestamp}] User updated with company relation`);
+        }
+      }
+      
+      // Add the additional fields to the response even though they aren't stored in Prisma
+      // This ensures frontend compatibility
+      const enrichedCompany = {
+        ...company,
+        ...additionalFields
+      };
+      
+      // Log success and return response
+      console.log(`[${timestamp}] Company profile updated successfully:`, enrichedCompany);
+      
+      res.json({
+        message: 'Company profile updated successfully',
+        profile: {
+          ...enrichedCompany,
+          companyName: enrichedCompany.name
+        }
+      });
+    } catch (prismaError) {
+      console.error(`[${timestamp}] Prisma error:`, prismaError);
+      res.status(500).json({ 
+        message: 'Error updating company profile in database', 
+        error: prismaError.message 
+      });
+    }
+  } catch (error) {
+    console.error('Error in company profile endpoint:', error);
+    res.status(500).json({ 
+      message: 'Error processing company profile request', 
+      error: error.message 
+    });
+  }
+});
+
+// Get endpoint for employer company profile
+app.get('/api/employer/company-profile', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    // Find user with company data
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (!user.company) {
+      // Return empty company template with fields the frontend expects
+      return res.json({
+        id: null,
+        companyName: '',
+        name: '',
+        description: '',
+        industry: '', // Not in Prisma schema but frontend expects it
+        location: '', // Not in Prisma schema but frontend expects it
+        website: '',
+        logoUrl: null,
+        founded: '', // Not in Prisma schema but frontend expects it
+        size: '', // Not in Prisma schema but frontend expects it
+        specialties: [], // Not in Prisma schema but frontend expects it
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+    
+    // Return the company with additional fields the frontend expects
+    res.json({
+      ...user.company,
+      companyName: user.company.name,
+      industry: '', // Not in Prisma schema but frontend expects it
+      location: '', // Not in Prisma schema but frontend expects it
+      founded: '', // Not in Prisma schema but frontend expects it
+      size: '', // Not in Prisma schema but frontend expects it
+      specialties: [] // Not in Prisma schema but frontend expects it
+    });
+  } catch (error) {
+    console.error('Error fetching employer company profile:', error);
+    res.status(500).json({ 
+      message: 'Error fetching company profile', 
+      error: error.message 
+    });
+  }
+});
+
 // Analytics routes
 app.post('/api/analytics', async (req, res) => {
   try {

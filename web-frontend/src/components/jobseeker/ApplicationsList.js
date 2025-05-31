@@ -21,7 +21,6 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogContentText,
   DialogTitle,
   Grid
 } from '@mui/material';
@@ -31,6 +30,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 import { buildApiUrl } from '../../config';
 import { format } from 'date-fns';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
 const ApplicationsList = () => {
   const [applications, setApplications] = useState([]);
@@ -48,11 +48,21 @@ const ApplicationsList = () => {
     setLoading(true);
     try {
       const response = await axios.get(buildApiUrl('/applications/my'));
+      logDev('debug', 'Applications fetched successfully', sanitizeForLogging({ 
+        count: response.data?.length || 0,
+        statuses: response.data?.map(app => app.status) || []
+      }));
       setApplications(response.data);
       // Clear any previous errors
       setError(null);
     } catch (err) {
-      console.error('Error fetching applications:', err);
+      logError('Error fetching applications', err, sanitizeForLogging({
+        module: 'ApplicationsList',
+        function: 'fetchApplications',
+        endpoint: '/applications/my',
+        errorStatus: err.response?.status
+      }));
+      
       // Only set error if it's not a 404 (no applications found)
       if (err.response && err.response.status !== 404) {
         setError('Failed to load your applications. Please try again later.');
@@ -93,7 +103,12 @@ const ApplicationsList = () => {
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Error downloading resume:', err);
+      logError('Error downloading resume', err, sanitizeForLogging({
+        module: 'ApplicationsList',
+        function: 'handleDownloadResume',
+        applicationId,
+        errorStatus: err.response?.status
+      }));
       setError('Failed to download resume. Please try again.');
     }
   };
@@ -104,8 +119,18 @@ const ApplicationsList = () => {
         await axios.delete(buildApiUrl(`/applications/${applicationId}`));
         // Remove from state
         setApplications(prev => prev.filter(app => app.id !== applicationId));
+        logDev('debug', 'Application withdrawn successfully', sanitizeForLogging({ 
+          applicationId,
+          action: 'withdraw'
+        }));
       } catch (err) {
-        console.error('Error deleting application:', err);
+        logError('Error withdrawing application', err, sanitizeForLogging({
+          module: 'ApplicationsList',
+          function: 'handleDeleteApplication',
+          applicationId,
+          errorStatus: err.response?.status,
+          action: 'withdraw'
+        }));
         setError('Failed to withdraw application. Please try again.');
       }
     }
