@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { searchLocations, jamaicaParishes } from '../../data/jamaicaLocations';
+import { logDev, logError } from '../../utils/loggingUtils';
 
 /**
  * Jamaica-specific location autocomplete component
@@ -33,12 +34,25 @@ export const JamaicaLocationAutocomplete = ({
   useEffect(() => {
     if (inputValue.length >= 2) {
       const results = searchLocations(inputValue);
-      console.log('Jamaica location search results:', results);
+      logDev('debug', 'Jamaica location search results', {
+        query: inputValue,
+        resultsCount: results.length,
+        topResults: results.slice(0, 3).map(r => r.name)
+      });
       
       // Filter by selected parishes if any
       const filteredResults = selectedParishes.length > 0 
         ? results.filter(option => selectedParishes.includes(option.parish))
         : results;
+      
+      // Log parish filtering in development
+      if (selectedParishes.length > 0) {
+        logDev('debug', 'Filtering locations by parishes', {
+          selectedParishes,
+          beforeCount: results.length,
+          afterCount: filteredResults.length
+        });
+      }
       
       // Always show at least top parishes if no results
       if (filteredResults.length === 0 && inputValue.length >= 2) {
@@ -89,6 +103,14 @@ export const JamaicaLocationAutocomplete = ({
   // Handle input change
   const handleInputChange = (event, newInputValue) => {
     setInputValue(newInputValue);
+    
+    // Log input changes that meet the minimum length requirement
+    if (newInputValue.length >= 2) {
+      logDev('debug', 'Location search input changed', {
+        input: newInputValue,
+        length: newInputValue.length
+      });
+    }
   };
 
   // Handle option selection
@@ -99,8 +121,18 @@ export const JamaicaLocationAutocomplete = ({
         ...option,
         radius: searchRadius
       };
+      
+      // Log location selection in development
+      logDev('info', 'Location selected', {
+        name: option.name,
+        parish: option.parish,
+        placeId: option.placeId,
+        radius: searchRadius
+      });
+      
       onChange(locationWithRadius);
     } else {
+      logDev('debug', 'Location selection cleared');
       onChange(null);
     }
   };
@@ -122,16 +154,29 @@ export const JamaicaLocationAutocomplete = ({
     if (onRadiusChange) {
       onRadiusChange(newValue);
     }
+    
+    // Log radius change in development
+    logDev('debug', 'Search radius changed', {
+      newRadius: newValue,
+      hasSelectedLocation: !!value
+    });
   };
 
   // Handle parish filter selection
   const handleParishSelect = (parish) => {
     setSelectedParishes(prev => {
-      if (prev.includes(parish)) {
-        return prev.filter(p => p !== parish);
-      } else {
-        return [...prev, parish];
-      }
+      const newSelection = prev.includes(parish)
+        ? prev.filter(p => p !== parish)
+        : [...prev, parish];
+      
+      // Log parish filter change in development
+      logDev('debug', 'Parish filter changed', {
+        parish,
+        action: prev.includes(parish) ? 'removed' : 'added',
+        totalSelected: newSelection.length
+      });
+      
+      return newSelection;
     });
   };
 

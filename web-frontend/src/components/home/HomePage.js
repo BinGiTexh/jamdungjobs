@@ -6,7 +6,6 @@ import {
   Typography,
   Button,
   useTheme,
-  useMediaQuery,
   Paper,
   Fade,
   Grid,
@@ -23,16 +22,6 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useNavigate } from "react-router-dom";
 
 // Animations
-const fadeInUp = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
 
 const underlineExpand = keyframes`
   from {
@@ -101,7 +90,6 @@ const StyledContainer = styled(Container)(({ theme }) => ({
 
 const HomePage = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
   const { user } = useAuth();

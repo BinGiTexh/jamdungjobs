@@ -3,6 +3,7 @@ import { Box, Typography, Tooltip, IconButton, Collapse } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import { formatSalaryWithJMD } from '../../utils/currencyUtils';
+import { logDev, logError } from '../../utils/loggingUtils';
 
 /**
  * Component to display salary in both USD and JMD
@@ -32,8 +33,21 @@ export const SalaryDisplay = ({ salary }) => {
       try {
         const formatted = await formatSalaryWithJMD(salary);
         setFormattedSalary(formatted);
+        
+        // Log successful currency conversion in development
+        logDev('debug', 'Salary formatted with JMD conversion', {
+          usdRange: `${salary.min}-${salary.max}`,
+          exchangeRate: formatted.rate,
+          hasJmdValue: !!formatted.jmd
+        });
       } catch (error) {
-        console.error('Error formatting salary:', error);
+        logError('Error formatting salary with JMD', error, {
+          module: 'SalaryDisplay',
+          function: 'fetchFormattedSalary',
+          salary: `${salary.min}-${salary.max} USD`,
+          errorType: error.name
+        });
+        
         setFormattedSalary({
           usd: `$${salary.min.toLocaleString()} - $${salary.max.toLocaleString()} USD`,
           jmd: 'JMD conversion unavailable',
@@ -65,7 +79,15 @@ export const SalaryDisplay = ({ salary }) => {
         <Tooltip title="Toggle JMD conversion">
           <IconButton 
             size="small" 
-            onClick={() => setShowJMD(!showJMD)}
+            onClick={() => {
+              const newState = !showJMD;
+              setShowJMD(newState);
+              
+              // Log currency toggle in development
+              logDev('debug', `JMD conversion display ${newState ? 'shown' : 'hidden'}`, {
+                hasValidRate: formattedSalary.rate > 0
+              });
+            }}
             sx={{ 
               ml: 1, 
               color: showJMD ? '#FFD700' : 'rgba(255, 215, 0, 0.5)',

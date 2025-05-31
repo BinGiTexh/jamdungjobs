@@ -54,8 +54,13 @@ app.use(helmet({
   }
 }));
 
-// Configure CORS
-app.use(cors());
+// Configure CORS with specific options for our frontend
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({limit: '50mb'}));
 app.use(morgan('dev'));
 
@@ -250,7 +255,7 @@ app.get('/api/users/me', authenticateJWT, async (req, res) => {
 
 app.put('/api/users/me', authenticateJWT, async (req, res) => {
   try {
-    const { name, phone, address, bio } = req.body;
+    const { name, phone, address, bio, location, locationData } = req.body;
     const timestamp = new Date().toISOString();
 
     // Prepare query to find the user
@@ -270,6 +275,8 @@ app.put('/api/users/me', authenticateJWT, async (req, res) => {
           phone,
           address,
           bio,
+          location,
+          locationData,
           updatedAt: timestamp
         }
       },
@@ -407,6 +414,82 @@ app.put('/api/employer/profile', authenticateJWT, checkRole('EMPLOYER'), async (
   } catch (error) {
     console.error('Update company profile error:', error);
     res.status(500).json({ message: 'Error updating company profile', error: error.message });
+  }
+});
+
+// New endpoint for company creation that uses the correct field name
+app.post('/api/employer/create-company', authenticateJWT, async (req, res) => {
+  try {
+    // Check if user is an employer
+    if (req.user.role !== 'EMPLOYER') {
+      return res.status(403).json({ message: 'Only employers can create company profiles' });
+    }
+
+    // Extract company data from request
+    const { 
+      name, 
+      description, 
+      location, 
+      website,
+      industry
+    } = req.body;
+
+    // Find the employer
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'Employer not found' });
+    }
+
+    // If employer already has a company, update it
+    if (employer.companyId) {
+      const updatedCompany = await prisma.company.update({
+        where: { id: employer.companyId },
+        data: {
+          name: name || undefined,
+          description: description || undefined,
+          location: location || undefined,
+          website: website || undefined,
+          // Remove industry field as it doesn't exist in the Prisma schema
+        }
+      });
+      
+      return res.json({
+        message: 'Company profile updated successfully',
+        profile: updatedCompany
+      });
+    }
+    
+    // Otherwise, create a new company
+    const newCompany = await prisma.company.create({
+      data: {
+        name: name || 'My Company',
+        description: description || '',
+        location: location || '',
+        website: website || '',
+        // Remove industry field as it doesn't exist in the Prisma schema
+        employees: {
+          connect: { id: employer.id }
+        }
+      }
+    });
+    
+    // Update the employer with the new company ID
+    await prisma.user.update({
+      where: { id: employer.id },
+      data: { companyId: newCompany.id }
+    });
+    
+    return res.status(201).json({
+      message: 'Company profile created successfully',
+      profile: newCompany
+    });
+  } catch (error) {
+    console.error('Create company error:', error);
+    return res.status(500).json({ message: 'Failed to create company profile', error: error.message });
   }
 });
 
@@ -819,7 +902,24 @@ app.post('/api/employer/logo', authenticateJWT, checkRole('EMPLOYER'), upload.si
 // Job Management Endpoints
 app.post('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
-    const { title, description, location, type, salary, requirements, benefits } = req.body;
+    console.log('Job creation request received:', req.body.title);
+    
+    const { 
+      title, 
+      description, 
+      location, 
+      locationData,
+      requirements, 
+      responsibilities,
+      benefits, 
+      jobType, 
+      experienceLevel,
+      salaryMin,
+      salaryMax,
+      skills,
+      remote,
+      applicationDeadline
+    } = req.body;
 
     // Get the employer's company
     const employer = await prisma.user.findUnique({
@@ -831,15 +931,28 @@ app.post('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (re
       return res.status(400).json({ message: 'Company profile required to post jobs' });
     }
 
+    // Calculate average salary for sorting purposes
+    const salary = (salaryMin && salaryMax) 
+      ? Math.floor((parseInt(salaryMin) + parseInt(salaryMax)) / 2)
+      : (salaryMin ? parseInt(salaryMin) : null);
+
     const job = await prisma.job.create({
       data: {
         title,
         description,
-        location,
-        type,
-        salary,
+        location: location || (remote ? 'Remote' : ''),
+        locationData: locationData ? JSON.stringify(locationData) : null,
+        jobType,
+        experienceLevel,
         requirements,
+        responsibilities,
         benefits,
+        skills: skills ? skills : [],
+        remote: remote || false,
+        salaryMin: salaryMin ? parseInt(salaryMin) : null,
+        salaryMax: salaryMax ? parseInt(salaryMax) : null,
+        salary, // Average for sorting and filtering
+        applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
         status: 'ACTIVE',
         company: { connect: { id: employer.company.id } }
       },
@@ -849,6 +962,7 @@ app.post('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (re
       }
     });
 
+    console.log('Job created successfully:', job.id);
     res.json(job);
   } catch (error) {
     console.error('Error creating job:', error);
@@ -878,7 +992,11 @@ app.get('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req
                 email: true,
                 firstName: true,
                 lastName: true,
-                resumeUrl: true
+                candidateProfile: {
+                  select: {
+                    resumeUrl: true
+                  }
+                }
               }
             }
           }
@@ -904,7 +1022,7 @@ app.put('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async 
       where: {
         id,
         company: {
-          users: {
+          employees: {
             some: { id: req.user.id }
           }
         }
@@ -928,7 +1046,11 @@ app.put('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async 
                 email: true,
                 firstName: true,
                 lastName: true,
-                resumeUrl: true
+                candidateProfile: {
+                  select: {
+                    resumeUrl: true
+                  }
+                }
               }
             }
           }
@@ -952,7 +1074,7 @@ app.delete('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), asy
       where: {
         id,
         company: {
-          users: {
+          employees: {
             some: { id: req.user.id }
           }
         }
@@ -1169,8 +1291,52 @@ app.get('/api/jobs', async (req, res) => {
       ];
     }
     
-    if (location) {
-      where.location = { contains: location, mode: 'insensitive' };
+    if (location || req.query.locationData) {
+      // Handle Jamaica-specific location search
+      try {
+        // First check if we have structured location data
+        if (req.query.locationData) {
+          console.log('Using structured location data');
+          const locationData = JSON.parse(req.query.locationData);
+          
+          // Build OR conditions for parish and location name
+          where.OR = where.OR || [];
+          
+          if (locationData.name) {
+            where.OR.push({ location: { contains: locationData.name, mode: 'insensitive' } });
+          }
+          
+          if (locationData.parish) {
+            where.OR.push({ location: { contains: locationData.parish, mode: 'insensitive' } });
+          }
+        } 
+        // If we have a location string but no structured data
+        else if (location) {
+          console.log('Using location string:', location);
+          
+          // Check if it's a comma-separated format (likely name, parish)
+          if (location.includes(',')) {
+            const parts = location.split(',').map(part => part.trim());
+            where.OR = where.OR || [];
+            
+            // Add each part as a separate search condition
+            parts.forEach(part => {
+              if (part) {
+                where.OR.push({ location: { contains: part, mode: 'insensitive' } });
+              }
+            });
+          } else {
+            // Simple string search
+            where.location = { contains: location, mode: 'insensitive' };
+          }
+        }
+      } catch (e) {
+        // If parsing fails, just use the location as a string
+        console.log('Location parsing error:', e);
+        if (location) {
+          where.location = { contains: location, mode: 'insensitive' };
+        }
+      }
     }
     
     if (remote === 'true') {
@@ -1282,7 +1448,7 @@ app.put('/api/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res
       where: {
         id,
         company: {
-          users: {
+          employees: {
             some: {
               id: req.user.id
             }
@@ -1341,7 +1507,7 @@ app.delete('/api/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, 
       where: {
         id,
         company: {
-          users: {
+          employees: {
             some: {
               id: req.user.id
             }
@@ -1457,7 +1623,7 @@ app.get('/api/applications', authenticateJWT, async (req, res) => {
         where: {
           job: {
             company: {
-              users: {
+              employees: {
                 some: {
                   id: req.user.id
                 }
@@ -1771,6 +1937,265 @@ app.get('/api/analytics/candidate', authenticateJWT, checkRole('JOBSEEKER'), asy
   }
 });
 
+// Add backward compatibility routes to fix 404 errors
+
+// 1. GET /applications/my - Redirects to /api/applications
+app.get('/applications/my', authenticateJWT, async (req, res) => {
+  try {
+    console.log('Redirecting from /applications/my to /api/applications');
+    
+    // Call the existing applications endpoint logic
+    if (req.user.role === 'EMPLOYER') {
+      // Get all applications for jobs from the employer's company
+      const applications = await prisma.jobApplication.findMany({
+        where: {
+          job: {
+            company: {
+              users: {
+                some: {
+                  id: req.user.id
+                }
+              }
+            }
+          }
+        },
+        include: {
+          job: {
+            include: {
+              company: true
+            }
+          },
+          user: true
+        }
+      });
+
+      res.json({
+        applications: applications.map(app => ({
+          ...app,
+          jobTitle: app.job.title,
+          companyName: app.job.company.name,
+          candidateName: `${app.user.firstName} ${app.user.lastName}`,
+          candidateEmail: app.user.email
+        }))
+      });
+    } else {
+      // For jobseekers, get their applications
+      const applications = await prisma.jobApplication.findMany({
+        where: {
+          userId: req.user.id
+        },
+        include: {
+          job: {
+            include: {
+              company: true
+            }
+          },
+          user: true
+        }
+      });
+
+      res.json({
+        applications: applications.map(app => ({
+          ...app,
+          jobTitle: app.job.title,
+          companyName: app.job.company.name,
+          candidateName: `${app.user.firstName} ${app.user.lastName}`,
+          candidateEmail: app.user.email
+        }))
+      });
+    }
+  } catch (error) {
+    console.error('Get applications error:', error);
+    res.status(500).json({ message: 'Error fetching applications', error: error.message });
+  }
+});
+
+// 2. GET /skills - Returns a predefined list of skills
+app.get('/skills', async (req, res) => {
+  try {
+    console.log('Handling request to /skills endpoint');
+    
+    // Predefined list of skills relevant to job marketplace
+    const skills = [
+      // Programming Languages
+      "JavaScript", "Python", "Java", "C#", "C++", "Ruby", "PHP", "Swift", "TypeScript", "Go",
+      // Web Development
+      "React", "Angular", "Vue.js", "Node.js", "Express", "Django", "Ruby on Rails", "HTML", "CSS", "Bootstrap",
+      // Database
+      "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Firebase", "Oracle", "Microsoft SQL Server", 
+      // DevOps & Cloud
+      "AWS", "Azure", "Google Cloud", "Docker", "Kubernetes", "Jenkins", "CI/CD", "Git", 
+      // Mobile Development
+      "iOS Development", "Android Development", "React Native", "Flutter", "Xamarin",
+      // Data Science & AI
+      "Machine Learning", "Deep Learning", "Natural Language Processing", "Data Analysis", "Data Visualization",
+      "TensorFlow", "PyTorch", "scikit-learn", "R", "MATLAB",
+      // General Business & Professional Skills
+      "Project Management", "Agile", "Scrum", "Business Analysis", "Communication", "Leadership", "Teamwork",
+      "Customer Service", "Sales", "Marketing", "Content Writing", "SEO", "Social Media Management",
+      // Design
+      "UI/UX Design", "Graphic Design", "Adobe Photoshop", "Adobe Illustrator", "Figma", "Sketch",
+      // Finance & Accounting
+      "Accounting", "Financial Analysis", "QuickBooks", "Excel", "Financial Modeling", "Budgeting",
+      // Healthcare
+      "Nursing", "Medical Coding", "Patient Care", "Electronic Health Records", "Medical Billing",
+      // Education
+      "Teaching", "Curriculum Development", "E-Learning", "Educational Technology", "Tutoring",
+      // Hospitality
+      "Customer Service", "Food Service", "Hotel Management", "Event Planning", "Housekeeping"
+    ];
+
+    res.json({ skills });
+  } catch (error) {
+    console.error('Skills endpoint error:', error);
+    res.status(500).json({ message: 'Error fetching skills', error: error.message });
+  }
+});
+
+// 3. GET /api/auth/validate - Validates JWT token and returns user info
+app.get('/api/auth/validate', async (req, res) => {
+  try {
+    console.log('Handling request to /api/auth/validate endpoint');
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ message: 'Authorization header missing' });
+    }
+
+    // Extract token
+    let token;
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else {
+      token = authHeader;
+    }
+
+    if (!token || token === 'undefined' || token === 'null') {
+      return res.status(401).json({ message: 'Invalid token format' });
+    }
+
+    const secret = process.env.JWT_SECRET || 'local_development_secret';
+
+    try {
+      const decoded = jwt.verify(token, secret);
+      
+      // Get user details from database
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true
+        }
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({
+        valid: true,
+        user: user
+      });
+    } catch (err) {
+      console.error('JWT verification error:', err.name, err.message);
+      return res.status(403).json({ 
+        valid: false,
+        message: 'Invalid or expired token', 
+        error: err.message 
+      });
+    }
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({ message: 'Error validating token', error: error.message });
+  }
+});
+
+// 4. POST /api/employer/company-profile - Redirects to PUT /api/employer/profile
+app.post('/api/employer/company-profile', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    console.log('Redirecting from POST /api/employer/company-profile to PUT /api/employer/profile');
+    
+    const { 
+      name, 
+      industry, 
+      location, 
+      description, 
+      website, 
+      employeeCount, 
+      founded, 
+      socialLinks,
+      culture
+    } = req.body;
+
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'Employer not found' });
+    }
+
+    const company = await prisma.company.upsert({
+      where: { id: employer.companyId || '' },
+      create: {
+        name,
+        industry,
+        location,
+        description,
+        website,
+        employeeCount,
+        founded,
+        socialLinks,
+        culture,
+        users: {
+          connect: { id: employer.id }
+        }
+      },
+      update: {
+        name,
+        industry,
+        location,
+        description,
+        website,
+        employeeCount,
+        founded,
+        socialLinks,
+        culture
+      }
+    });
+
+    // Update employer's companyId if it's a new company
+    if (!employer.companyId) {
+      await prisma.user.update({
+        where: { id: employer.id },
+        data: { companyId: company.id }
+      });
+    }
+
+    res.json({
+      message: 'Company profile updated successfully',
+      profile: {
+        name: company.name,
+        industry: company.industry,
+        location: company.location,
+        description: company.description,
+        website: company.website,
+        employeeCount: company.employeeCount,
+        founded: company.founded,
+        socialLinks: company.socialLinks,
+        culture: company.culture,
+        logoUrl: company.logoUrl
+      }
+    });
+  } catch (error) {
+    console.error('Company profile update error:', error);
+    res.status(500).json({ message: 'Error updating company profile', error: error.message });
+  }
+});
+
 // Start server
 const startServer = async () => {
   try {
@@ -1847,3 +2272,36 @@ Applications Collection:
 - createdAt (string) - ISO timestamp
 - updatedAt (string) - ISO timestamp
 */
+// Add this endpoint to server.js to fix the job listing issue
+app.get('/api/employer/jobs/simple', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    const employer = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+
+    if (!employer?.company) {
+      return res.json([]);
+    }
+
+    const jobs = await prisma.job.findMany({
+      where: { companyId: employer.company.id },
+      include: {
+        company: true,
+        applications: {
+          select: {
+            id: true,
+            status: true,
+            createdAt: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(jobs);
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    res.status(500).json({ message: 'Error fetching jobs', error: error.message });
+  }
+});

@@ -12,6 +12,13 @@ import CodeIcon from '@mui/icons-material/Code';
 import axios from 'axios';
 import { buildApiUrl } from '../../config';
 
+// Function to log only in development environment
+const logDev = (level, ...args) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console[level](...args);
+  }
+};
+
 // Common tech skills and frameworks
 const commonSkills = [
   // Programming Languages
@@ -55,7 +62,7 @@ export const SkillsAutocomplete = ({ value = [], onChange, label = 'Skills', pla
         }
       } catch (error) {
         // Fall back to common skills if API fails
-        console.log('Using default skills list');
+        logDev('debug', 'Using default skills list');
         setOptions(commonSkills);
       } finally {
         setLoading(false);

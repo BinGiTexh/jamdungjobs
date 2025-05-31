@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { logDev, logError, sanitizeForLogging } from './utils/loggingUtils';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { useAuth } from './context/AuthContext';
@@ -38,6 +39,14 @@ const LoginPage = () => {
   
   // Check if we're coming from the employer hiring button
   const isEmployerRedirect = location.state?.employerRedirect;
+  
+  // Log navigation to login page
+  useEffect(() => {
+    logDev('debug', 'Login page accessed', {
+      from: location.state?.from || 'direct',
+      isEmployerRedirect: !!isEmployerRedirect
+    });
+  }, [location.state, isEmployerRedirect]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,9 +61,21 @@ const LoginPage = () => {
           : '/candidate/dashboard';
       }
       
+      
+      logDev('info', 'Login successful', {
+        userRole: user.role,
+        redirectTo: sanitizeForLogging(redirectTo)
+      });
+      
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      console.error('Login failed:', err);
+      logError('Login failed', err, {
+        module: 'App',
+        function: 'handleLogin',
+        status: err.response?.status,
+        email: email ? `${email.substring(0, 3)}...` : 'empty',
+        hasPassword: !!password
+      });
     }
   };
 
@@ -261,8 +282,17 @@ const JobSearchPage = () => <JobSearch />;
 // RegisterPage component
 const RegisterPage = () => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  
+  useEffect(() => {
+    logDev('debug', 'Register page accessed', {
+      isAuthenticated,
+      from: location.state?.from || 'direct'
+    });
+  }, [isAuthenticated, location.state]);
   
   if (isAuthenticated) {
+    logDev('debug', 'Redirecting authenticated user from register page to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
   
@@ -273,6 +303,14 @@ const RegisterPage = () => {
 const Navigation = () => {
   const { user, logout } = useAuth();
   // Removed unused location variable
+  
+  const handleLogout = () => {
+    logDev('info', 'User logging out', {
+      userRole: user?.role,
+      userId: user?.id
+    });
+    logout();
+  };
 
   return (
     <nav className="nav-container">
@@ -291,7 +329,7 @@ const Navigation = () => {
                 <Link to="/employer/profile">Company Profile</Link>
                 <Link to="/about">About Us</Link>
                 <button 
-                  onClick={logout}
+                  onClick={handleLogout}
                   style={{
                     backgroundColor: '#dc3545',
                     color: 'white',
@@ -311,7 +349,7 @@ const Navigation = () => {
                 <Link to="/applications">My Applications</Link>
                 <Link to="/about">About Us</Link>
                 <button 
-                  onClick={logout}
+                  onClick={handleLogout}
                   style={{
                     backgroundColor: '#dc3545',
                     color: 'white',
@@ -346,6 +384,15 @@ const Navigation = () => {
 
 // Main App component
 function App() {
+  // Log application initialization
+  useEffect(() => {
+    logDev('info', 'Application initialized', {
+      env: process.env.NODE_ENV,
+      buildTime: process.env.REACT_APP_BUILD_TIME || 'unknown',
+      version: process.env.REACT_APP_VERSION || '1.0.0'
+    });
+  }, []);
+  
   return (
     <AuthProvider>
       <Router>
@@ -365,7 +412,14 @@ function App() {
               <Route
                 path="/dashboard"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute
+                    onAccessDenied={(message) => {
+                      logDev('warn', 'Access denied to protected route', {
+                        route: '/dashboard',
+                        reason: message || 'Not authenticated'
+                      });
+                    }}
+                  >
                     <DashboardRedirect />
                   </ProtectedRoute>
                 }
@@ -375,7 +429,15 @@ function App() {
               <Route
                 path="/employer/dashboard"
                 element={
-                  <RoleProtectedRoute role="EMPLOYER">
+                  <RoleProtectedRoute 
+                    role="EMPLOYER"
+                    onAccessDenied={(message) => {
+                      logDev('warn', 'Access denied to employer route', {
+                        route: '/employer/dashboard',
+                        reason: message || 'Wrong role or not authenticated'
+                      });
+                    }}
+                  >
                     <EmployerDashboardNew />
                   </RoleProtectedRoute>
                 }

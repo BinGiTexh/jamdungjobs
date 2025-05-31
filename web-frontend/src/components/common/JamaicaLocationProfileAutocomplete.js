@@ -10,6 +10,13 @@ import {
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { jamaicaLocations, jamaicaParishes } from '../../data/jamaicaLocations';
 
+// Function to log only in development environment
+const logDev = (level, ...args) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console[level](...args);
+  }
+};
+
 /**
  * Simplified Jamaica-specific location autocomplete component for profile pages
  * Uses local data of Jamaican parishes, cities, towns, and neighborhoods
@@ -66,7 +73,7 @@ export const JamaicaLocationProfileAutocomplete = ({
   useEffect(() => {
     if (inputValue.length >= 2) {
       const results = searchLocations(inputValue);
-      console.log('Jamaica location search results:', results);
+      logDev('debug', 'Jamaica location search results:', results);
       setOptions(results);
     } else {
       // Show popular locations when input is empty or too short

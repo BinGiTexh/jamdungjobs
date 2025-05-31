@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useCallback, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
 
 // Base URL for API requests
 const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -20,7 +21,10 @@ const storage = {
       const user = localStorage.getItem(USER_KEY);
       return user ? JSON.parse(user) : null;
     } catch (error) {
-      console.error('Error parsing stored user:', error);
+      logError('Error parsing stored user', error, { 
+        module: 'AuthContext',
+        function: 'storage.getUser'
+      });
       return null;
     }
   },
@@ -43,9 +47,12 @@ export function AuthProvider({ children }) {
     const validateToken = async () => {
       const token = storage.getToken();
       if (!token) {
+        logDev('debug', 'No token found during initialization, user is not authenticated');
         setLoading(false);
         return;
       }
+      
+      logDev('debug', 'Validating existing auth token');
 
       try {
         const response = await fetch(`${baseUrl}/api/auth/validate`, {
@@ -59,10 +66,20 @@ export function AuthProvider({ children }) {
         }
 
         const userData = await response.json();
+        logDev('debug', 'Token validation successful');
         setUser(userData);
         storage.setUser(userData);
       } catch (err) {
-        console.error('Token validation error:', err);
+        logError('Token validation failed', err, {
+          module: 'AuthContext',
+          function: 'validateToken',
+          status: err.status || 'unknown'
+        });
+        
+        // Determine specific error type for better user feedback
+        const errorType = err.message?.includes('expired') ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID';
+        logDev('warn', `Auth token error: ${errorType}`);
+        
         storage.clearAll();
         setUser(null);
       } finally {
@@ -77,6 +94,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     setLoading(true);
     setError(null);
+    
+    logDev('debug', 'Login attempt', { email: email ? `${email.substring(0, 3)}...` : 'none' });
 
     try {
       const response = await fetch(`${baseUrl}/api/auth/login`, {
@@ -90,9 +109,21 @@ export function AuthProvider({ children }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+        const errorMsg = data.message || 'Login failed';
+        logError('Login failed', new Error(errorMsg), {
+          module: 'AuthContext',
+          function: 'login',
+          status: response.status,
+          email: email ? `${email.substring(0, 3)}...` : 'none'
+        });
+        throw new Error(errorMsg);
       }
 
+      logDev('debug', 'Login successful', { 
+        user: sanitizeForLogging(data.user),
+        tokenReceived: !!data.token
+      });
+      
       storage.setToken(data.token);
       storage.setUser(data.user);
       setUser(data.user);
@@ -109,6 +140,11 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (userData) => {
     setLoading(true);
     setError(null);
+    
+    logDev('debug', 'Registration attempt', { 
+      email: userData.email ? `${userData.email.substring(0, 3)}...` : 'none',
+      role: userData.role
+    });
 
     try {
       const response = await fetch(`${baseUrl}/api/auth/register`, {
@@ -122,9 +158,21 @@ export function AuthProvider({ children }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        const errorMsg = data.message || 'Registration failed';
+        logError('Registration failed', new Error(errorMsg), {
+          module: 'AuthContext',
+          function: 'register',
+          status: response.status,
+          role: userData.role
+        });
+        throw new Error(errorMsg);
       }
 
+      logDev('debug', 'Registration successful', {
+        user: sanitizeForLogging(data.user),
+        tokenReceived: !!data.token
+      });
+      
       storage.setToken(data.token);
       storage.setUser(data.user);
       setUser(data.user);
@@ -139,15 +187,25 @@ export function AuthProvider({ children }) {
 
   // Logout handler
   const logout = useCallback(() => {
+    logDev('debug', 'User logout', { 
+      userId: user?.id,
+      userRole: user?.role
+    });
+    
     storage.clearAll();
     setUser(null);
     setError(null);
-  }, []);
+  }, [user]);
 
   // Update profile handler
   const updateProfile = useCallback(async (profileData) => {
     setLoading(true);
     setError(null);
+    
+    logDev('debug', 'Profile update attempt', {
+      userId: user?.id,
+      fields: Object.keys(profileData)
+    });
 
     try {
       const token = storage.getToken();
@@ -163,9 +221,20 @@ export function AuthProvider({ children }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Profile update failed');
+        const errorMsg = data.message || 'Profile update failed';
+        logError('Profile update failed', new Error(errorMsg), {
+          module: 'AuthContext',
+          function: 'updateProfile',
+          status: response.status,
+          userId: user?.id
+        });
+        throw new Error(errorMsg);
       }
 
+      logDev('debug', 'Profile update successful', {
+        user: sanitizeForLogging(data.user)
+      });
+      
       storage.setUser(data.user);
       setUser(data.user);
       return data.user;

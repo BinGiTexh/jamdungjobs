@@ -10,6 +10,28 @@ import {
   CircularProgress
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import { logDev, logError } from '../../utils/loggingUtils';
+
+// Helper function to handle Google Maps API errors
+const handleGoogleMapsError = (status) => {
+  if (status === 'REQUEST_DENIED') {
+    logError('Google Places API request denied', 
+      { status, message: 'Please ensure the Places API is enabled in your Google Cloud Console' },
+      { component: 'LocationAutocomplete' }
+    );
+    
+    logDev('warn',
+      'To enable the Places API:\n' +
+      '1. Go to https://console.cloud.google.com\n' +
+      '2. Select your project\n' +
+      '3. Go to "APIs & Services" > "Library"\n' +
+      '4. Search for "Places API"\n' +
+      '5. Click "Enable"'
+    );
+    return true;
+  }
+  return false;
+};
 
 export const LocationAutocomplete = ({ value, onChange, placeholder = "Location", radius, onRadiusChange }) => {
   const [inputValue, setInputValue] = useState('');
@@ -23,7 +45,7 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
   useEffect(() => {
     // Check if script is already loaded
     if (window.google?.maps?.places) {
-      console.log('Google Maps already loaded');
+      logDev('debug', 'Google Maps already loaded');
       setIsLoaded(true);
       initAutocomplete();
       return;
@@ -32,24 +54,26 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
     // Load Google Places API script
     const existingScript = document.getElementById('google-maps-script');
     if (existingScript) {
-      console.log('Script tag exists, waiting for load');
+      logDev('debug', 'Script tag exists, waiting for load');
       return;
     }
 
-    console.log('Creating new script tag');
     const script = document.createElement('script');
     script.id = 'google-maps-script';
     const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
-    console.log('API Key status:', apiKey ? 'Present' : 'Missing');
+    
+    if (!apiKey) {
+      logError('Google Maps API key is missing', null, { component: 'LocationAutocomplete' });
+    }
     
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
     script.onerror = (error) => {
-      console.error('Failed to load Google Maps script:', error);
-      console.log('If you see "This API project is not authorized to use this API", please enable the Places API in the Google Cloud Console.');
+      logError('Failed to load Google Maps script', error, { component: 'LocationAutocomplete' });
+      handleGoogleMapsError('REQUEST_DENIED');
     };
     script.onload = () => {
-      console.log('Google Maps script loaded successfully');
+      logDev('debug', 'Google Maps script loaded successfully');
       setIsLoaded(true);
       initAutocomplete();
     };
@@ -61,12 +85,12 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
   }, []);
 
   const initAutocomplete = () => {
-    console.log('Initializing autocomplete service');
+    logDev('debug', 'Initializing autocomplete service');
     try {
       autocompleteRef.current = new window.google.maps.places.AutocompleteService();
-      console.log('Autocomplete service initialized successfully');
+      logDev('debug', 'Autocomplete service initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize autocomplete service:', error);
+      logError('Failed to initialize autocomplete service', error, { component: 'LocationAutocomplete' });
     }
   };
 
@@ -81,12 +105,12 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
         return new Promise((resolve) => {
           timeoutId = setTimeout(() => {
             if (!autocompleteRef.current) {
-              console.error('Autocomplete service not initialized');
+              logError('Autocomplete service not initialized', null, { component: 'LocationAutocomplete' });
               resolve([]);
               return;
             }
 
-            console.log('Requesting predictions for:', input);
+            logDev('debug', 'Requesting predictions for:', input);
             try {
               setLoading(true);
               autocompleteRef.current.getPlacePredictions(
@@ -102,7 +126,10 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
                 }
               );
             } catch (error) {
-              console.error('Error getting predictions:', error);
+              logError('Error getting predictions', error, { 
+                component: 'LocationAutocomplete',
+                input: inputValue
+              });
               setLoading(false);
               resolve({ predictions: [], status: 'ERROR' });
             }
@@ -125,17 +152,10 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
   };
 
   const handleAutocompleteResults = (predictions, status) => {
-    console.log('Got autocomplete results:', { status, predictionsCount: predictions?.length });
+    logDev('debug', 'Got autocomplete results:', { status, predictionsCount: predictions?.length });
     
     // Check for specific API activation error
-    if (status === 'REQUEST_DENIED') {
-      console.error('Google Places API request was denied. Please check if the Places API is enabled in your Google Cloud Console.');
-      console.log('Steps to enable the API:');
-      console.log('1. Go to https://console.cloud.google.com');
-      console.log('2. Select your project');
-      console.log('3. Go to "APIs & Services" > "Library"');
-      console.log('4. Search for "Places API"');
-      console.log('5. Click "Enable"');
+    if (handleGoogleMapsError(status)) {
       return;
     }
 
@@ -147,14 +167,17 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
           mainText: p.structured_formatting.main_text,
           secondaryText: p.structured_formatting.secondary_text
         }));
-        console.log('Mapped options:', mappedOptions);
         setOptions(mappedOptions);
       } else {
-        console.log('No valid predictions received, status:', status);
+        logDev('debug', 'No valid predictions received, status:', status);
         setOptions([]);
       }
     } catch (error) {
-      console.error('Error processing predictions:', error);
+      logError('Error processing predictions', error, { 
+        component: 'LocationAutocomplete',
+        status,
+        predictionsCount: predictions?.length
+      });
       setOptions([]);
     }
   };

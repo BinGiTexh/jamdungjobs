@@ -1,23 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Grid,
   Card,
   CardContent,
   Typography,
-  TextField,
   Button,
   Chip,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Slider,
   Box,
-  Paper,
   styled,
   CircularProgress,
-  LinearProgress,
   ButtonGroup,
   Tooltip,
   Snackbar,
@@ -33,6 +29,7 @@ import { SalaryRangeInput } from './common/SalaryRangeInput';
 import { SalaryDisplay } from './common/SalaryDisplay';
 import QuickApplyModal from './jobseeker/QuickApplyModal';
 import axios from 'axios';
+import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
 
 // Styled components for Jamaican theme
 const StyledContainer = styled(Container)(({ theme }) => ({
@@ -120,10 +117,22 @@ const JobSearch = () => {
       ...prev,
       [field]: value
     }));
+    
+    // Log filter changes in development
+    logDev('debug', 'Search filter changed', {
+      field,
+      valueType: typeof value,
+      isArray: Array.isArray(value),
+      arrayLength: Array.isArray(value) ? value.length : null
+    });
   };
 
   const calculateSkillMatchScore = (jobSkills, userSkills) => {
     if (!jobSkills || !userSkills || jobSkills.length === 0 || userSkills.length === 0) {
+      logDev('debug', 'Skill match calculation skipped - missing skills', {
+        hasJobSkills: !!jobSkills && jobSkills.length > 0,
+        hasUserSkills: !!userSkills && userSkills.length > 0
+      });
       return 0;
     }
     
@@ -133,12 +142,32 @@ const JobSearch = () => {
       )
     );
     
-    return (matchedSkills.length / jobSkills.length) * 100;
+    const matchScore = (matchedSkills.length / jobSkills.length) * 100;
+    
+    // Log skill match calculation in development
+    logDev('debug', 'Skill match calculated', {
+      matchScore,
+      matchedSkillsCount: matchedSkills.length,
+      totalJobSkillsCount: jobSkills.length,
+      totalUserSkillsCount: userSkills.length
+    });
+    
+    return matchScore;
   };
 
-  const searchJobs = async () => {
+  const searchJobs = useCallback(async () => {
     try {
       setLoading(true);
+      
+      logDev('debug', 'Initiating job search', sanitizeForLogging({
+        query: filters.query,
+        location: filters.location ? `${filters.location.name}, ${filters.location.parish || ''}` : null,
+        radius: filters.locationRadius,
+        jobType: filters.jobType,
+        skillsCount: filters.skills.length,
+        salaryRange: `${filters.salaryMin}-${filters.salaryMax}`,
+        remote: filters.remote
+      }));
       
       // Prepare search params
       let searchParams = { ...filters };
@@ -162,7 +191,7 @@ const JobSearch = () => {
         });
       }
       
-      console.log('Searching with Jamaica-specific params:', searchParams);
+      logDev('debug', 'Searching with Jamaica-specific params:', sanitizeForLogging(searchParams));
       
       const response = await axios.get('/api/jobs/search', { params: searchParams });
       let jobResults = response.data.jobs || response.data;
@@ -181,18 +210,29 @@ const JobSearch = () => {
         jobResults.sort((a, b) => b.skillMatchScore - a.skillMatchScore);
       }
       
+      logDev('info', 'Job search results processed', {
+        resultCount: jobResults.length,
+        resultsWithSkillMatch: jobResults.filter(job => job.skillMatchScore !== undefined).length,
+        highMatchCount: jobResults.filter(job => job.skillMatchScore > 75).length
+      });
+      
       setJobs(jobResults);
       setResultsCount(jobResults.length);
     } catch (error) {
-      console.error('Error searching jobs:', error);
+      logError('Error searching jobs', error, {
+        module: 'JobSearch',
+        function: 'searchJobs',
+        filters: sanitizeForLogging(filters),
+        endpoint: '/api/jobs/search'
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     searchJobs();
-  }, []);
+  }, [searchJobs]);
 
   const handleQuickApply = (job) => {
     if (!isAuthenticated) {
@@ -212,9 +252,22 @@ const JobSearch = () => {
     
     // Open quick apply modal
     setQuickApplyJob(job);
+    
+    logDev('debug', 'Quick apply initiated', {
+      jobId: job.id,
+      jobTitle: job.title,
+      company: job.company?.name,
+      userId: currentUser?.id
+    });
   };
   
   const handleApplicationSuccess = (applicationData) => {
+    logDev('info', 'Application submitted successfully', {
+      jobId: quickApplyJob?.id,
+      applicationId: applicationData?.id,
+      userId: currentUser?.id
+    });
+    
     setQuickApplyJob(null);
     setSnackbar({
       open: true,

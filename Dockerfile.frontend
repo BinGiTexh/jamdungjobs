@@ -1,10 +1,14 @@
-FROM node:16.20.0
+# Update from Node 16 to Node 18 LTS
+FROM node:18.19.0
 
 WORKDIR /app
 
 COPY web-frontend/package*.json ./
-RUN npm install --legacy-peer-deps
-RUN npm install react-icons@4.10.1 --save --legacy-peer-deps
+
+# Install dependencies with support for resolutions and legacy peer deps
+RUN npm install --legacy-peer-deps --install-links
+
+# No need for separate react-icons install as it's in package.json
 
 COPY web-frontend/ .
 

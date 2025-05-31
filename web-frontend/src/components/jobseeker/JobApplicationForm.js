@@ -32,6 +32,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
 import { buildApiUrl } from '../../config';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
 // Styled component for the file input
 const VisuallyHiddenInput = styled('input')({
@@ -87,7 +88,11 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
           setSavedResumes(response.data);
         }
       } catch (err) {
-        console.error('Error fetching saved resumes:', err);
+        logError('Error fetching saved resumes', err, {
+          module: 'JobApplicationForm',
+          function: 'fetchSavedResumes',
+          status: err.response?.status
+        });
         // Don't show error for this, just fall back to upload only
       }
     };
@@ -126,6 +131,13 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
       }));
       setResumeFileName(file.name);
       setError(null);
+      
+      // Log file selection in development
+      logDev('debug', 'Resume file selected', {
+        fileName: file.name,
+        fileSize: `${Math.round(file.size / 1024)}KB`,
+        fileType: file.type
+      });
     }
   };
 
@@ -153,6 +165,13 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
     
     setActiveStep((prevStep) => prevStep + 1);
     setError(null);
+    
+    // Log step navigation in development
+    logDev('debug', `Moving to step ${activeStep + 1}`, {
+      formProgress: `${activeStep + 1}/${steps.length}`,
+      hasResume: resumeOption === 'upload' ? !!formData.resumeFile : !!formData.savedResumeId,
+      coverLetterLength: formData.coverLetter?.length || 0
+    });
   };
   
   // Handle back step
@@ -175,6 +194,9 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
   // Handle saved resume selection
   const handleSavedResumeSelect = (resumeId) => {
     setFormData(prev => ({ ...prev, savedResumeId: resumeId }));
+    
+    // Log saved resume selection in development
+    logDev('debug', 'Saved resume selected', { resumeId });
   };
 
   const handleSubmit = async (e) => {
@@ -196,6 +218,11 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
       } else {
         setError('Please provide a resume');
         setLoading(false);
+        logDev('warn', 'Application submission failed - no resume provided', {
+          resumeOption,
+          hasFile: !!formData.resumeFile,
+          hasSavedResumeId: !!formData.savedResumeId
+        });
         return;
       }
       
@@ -203,6 +230,16 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
       applicationData.append('availability', formData.availability);
       applicationData.append('salary', formData.salary);
       applicationData.append('additionalInfo', formData.additionalInfo);
+
+      // Log application submission with sanitized data
+      logDev('debug', 'Submitting job application', sanitizeForLogging({
+        jobId,
+        resumeProvided: resumeOption === 'upload' ? !!formData.resumeFile : !!formData.savedResumeId,
+        resumeType: resumeOption,
+        coverLetterLength: formData.coverLetter?.length || 0,
+        salary: formData.salary,
+        availability: formData.availability
+      }));
 
       // Submit application
       const response = await axios.post(
@@ -216,11 +253,37 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
       );
 
       if (response.status === 201) {
+        // Log successful submission with sanitized data
+        logDev('info', 'Application submitted successfully', sanitizeForLogging({
+          jobId,
+          applicationId: response.data?.id,
+          resumeType: resumeOption,
+          status: response.status
+        }));
         onSuccess(response.data);
       }
     } catch (err) {
-      console.error('Application submission error:', err);
-      setError(err.response?.data?.message || 'Failed to submit application. Please try again.');
+      logError('Application submission failed', err, sanitizeForLogging({
+        module: 'JobApplicationForm',
+        function: 'handleSubmit',
+        jobId,
+        resumeType: resumeOption,
+        formFields: Object.keys(formData),
+        status: err.response?.status,
+        errorMessage: err.response?.data?.message
+      }));
+      
+      // Determine specific error type for better user feedback
+      let errorMessage = 'Failed to submit application. Please try again.';
+      if (err.response?.status === 400) {
+        errorMessage = err.response.data?.message || 'Missing required information for application.';
+      } else if (err.response?.status === 409) {
+        errorMessage = 'You have already applied for this job.';
+      } else if (err.response?.status === 403) {
+        errorMessage = 'You do not have permission to apply for this job.';
+      }
+      
+      setError(errorMessage);
       setActiveStep(0); // Go back to first step on error
     } finally {
       setLoading(false);

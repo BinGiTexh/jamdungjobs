@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 import {
   Box,
   Typography,
@@ -73,7 +74,7 @@ const VisuallyHiddenInput = styled('input')({
 });
 
 const CompanyProfileSetup = ({ onComplete }) => {
-  const { user } = useAuth();
+  const { } = useAuth(); // Using Auth context without extracting user
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -182,7 +183,7 @@ const CompanyProfileSetup = ({ onComplete }) => {
           companyData.location
       };
       
-      console.log('Sending company data to API:', apiData);
+      logDev('debug', 'Sending company data to API:', sanitizeForLogging(apiData));
       
       // Save to localStorage as a backup
       localStorage.setItem('employerCompanyProfile', JSON.stringify({
@@ -202,7 +203,7 @@ const CompanyProfileSetup = ({ onComplete }) => {
           }
         });
         
-        console.log('Company profile created:', response.data);
+        logDev('debug', 'Company profile created:', sanitizeForLogging(response.data));
         
         // If we have a logo, we would upload it here
         // This would be a separate API call with FormData
@@ -221,7 +222,11 @@ const CompanyProfileSetup = ({ onComplete }) => {
         }, 1000);
         
       } catch (apiError) {
-        console.error('API Error:', apiError);
+        logError('Failed to create company profile in API', apiError, {
+          module: 'CompanyProfileSetup',
+          action: 'create-company',
+          companyName: apiData.name
+        });
         
         // If the API fails, we still have the data in localStorage
         setSuccess(true);
@@ -237,7 +242,10 @@ const CompanyProfileSetup = ({ onComplete }) => {
         setError('Warning: Could not save to database. Data is stored locally only.');
       }
     } catch (error) {
-      console.error('Error creating company profile:', error);
+      logError('Error creating company profile', error, {
+        module: 'CompanyProfileSetup',
+        action: 'handleSubmit'
+      });
       setError('Failed to create company profile. Please try again.');
     } finally {
       setLoading(false);

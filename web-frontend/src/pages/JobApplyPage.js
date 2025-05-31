@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Container, Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import JobApplicationForm from '../components/jobseeker/JobApplicationForm';
 import axios from 'axios';
 import { buildApiUrl } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
 
 const JobApplyPage = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
   
   const [job, setJob] = useState(null);
@@ -20,25 +22,60 @@ const JobApplyPage = () => {
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!currentUser) {
+      logDev('debug', 'Redirecting unauthenticated user to login', {
+        targetJobId: jobId,
+        page: 'JobApplyPage'
+      });
       navigate('/login', { state: { from: `/jobs/${jobId}/apply` } });
       return;
     }
 
     // Redirect to employer dashboard if user is an employer
     if (currentUser.role === 'EMPLOYER') {
+      logDev('debug', 'Redirecting employer from job apply page', {
+        userId: sanitizeForLogging(currentUser.id),
+        userRole: currentUser.role,
+        targetJobId: jobId
+      });
       navigate('/dashboard');
       return;
     }
 
+    // Log page access
+    logDev('debug', 'Job apply page accessed', {
+      jobId,
+      userId: sanitizeForLogging(currentUser.id),
+      referrer: location.state?.from || 'direct'
+    });
+
     fetchJobDetails();
-  }, [currentUser, jobId, navigate]);
+  }, [currentUser, jobId, navigate, location.state]);
 
   const fetchJobDetails = async () => {
     try {
+      logDev('debug', 'Fetching job details', { 
+        jobId, 
+        userId: sanitizeForLogging(currentUser?.id)
+      });
+      
       const response = await axios.get(buildApiUrl(`/jobs/${jobId}`));
       setJob(response.data);
+      
+      logDev('debug', 'Job details fetched successfully', { 
+        jobId, 
+        jobTitle: response.data.title
+      });
     } catch (err) {
-      console.error('Error fetching job details:', err);
+      const errorContext = {
+        module: 'JobApplyPage',
+        function: 'fetchJobDetails',
+        jobId,
+        userId: sanitizeForLogging(currentUser?.id),
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      };
+      
+      logError('Error loading job details', err, errorContext);
       setError('Failed to load job details. The job may no longer be available.');
     } finally {
       setLoading(false);
@@ -46,6 +83,13 @@ const JobApplyPage = () => {
   };
 
   const handleApplicationSuccess = (applicationData) => {
+    logDev('info', 'Job application submitted successfully', {
+      jobId,
+      jobTitle: job?.title,
+      userId: sanitizeForLogging(currentUser?.id),
+      applicationId: sanitizeForLogging(applicationData?.id)
+    });
+    
     setSuccess(true);
     // Redirect to applications page after a short delay
     setTimeout(() => {
@@ -54,6 +98,10 @@ const JobApplyPage = () => {
   };
 
   const handleCancel = () => {
+    logDev('debug', 'Job application cancelled', {
+      jobId,
+      userId: sanitizeForLogging(currentUser?.id)
+    });
     navigate(`/jobs/${jobId}`);
   };
 

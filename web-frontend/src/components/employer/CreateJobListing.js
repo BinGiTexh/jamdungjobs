@@ -21,6 +21,7 @@ import {
 import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
 import WorkIcon from '@mui/icons-material/Work';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -220,37 +221,6 @@ const CreateJobListing = ({ onSuccess }) => {
     }));
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!jobData.title.trim()) newErrors.title = 'Job title is required';
-    if (!jobData.company.trim()) newErrors.company = 'Company name is required';
-    if (!jobData.location) newErrors.location = 'Location is required';
-    if (!jobData.description.trim()) newErrors.description = 'Job description is required';
-    if (!jobData.salaryMin.trim()) newErrors.salaryMin = 'Minimum salary is required';
-    if (!jobData.salaryMax.trim()) newErrors.salaryMax = 'Maximum salary is required';
-    
-    if (jobData.salaryMin && jobData.salaryMax) {
-      const min = parseFloat(jobData.salaryMin);
-      const max = parseFloat(jobData.salaryMax);
-      if (min > max) {
-        newErrors.salaryMin = 'Minimum salary cannot be greater than maximum';
-        newErrors.salaryMax = 'Maximum salary cannot be less than minimum';
-      }
-    }
-    
-    setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0;
-    
-    logDev('debug', 'Job form validation result', { 
-      isValid, 
-      errors: isValid ? 'none' : sanitizeForLogging(newErrors),
-      context: 'createJobListing'
-    });
-    
-    return isValid;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -281,7 +251,7 @@ const CreateJobListing = ({ onSuccess }) => {
         context: 'createJobListing' 
       });
       
-      const response = await axios.post('/api/employer/jobs', formattedJobData);
+      const response = await api.post('/api/employer/jobs', formattedJobData);
       
       logDev('info', 'Job listing created successfully', { 
         jobId: response.data.id || 'unknown',
