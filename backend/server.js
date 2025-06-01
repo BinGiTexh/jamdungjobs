@@ -19,16 +19,6 @@ const PORT = process.env.PORT || 5000;
 // Initialize Prisma
 const prisma = new PrismaClient();
 
-const connectToDatabase = async () => {
-  try {
-    await prisma.$connect();
-    console.log('Connected to PostgreSQL via Prisma');
-  } catch (error) {
-    console.error('Database connection error:', error);
-    process.exit(1);
-  }
-};
-
 // Setup file storage for local development
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 
@@ -45,27 +35,6 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now().toString()}-${uuidv4()}${fileExtension}`);
   }
 });
-
-// Setup middleware
-// Configure helmet with cross-origin image loading
-app.use(helmet({
-  crossOriginResourcePolicy: {
-    policy: 'cross-origin'
-  }
-}));
-
-// Configure CORS with specific options for our frontend
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-app.use(express.json({limit: '50mb'}));
-app.use(morgan('dev'));
-
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // File upload configuration
 const upload = multer({
@@ -85,6 +54,31 @@ const upload = multer({
     }
   }
 });
+
+// Middleware setup
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express.json({limit: '50mb'}));
+app.use(morgan('dev'));
+app.use('/uploads', express.static(UPLOAD_DIR));
+
+// Database connection function
+const connectToDatabase = async () => {
+  try {
+    await prisma.$connect();
+    console.log('Connected to PostgreSQL via Prisma');
+  } catch (error) {
+    console.error('Database connection error:', error);
+    process.exit(1);
+  }
+};
 
 // JWT Authentication Middleware
 const authenticateJWT = (req, res, next) => {
@@ -136,6 +130,60 @@ const checkRole = (role) => {
     } else {
       res.status(403).json({ message: `Access denied. ${role} role required.` });
     }
+  };
+};
+
+// Helper function to transform job type from frontend format to backend enum format
+const transformJobType = (jobType) => {
+  if (!jobType) return null;
+  
+  const typeMap = {
+    'Full-time': 'FULL_TIME',
+    'Part-time': 'PART_TIME',
+    'Contract': 'CONTRACT',
+    'Temporary': 'TEMPORARY',
+    'Internship': 'INTERNSHIP',
+    // Add fallbacks for direct enum values in case they're already in the correct format
+    'FULL_TIME': 'FULL_TIME',
+    'PART_TIME': 'PART_TIME',
+    'CONTRACT': 'CONTRACT',
+    'TEMPORARY': 'TEMPORARY',
+    'INTERNSHIP': 'INTERNSHIP'
+  };
+  
+  const transformedType = typeMap[jobType];
+  if (!transformedType) {
+    throw new Error(`Invalid job type: ${jobType}. Must be one of: FULL_TIME, PART_TIME, CONTRACT, TEMPORARY, INTERNSHIP`);
+  }
+  
+  return transformedType;
+};
+
+// Sanitize job data to remove fields that don't exist in the Prisma schema
+const sanitizeJobData = (data) => {
+  // Create a new object with only valid fields
+  const sanitized = { ...data };
+  
+  // Remove fields that don't exist in the Prisma schema
+  const fieldsToRemove = ['requirements', 'benefits', 'jobType', 'salaryMin', 'salaryMax', 'salaryCurrency', 'applicationDeadline', 'remote', 'featured'];
+  
+  for (const field of fieldsToRemove) {
+    if (field in sanitized) {
+      delete sanitized[field];
+    }
+  }
+  
+  return sanitized;
+};
+
+// Helper function to create a properly formatted salary object
+const formatSalaryObject = (salaryMin, salaryMax, currency = "USD") => {
+  if (!salaryMin && !salaryMax) return null;
+  
+  return {
+    min: salaryMin ? parseInt(salaryMin) : null,
+    max: salaryMax ? parseInt(salaryMax) : null,
+    currency: currency
   };
 };
 
@@ -255,40 +303,28 @@ app.get('/api/users/me', authenticateJWT, async (req, res) => {
 
 app.put('/api/users/me', authenticateJWT, async (req, res) => {
   try {
-    const { name, phone, address, bio, location, locationData } = req.body;
-    const timestamp = new Date().toISOString();
+    const { firstName, lastName, phone, address, bio, location, locationData } = req.body;
 
-    // Prepare query to find the user
-    let query = {};
-    try {
-      query = { _id: new ObjectId(req.user.id) };
-    } catch (e) {
-      query = { id: req.user.id };
-    }
+    // Update user information using Prisma
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        firstName,
+        lastName,
+        phone,
+        address,
+        bio,
+        location,
+        locationData
+      }
+    });
 
-    // Update user information using MongoDB
-    const result = await db.collection('users').findOneAndUpdate(
-      query,
-      {
-        $set: {
-          name,
-          phone,
-          address,
-          bio,
-          location,
-          locationData,
-          updatedAt: timestamp
-        }
-      },
-      { returnDocument: 'after' }
-    );
-
-    if (!result.value) {
+    if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
     }
     
     // Remove sensitive information
-    const { password, ...userWithoutPassword } = result.value;
+    const { passwordHash, ...userWithoutPassword } = updatedUser;
 
     res.json({
       message: 'Profile updated successfully',
@@ -371,7 +407,7 @@ app.put('/api/employer/profile', authenticateJWT, checkRole('EMPLOYER'), async (
         founded,
         socialLinks,
         culture,
-        users: {
+        employees: {
           connect: { id: employer.id }
         }
       },
@@ -900,6 +936,7 @@ app.post('/api/employer/logo', authenticateJWT, checkRole('EMPLOYER'), upload.si
   }
 });
 // Job Management Endpoints
+
 app.post('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
     console.log('Job creation request received:', req.body.title);
@@ -908,19 +945,20 @@ app.post('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (re
       title, 
       description, 
       location, 
-      locationData,
-      requirements, 
-      responsibilities,
-      benefits, 
-      jobType, 
-      experienceLevel,
+      type,  // Use type directly
+      jobType, // For backward compatibility
+      skills,
+      experience,
+      education,
+      salary,
       salaryMin,
       salaryMax,
-      skills,
+      salaryCurrency,
       remote,
-      applicationDeadline
+      applicationDeadline,
+      status = 'ACTIVE'
     } = req.body;
-
+    
     // Get the employer's company
     const employer = await prisma.user.findUnique({
       where: { id: req.user.id },
@@ -931,31 +969,80 @@ app.post('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (re
       return res.status(400).json({ message: 'Company profile required to post jobs' });
     }
 
-    // Calculate average salary for sorting purposes
-    const salary = (salaryMin && salaryMax) 
-      ? Math.floor((parseInt(salaryMin) + parseInt(salaryMax)) / 2)
-      : (salaryMin ? parseInt(salaryMin) : null);
+    // Valid job types as defined in the Prisma schema
+    const validTypes = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY'];
+    
+    // Determine the job type to use
+    let finalType;
+    
+    // First try using the type field directly
+    if (type && validTypes.includes(type)) {
+      finalType = type;
+      console.log('Using type directly:', finalType);
+    } 
+    // Fall back to jobType if provided
+    else if (jobType) {
+      // If jobType is already a valid enum value, use it directly
+      if (validTypes.includes(jobType)) {
+        finalType = jobType;
+        console.log('Using jobType directly:', finalType);
+      } 
+      // Otherwise try to transform it
+      else {
+        try {
+          finalType = transformJobType(jobType);
+          console.log('Transformed jobType:', finalType);
+        } catch (error) {
+          return res.status(400).json({ message: error.message });
+        }
+      }
+    } else {
+      // Default to FULL_TIME if no type is provided
+      finalType = 'FULL_TIME';
+      console.log('Using default job type:', finalType);
+    }
+    
+    // Validate we have a valid job type
+    if (!finalType || !validTypes.includes(finalType)) {
+      return res.status(400).json({ 
+        message: `Job type is required and must be one of: ${validTypes.join(', ')}`
+      });
+    }
 
+    // Handle salary field
+    let salaryObject;
+    if (salary && typeof salary === 'object') {
+      salaryObject = salary;
+      console.log('Using provided salary object');
+    } else if (salaryMin || salaryMax) {
+      salaryObject = formatSalaryObject(salaryMin, salaryMax, salaryCurrency);
+      console.log('Created salary object from min/max values');
+    }
+
+    console.log('Creating job with type:', finalType);
+    
+    // Create job with explicitly set type field and sanitized data
+    const jobData = {
+      title,
+      description,
+      location: location || (remote ? 'Remote' : ''),
+      type: finalType, // IMPORTANT: This must match the Prisma schema field
+      skills: skills || [],
+      experience: experience || null,
+      education: education || null,
+      salary: salaryObject,
+      status,
+      applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
+      company: {
+        connect: { id: employer.company.id }
+      }
+    };
+    
+    // Remove any fields that don't exist in the Prisma schema
+    const sanitizedData = sanitizeJobData(jobData);
+    
     const job = await prisma.job.create({
-      data: {
-        title,
-        description,
-        location: location || (remote ? 'Remote' : ''),
-        locationData: locationData ? JSON.stringify(locationData) : null,
-        jobType,
-        experienceLevel,
-        requirements,
-        responsibilities,
-        benefits,
-        skills: skills ? skills : [],
-        remote: remote || false,
-        salaryMin: salaryMin ? parseInt(salaryMin) : null,
-        salaryMax: salaryMax ? parseInt(salaryMax) : null,
-        salary, // Average for sorting and filtering
-        applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
-        status: 'ACTIVE',
-        company: { connect: { id: employer.company.id } }
-      },
+      data: sanitizedData,
       include: {
         company: true,
         applications: true
@@ -1004,64 +1091,11 @@ app.get('/api/employer/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req
       },
       orderBy: { createdAt: 'desc' }
     });
-
+    
     res.json(jobs);
   } catch (error) {
     console.error('Error fetching jobs:', error);
     res.status(500).json({ message: 'Error fetching jobs', error: error.message });
-  }
-});
-
-app.put('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    // Verify ownership
-    const job = await prisma.job.findFirst({
-      where: {
-        id,
-        company: {
-          employees: {
-            some: { id: req.user.id }
-          }
-        }
-      }
-    });
-
-    if (!job) {
-      return res.status(404).json({ message: 'Job not found or access denied' });
-    }
-
-    const updatedJob = await prisma.job.update({
-      where: { id },
-      data: updates,
-      include: {
-        company: true,
-        applications: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                candidateProfile: {
-                  select: {
-                    resumeUrl: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    res.json(updatedJob);
-  } catch (error) {
-    console.error('Error updating job:', error);
-    res.status(500).json({ message: 'Error updating job posting', error: error.message });
   }
 });
 
@@ -1102,167 +1136,52 @@ app.delete('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), asy
   }
 });
 
-// Resume upload for candidates
-app.post('/api/candidates/resume', authenticateJWT, checkRole('candidate'), upload.single('resume'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No resume file uploaded' });
-    }
-
-    const resumeUrl = `/uploads/${req.file.filename}`;
-    const timestamp = new Date().toISOString();
-
-    // Update user with resume URL using MongoDB
-    let query = {};
-    try {
-      query = { _id: new ObjectId(req.user.id) };
-    } catch (e) {
-      query = { id: req.user.id };
-    }
-
-    const result = await db.collection('users').findOneAndUpdate(
-      query,
-      {
-        $set: {
-          resumeUrl,
-          updatedAt: timestamp
-        }
-      },
-      { returnDocument: 'after' }
-    );
-
-    if (!result.value) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json({
-      message: 'Resume uploaded successfully',
-      resumeUrl: result.value.resumeUrl
-    });
-  } catch (error) {
-    console.error('Resume upload error:', error);
-    res.status(500).json({ message: 'Error uploading resume', error: error.message });
-  }
-});
-
 // Job Routes
 
 // Save/unsave job
-app.post('/api/jobs/:jobId/:action', authenticateJWT, checkRole('candidate'), async (req, res) => {
+app.post('/api/jobs/:jobId/:action', authenticateJWT, checkRole('JOBSEEKER'), async (req, res) => {
   try {
     const { jobId, action } = req.params;
     if (!['save', 'unsave'].includes(action)) {
       return res.status(400).json({ message: 'Invalid action' });
     }
 
-    // Update user's saved jobs
-    const update = action === 'save' 
-      ? { $addToSet: { savedJobs: jobId } }
-      : { $pull: { savedJobs: jobId } };
+    // Update user's saved jobs using Prisma
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { savedJobs: true }
+    });
 
-    await db.collection('users').updateOne(
-      { _id: new ObjectId(req.user.id) },
-      update
-    );
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (action === 'save') {
+      // Save job
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          savedJobs: {
+            connect: { id: jobId }
+          }
+        }
+      });
+    } else {
+      // Unsave job
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          savedJobs: {
+            disconnect: { id: jobId }
+          }
+        }
+      });
+    }
 
     res.json({ message: `Job ${action}d successfully` });
   } catch (error) {
     console.error(`${action} job error:`, error);
     res.status(500).json({ message: `Error ${action}ing job`, error: error.message });
-  }
-});
-
-// Apply to job
-app.post('/api/jobs/:jobId/apply', authenticateJWT, checkRole('candidate'), async (req, res) => {
-  try {
-    const { jobId } = req.params;
-    const { coverLetter } = req.body;
-    
-    // Check if already applied
-    const existingApplication = await db.collection('applications').findOne({
-      jobId,
-      userId: req.user.id
-    });
-    
-    if (existingApplication) {
-      return res.status(400).json({ message: 'Already applied to this job' });
-    }
-    
-    const job = await db.collection('jobs').findOne({ _id: new ObjectId(jobId) });
-    if (!job) {
-      return res.status(404).json({ message: 'Job not found' });
-    }
-    
-    const application = {
-      jobId,
-      userId: req.user.id,
-      jobTitle: job.title,
-      companyName: job.companyName,
-      candidateName: req.user.name,
-      coverLetter,
-      status: 'pending',
-      appliedAt: new Date().toISOString()
-    };
-    
-    await db.collection('applications').insertOne(application);
-    res.status(201).json({ message: 'Application submitted successfully' });
-  } catch (error) {
-    console.error('Apply to job error:', error);
-    res.status(500).json({ message: 'Error submitting application', error: error.message });
-  }
-});
-
-// Create job
-app.post('/api/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      requirements,
-      location,
-      jobType,
-      salary,
-      applicationDeadline,
-      featured
-    } = req.body;
-
-    const employer = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      include: { company: true }
-    });
-
-    if (!employer) {
-      return res.status(404).json({ message: 'Employer not found' });
-    }
-
-    if (!employer.company) {
-      return res.status(404).json({ message: 'Company not found' });
-    }
-
-    const job = await prisma.job.create({
-      data: {
-        title,
-        description,
-        requirements,
-        location,
-        jobType,
-        salary,
-        applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
-        status: 'ACTIVE',
-        featured: featured || false,
-        company: {
-          connect: { id: employer.company.id }
-        }
-      }
-    });
-
-    res.status(201).json({
-      message: 'Job created successfully',
-      job
-    });
-  } catch (error) {
-    console.error('Create job error:', error);
-    res.status(500).json({ message: 'Error creating job listing', error: error.message });
   }
 });
 
@@ -1350,7 +1269,20 @@ app.get('/api/jobs', async (req, res) => {
     }
     
     if (jobType) {
-      where.jobType = jobType;
+      try {
+        // Valid job types as defined in the Prisma schema
+        const validTypes = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY'];
+        
+        // If jobType is already a valid enum value, use it directly
+        if (validTypes.includes(jobType)) {
+          where.type = jobType;
+        } else {
+          // Convert jobType to the database enum format using our helper function
+          where.type = transformJobType(jobType);
+        }
+      } catch (error) {
+        console.error('Error transforming jobType for query:', error.message);
+      }
     }
 
     // Get total count for pagination
@@ -1428,75 +1360,6 @@ app.get('/api/jobs/:id', async (req, res) => {
   }
 });
 
-app.put('/api/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      title,
-      description,
-      requirements,
-      location,
-      jobType,
-      salary,
-      applicationDeadline,
-      status,
-      featured
-    } = req.body;
-
-    // Verify job exists and belongs to employer
-    const job = await prisma.job.findFirst({
-      where: {
-        id,
-        company: {
-          employees: {
-            some: {
-              id: req.user.id
-            }
-          }
-        }
-      }
-    });
-
-    if (!job) {
-      return res.status(404).json({ message: 'Job not found or not authorized' });
-    }
-
-    const updatedJob = await prisma.job.update({
-      where: { id },
-      data: {
-        title,
-        description,
-        requirements,
-        location,
-        jobType,
-        salary,
-        applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
-        status,
-        featured
-      },
-      include: {
-        company: {
-          select: {
-            name: true,
-            logoUrl: true
-          }
-        }
-      }
-    });
-
-    res.json({
-      message: 'Job updated successfully',
-      job: {
-        ...updatedJob,
-        companyName: updatedJob.company.name,
-        companyLogo: updatedJob.company.logoUrl
-      }
-    });
-  } catch (error) {
-    console.error('Update job error:', error);
-    res.status(500).json({ message: 'Error updating job listing', error: error.message });
-  }
-});
 
 app.delete('/api/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
@@ -1624,9 +1487,7 @@ app.get('/api/applications', authenticateJWT, async (req, res) => {
           job: {
             company: {
               employees: {
-                some: {
-                  id: req.user.id
-                }
+                some: { id: req.user.id }
               }
             }
           }
@@ -1686,33 +1547,31 @@ app.get('/api/applications/:id', authenticateJWT, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Prepare query to find the application
-    let query = {};
-    try {
-      query = { _id: new ObjectId(id) };
-    } catch (e) {
-      query = { id };
-    }
-
-    const application = await db.collection('applications').findOne(query);
+    // Find the application using Prisma
+    const application = await prisma.jobApplication.findUnique({
+      where: { id },
+      include: {
+        job: {
+          include: {
+            company: true
+          }
+        },
+        user: true
+      }
+    });
     
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
 
     // Check permission based on role
-    if (req.user.role === 'employer') {
+    if (req.user.role === 'EMPLOYER') {
       // Employer should own the job
-      let jobQuery = {};
-      try {
-        jobQuery = { _id: new ObjectId(application.jobId) };
-      } catch (e) {
-        jobQuery = { id: application.jobId };
-      }
-
-      const job = await db.collection('jobs').findOne(jobQuery);
+      const isEmployerOfCompany = application.job.company.employees.some(
+        employee => employee.id === req.user.id
+      );
       
-      if (!job || job.employerId !== req.user.id) {
+      if (!isEmployerOfCompany) {
         return res.status(403).json({ message: 'You do not have permission to view this application' });
       }
     } else if (req.user.id !== application.userId) {
@@ -1726,76 +1585,73 @@ app.get('/api/applications/:id', authenticateJWT, async (req, res) => {
   }
 });
 
-app.put('/api/applications/:id/status', authenticateJWT, checkRole('employer'), async (req, res) => {
+app.put('/api/applications/:id/status', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, feedbackNote } = req.body;
 
-    // Prepare query to find the application
-    let query = {};
-    try {
-      query = { _id: new ObjectId(id) };
-    } catch (e) {
-      query = { id };
-    }
-
     // Check if application exists
-    const application = await db.collection('applications').findOne(query);
+    const application = await prisma.jobApplication.findUnique({
+      where: { id },
+      include: {
+        job: {
+          include: {
+            company: true
+          }
+        },
+        user: true
+      }
+    });
     
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
 
     // Check if employer owns the job
-    let jobQuery = {};
-    try {
-      jobQuery = { _id: new ObjectId(application.jobId) };
-    } catch (e) {
-      jobQuery = { id: application.jobId };
-    }
-
-    const job = await db.collection('jobs').findOne(jobQuery);
+    const isEmployerOfCompany = application.job.company.employees.some(
+      employee => employee.id === req.user.id
+    );
     
-    if (!job || job.employerId !== req.user.id) {
+    if (!isEmployerOfCompany) {
       return res.status(403).json({ message: 'You do not have permission to update this application' });
     }
 
-    const timestamp = new Date().toISOString();
-
-    // Update application status
-    const result = await db.collection('applications').findOneAndUpdate(
-      query,
-      {
-        $set: {
-          status,
-          feedbackNote,
-          updatedAt: timestamp
-        }
+    // Update application status using Prisma
+    const updatedApplication = await prisma.jobApplication.update({
+      where: { id },
+      data: {
+        status,
+        feedbackNote
       },
-      { returnDocument: 'after' }
-    );
+      include: {
+        job: {
+          include: {
+            company: true
+          }
+        },
+        user: true
+      }
+    });
 
     // Get candidate details for email notification
-    const candidate = await db.collection('users').findOne({
-      $or: [
-        { _id: new ObjectId(application.userId) },
-        { id: application.userId }
-      ]
-    });
+    const candidate = application.user;
 
     if (candidate) {
       // In development mode, just log the email content
       let emailSubject, emailContent;
+      const jobTitle = application.job.title;
+      const companyName = application.job.company.name;
+      const candidateName = `${candidate.firstName} ${candidate.lastName}`;
 
-      if (status === 'rejected') {
-        emailSubject = `Application Status Update: ${job.title}`;
-        emailContent = `Dear ${candidate.name},\n\nThank you for your interest in the ${job.title} position at ${job.companyName}.\n\nAfter careful consideration, we have decided to pursue other candidates whose qualifications better match our current needs.\n\n${feedbackNote ? `Additional feedback: ${feedbackNote}\n\n` : ''}We appreciate your interest in our company and wish you the best in your job search.\n\nSincerely,\n${job.companyName} Hiring Team`;
-      } else if (status === 'interview') {
-        emailSubject = `Interview Request: ${job.title}`;
-        emailContent = `Dear ${candidate.name},\n\nWe're pleased to inform you that we would like to schedule an interview for the ${job.title} position at ${job.companyName}.\n\n${feedbackNote ? `${feedbackNote}\n\n` : ''}Please log in to your account to respond to this interview request.\n\nWe look forward to speaking with you!\n\nSincerely,\n${job.companyName} Hiring Team`;
-      } else if (status === 'hired') {
-        emailSubject = `Congratulations! Job Offer for ${job.title}`;
-        emailContent = `Dear ${candidate.name},\n\nCongratulations! We're delighted to offer you the ${job.title} position at ${job.companyName}.\n\n${feedbackNote ? `${feedbackNote}\n\n` : ''}Please log in to your account for more details about the offer.\n\nWe're excited to have you join our team!\n\nSincerely,\n${job.companyName} Hiring Team`;
+      if (status === 'REJECTED') {
+        emailSubject = `Application Status Update: ${jobTitle}`;
+        emailContent = `Dear ${candidateName},\n\nThank you for your interest in the ${jobTitle} position at ${companyName}.\n\nAfter careful consideration, we have decided to pursue other candidates whose qualifications better match our current needs.\n\n${feedbackNote ? `Additional feedback: ${feedbackNote}\n\n` : ''}We appreciate your interest in our company and wish you the best in your job search.\n\nSincerely,\n${companyName} Hiring Team`;
+      } else if (status === 'INTERVIEW') {
+        emailSubject = `Interview Request: ${jobTitle}`;
+        emailContent = `Dear ${candidateName},\n\nWe're pleased to inform you that we would like to schedule an interview for the ${jobTitle} position at ${companyName}.\n\n${feedbackNote ? `${feedbackNote}\n\n` : ''}Please log in to your account to respond to this interview request.\n\nWe look forward to speaking with you!\n\nSincerely,\n${companyName} Hiring Team`;
+      } else if (status === 'HIRED') {
+        emailSubject = `Congratulations! Job Offer for ${jobTitle}`;
+        emailContent = `Dear ${candidateName},\n\nCongratulations! We're delighted to offer you the ${jobTitle} position at ${companyName}.\n\n${feedbackNote ? `${feedbackNote}\n\n` : ''}Please log in to your account for more details about the offer.\n\nWe're excited to have you join our team!\n\nSincerely,\n${companyName} Hiring Team`;
       }
 
       if (emailSubject && emailContent) {
@@ -1807,7 +1663,7 @@ app.put('/api/applications/:id/status', authenticateJWT, checkRole('employer'), 
 
     res.json({
       message: 'Application status updated successfully',
-      application: result.value
+      application: updatedApplication
     });
   } catch (error) {
     console.error('Update application status error:', error);
@@ -1867,10 +1723,19 @@ app.get('/api/analytics/employer', authenticateJWT, checkRole('EMPLOYER'), async
     }));
 
     res.json({
-      totalJobs: jobs.length,
-      totalApplications: stats.totalApplications,
+      stats: {
+        totalJobs: jobs.length,
+        totalApplications: stats.totalApplications,
+        activeJobs: jobs.filter(job => job.status === 'ACTIVE').length,
+        filledJobs: jobs.filter(job => job.status === 'FILLED').length
+      },
       applicationsByStatus,
-      applicationsByJob
+      applicationsByJob,
+      activeJobs: jobs.filter(job => job.status === 'ACTIVE').map(job => ({
+        id: job.id,
+        title: job.title,
+        applicationCount: job._count.applications
+      }))
     });
   } catch (error) {
     console.error('Employer analytics error:', error);
@@ -1951,7 +1816,7 @@ app.get('/applications/my', authenticateJWT, async (req, res) => {
         where: {
           job: {
             company: {
-              users: {
+              employees: {
                 some: {
                   id: req.user.id
                 }
@@ -1965,7 +1830,15 @@ app.get('/applications/my', authenticateJWT, async (req, res) => {
               company: true
             }
           },
-          user: true
+          user: {
+            include: {
+              candidateProfile: {
+                select: {
+                  resumeUrl: true
+                }
+              }
+            }
+          }
         }
       });
 
@@ -2150,7 +2023,7 @@ app.post('/api/employer/company-profile', authenticateJWT, checkRole('EMPLOYER')
         founded,
         socialLinks,
         culture,
-        users: {
+        employees: {
           connect: { id: employer.id }
         }
       },
@@ -2196,14 +2069,13 @@ app.post('/api/employer/company-profile', authenticateJWT, checkRole('EMPLOYER')
   }
 });
 
-// Start server
+// Server initialization
 const startServer = async () => {
   try {
+    // Connect to database
     await connectToDatabase();
     
-    // Serve static files from uploads directory
-    app.use('/uploads', express.static(UPLOAD_DIR));
-
+    // Start listening
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
@@ -2213,65 +2085,13 @@ const startServer = async () => {
   }
 };
 
+// Start the server
 startServer();
 
 // environment variables - save as .env file
 // JWT_SECRET=your_jwt_secret
 // PORT=5000
-// MONGO_URI=mongodb://jobboard:jobboard@mongodb:27017/jobboard?authSource=admin
 
-// MongoDB Collections Schema Example
-
-/*
-Users Collection:
-- _id (ObjectId, automatically generated)
-- id (string, legacy identifier)
-- name (string)
-- email (string, indexed)
-- password (string)
-- role (string) - 'candidate' or 'employer'
-- phone (string, optional)
-- address (string, optional)
-- bio (string, optional)
-- resumeUrl (string, optional) - URL to resume for candidates
-- logoUrl (string, optional) - URL to company logo for employers
-- createdAt (string) - ISO timestamp
-- updatedAt (string) - ISO timestamp
-
-Jobs Collection:
-- _id (ObjectId, automatically generated)
-- id (string, legacy identifier)
-- employerId (string)
-- companyName (string)
-- companyLogo (string, optional) - URL to company logo
-- title (string)
-- description (string)
-- requirements (string)
-- location (string)
-- jobType (string) - 'Full-time', 'Part-time', 'Contract', etc.
-- salary (string, optional)
-- applicationDeadline (string, optional) - ISO timestamp
-- status (string) - 'active', 'filled', 'expired'
-- featured (boolean)
-- createdAt (string) - ISO timestamp
-- updatedAt (string) - ISO timestamp
-
-Applications Collection:
-- _id (ObjectId, automatically generated)
-- id (string, legacy identifier)
-- jobId (string)
-- userId (string)
-- jobTitle (string)
-- companyName (string)
-- candidateName (string)
-- candidateEmail (string)
-- resumeUrl (string) - URL to candidate's resume
-- coverLetter (string, optional)
-- status (string) - 'pending', 'reviewed', 'interview', 'rejected', 'hired'
-- feedbackNote (string, optional)
-- createdAt (string) - ISO timestamp
-- updatedAt (string) - ISO timestamp
-*/
 // Add this endpoint to server.js to fix the job listing issue
 app.get('/api/employer/jobs/simple', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
@@ -2299,9 +2119,209 @@ app.get('/api/employer/jobs/simple', authenticateJWT, checkRole('EMPLOYER'), asy
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(jobs);
+    // Format salary field for frontend display
+    const formattedJobs = jobs.map(job => {
+      // Convert the type field to a frontend-friendly format
+      const typeDisplayMap = {
+        'FULL_TIME': 'Full-time',
+        'PART_TIME': 'Part-time',
+        'CONTRACT': 'Contract',
+        'TEMPORARY': 'Temporary',
+        'INTERNSHIP': 'Internship'
+      };
+      
+      const jobType = typeDisplayMap[job.type] || job.type;
+      
+      // Add formatted salary values for easy access in the frontend
+      let formattedSalary = {};
+      if (job.salary) {
+        formattedSalary = {
+          salaryMin: job.salary.min,
+          salaryMax: job.salary.max,
+          salaryCurrency: job.salary.currency,
+          salaryDisplay: job.salary.min && job.salary.max 
+            ? `${job.salary.currency} ${job.salary.min} - ${job.salary.max}`
+            : job.salary.min 
+              ? `${job.salary.currency} ${job.salary.min}+` 
+              : job.salary.max 
+                ? `Up to ${job.salary.currency} ${job.salary.max}` 
+                : 'Salary not specified'
+        };
+      }
+      
+      return {
+        ...job,
+        jobType,
+        ...formattedSalary
+      };
+    });
+
+    res.json(formattedJobs);
   } catch (error) {
     console.error('Error fetching jobs:', error);
     res.status(500).json({ message: 'Error fetching jobs', error: error.message });
+  }
+});
+app.put('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      location,
+      type, // Use type directly
+      jobType, // For backward compatibility
+      salary,
+      salaryMin,
+      salaryMax,
+      salaryCurrency,
+      skills,
+      experience,
+      education,
+      applicationDeadline,
+      status,
+      featured
+    } = req.body;
+    
+    // Get the employer's company
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { company: true }
+    });
+    
+    if (!user || !user.company) {
+      return res.status(403).json({ message: 'Access denied - no company associated with user' });
+    }
+    
+    // Now find the job that belongs to the user's company
+    const job = await prisma.job.findFirst({
+      where: {
+        id,
+        company: {
+          employees: {
+            some: { id: req.user.id }
+          }
+        }
+      }
+    });
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found or access denied' });
+    }
+
+    // Valid job types as defined in the Prisma schema
+    const validTypes = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY'];
+    
+    // Determine the job type to use
+    let finalType = job.type; // Default to current type
+    
+    // First try using the type field directly if provided
+    if (type && validTypes.includes(type)) {
+      finalType = type;
+      console.log('Using type directly:', finalType);
+    } 
+    // Fall back to jobType if provided
+    else if (jobType) {
+      // If jobType is already a valid enum value, use it directly
+      if (validTypes.includes(jobType)) {
+        finalType = jobType;
+        console.log('Using jobType directly:', finalType);
+      } 
+      // Otherwise try to transform it
+      else {
+        try {
+          finalType = transformJobType(jobType);
+          console.log('Transformed jobType:', finalType);
+        } catch (error) {
+          console.error('Error transforming job type:', error.message);
+          // Don't return error, just keep the existing type
+        }
+      }
+    }
+
+    // Format salary object according to schema
+    let salaryObject;
+    if (salary && typeof salary === 'object') {
+      // If salary is already an object, use it
+      salaryObject = salary;
+    } else if (salaryMin || salaryMax) {
+      // Format from min/max values
+      salaryObject = formatSalaryObject(salaryMin, salaryMax, salaryCurrency);
+    }
+
+    let updateData = {
+      title,
+      description,
+      location,
+      type: finalType,
+      applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
+      status,
+      featured
+    };
+    
+    // Only include fields that were provided
+    if (salaryObject) {
+      updateData.salary = salaryObject;
+    }
+    
+    if (skills) {
+      updateData.skills = skills;
+    }
+    
+    if (experience !== undefined) {
+      updateData.experience = experience;
+    }
+    
+    if (education !== undefined) {
+      updateData.education = education;
+    }
+    
+    // Remove undefined fields
+    Object.keys(updateData).forEach(key => 
+      updateData[key] === undefined && delete updateData[key]
+    );
+    
+    // Sanitize the update data to remove fields that don't exist in the schema
+    updateData = sanitizeJobData(updateData);
+    
+    const updatedJob = await prisma.job.update({
+      where: { id },
+      data: updateData,
+      include: {
+        company: {
+          select: {
+            name: true,
+            logoUrl: true
+          }
+        }
+      }
+    });
+
+    // Create a consistent response format with jobType exposed for frontend
+    // Convert the DB enum type back to a display format for the frontend
+    let displayJobType = updatedJob.type;
+    if (updatedJob.type) {
+      // Convert enum format back to display format
+      const typeDisplayMap = {
+        'FULL_TIME': 'Full-time',
+        'PART_TIME': 'Part-time',
+        'CONTRACT': 'Contract',
+        'TEMPORARY': 'Temporary',
+        'INTERNSHIP': 'Internship'
+      };
+      displayJobType = typeDisplayMap[updatedJob.type] || updatedJob.type;
+    }
+    
+    const responseJob = {
+      ...updatedJob,
+      jobType: displayJobType, // Add jobType field for frontend consumption
+      companyName: updatedJob.company.name,
+      companyLogo: updatedJob.company.logoUrl
+    };
+
+    res.json(responseJob);
+  } catch (error) {
+    console.error('Update job error:', error);
+    res.status(500).json({ message: 'Error updating job listing', error: error.message });
   }
 });

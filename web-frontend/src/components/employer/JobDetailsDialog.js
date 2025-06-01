@@ -142,23 +142,30 @@ const JobDetailsDialog = ({ open, onClose, job, isEditing, onSave }) => {
   };
 
   const handleSubmit = async () => {
+    // Format data for API - moved outside try block for scope
+    const apiData = {
+      title: formData.title,
+      description: formData.description,
+      location: formData.location,
+      type: formData.type,
+      salary: formData.salary,
+      salaryMin: formData.salaryMin ? parseFloat(formData.salaryMin) : null,
+      salaryMax: formData.salaryMax ? parseFloat(formData.salaryMax) : null,
+      requirements: formData.requirements,
+      benefits: formData.benefits,
+      status: formData.status
+    };
+    
     try {
       setLoading(true);
       setError(null);
       
-      // Format data for API
-      const apiData = {
-        title: formData.title,
-        description: formData.description,
-        location: formData.location,
-        type: formData.type,
-        salary: formData.salary,
-        salaryMin: formData.salaryMin ? parseFloat(formData.salaryMin) : null,
-        salaryMax: formData.salaryMax ? parseFloat(formData.salaryMax) : null,
-        requirements: formData.requirements,
-        benefits: formData.benefits,
-        status: formData.status
-      };
+      // Log formData before processing
+      console.log('Form data before processing:', formData);
+      
+      // Log apiData before sending to API
+      console.log('API data before sending:', apiData);
+      console.log('Job ID being used:', job.id);
       
       // Update job
       const response = await api.put(`/api/employer/jobs/${job.id}`, apiData);
@@ -176,8 +183,15 @@ const JobDetailsDialog = ({ open, onClose, job, isEditing, onSave }) => {
       }, 1500);
       
     } catch (err) {
-      console.error('Error updating job:', err);
-      setError(err.response?.data?.message || 'Failed to update job');
+      console.error('Error updating job:', {
+        error: err,
+        errorMessage: err.message,
+        status: err.response?.status,
+        responseData: err.response?.data,
+        requestURL: `/api/employer/jobs/${job?.id}`,
+        requestData: apiData
+      });
+      setError(err.response?.data?.message || `Failed to update job: ${err.message}`);
     } finally {
       setLoading(false);
     }
