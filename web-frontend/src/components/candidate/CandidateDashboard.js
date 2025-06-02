@@ -31,6 +31,7 @@ import api from '../../utils/axiosConfig';
 import axios from 'axios';
 import ApplicationsList from '../jobseeker/ApplicationsList';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import NotificationsMenu from './NotificationsMenu';
 
 
 // Import icons
@@ -1106,7 +1107,14 @@ const CandidateDashboard = () => {
         </Alert>
       )}
       
-      <Box sx={{ borderBottom: 1, borderColor: 'rgba(255, 215, 0, 0.3)', mb: 3 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderBottom: 1, 
+        borderColor: 'rgba(255, 215, 0, 0.3)', 
+        mb: 3 
+      }}>
         <Tabs 
           value={tabValue} 
           onChange={handleTabChange}
@@ -1116,6 +1124,7 @@ const CandidateDashboard = () => {
             '& .MuiTabs-indicator': {
               backgroundColor: '#FFD700',
             },
+            flexGrow: 1
           }}
         >
           <StyledTab label="Profile" />
@@ -1123,6 +1132,9 @@ const CandidateDashboard = () => {
           <StyledTab label="Saved Jobs" />
           <StyledTab label="Settings" />
         </Tabs>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <NotificationsMenu />
+        </Box>
       </Box>
       
       {tabValue === 0 && renderProfileSection()}
