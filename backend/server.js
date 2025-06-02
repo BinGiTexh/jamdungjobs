@@ -1462,6 +1462,45 @@ app.post('/api/jobs/:id/apply', authenticateJWT, checkRole('JOBSEEKER'), upload.
       }
     });
 
+    // Find employers associated with the company
+    const employers = await prisma.user.findMany({
+      where: {
+        companyId: job.companyId,
+        role: 'EMPLOYER'
+      }
+    });
+
+    // Create notifications for each employer
+    if (employers.length > 0) {
+      const notificationContent = JSON.stringify({
+        jobId: job.id,
+        jobTitle: job.title,
+        applicationId: application.id,
+        candidateName: `${candidate.firstName} ${candidate.lastName}`,
+        candidateEmail: candidate.email,
+        appliedAt: new Date().toISOString()
+      });
+
+      const notificationPromises = employers.map(employer => 
+        prisma.notification.create({
+          data: {
+            type: 'APPLICATION',
+            status: 'UNREAD',
+            content: notificationContent,
+            recipient: {
+              connect: { id: employer.id }
+            },
+            jobApplication: {
+              connect: { id: application.id }
+            }
+          }
+        })
+      );
+
+      await Promise.all(notificationPromises);
+      console.log(`Created ${employers.length} notifications for job application`);
+    }
+
     res.status(201).json({
       message: 'Application submitted successfully',
       application: {
@@ -1475,6 +1514,96 @@ app.post('/api/jobs/:id/apply', authenticateJWT, checkRole('JOBSEEKER'), upload.
   } catch (error) {
     console.error('Create application error:', error);
     res.status(500).json({ message: 'Error submitting application', error: error.message });
+  }
+});
+
+// Notification Routes
+app.get('/api/notifications', authenticateJWT, async (req, res) => {
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: {
+        recipientId: req.user.id
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        jobApplication: {
+          include: {
+            job: true,
+            user: true
+          }
+        }
+      }
+    });
+
+    // Format notifications for frontend
+    const formattedNotifications = notifications.map(notification => {
+      try {
+        const contentObj = JSON.parse(notification.content);
+        return {
+          ...notification,
+          contentObj,
+          isRead: notification.status === 'READ'
+        };
+      } catch (e) {
+        return {
+          ...notification,
+          contentObj: {},
+          isRead: notification.status === 'READ'
+        };
+      }
+    });
+
+    res.json(formattedNotifications);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ message: 'Error fetching notifications', error: error.message });
+  }
+});
+
+app.patch('/api/notifications/:id', authenticateJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify notification belongs to the authenticated user
+    const notification = await prisma.notification.findFirst({
+      where: {
+        id,
+        recipientId: req.user.id
+      }
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    // Update notification status to READ
+    const updatedNotification = await prisma.notification.update({
+      where: { id },
+      data: { status: 'READ' }
+    });
+
+    res.json(updatedNotification);
+  } catch (error) {
+    console.error('Error updating notification:', error);
+    res.status(500).json({ message: 'Error updating notification', error: error.message });
+  }
+});
+
+app.get('/api/notifications/count', authenticateJWT, async (req, res) => {
+  try {
+    const count = await prisma.notification.count({
+      where: {
+        recipientId: req.user.id,
+        status: 'UNREAD'
+      }
+    });
+
+    res.json({ count });
+  } catch (error) {
+    console.error('Error counting notifications:', error);
+    res.status(500).json({ message: 'Error counting notifications', error: error.message });
   }
 });
 

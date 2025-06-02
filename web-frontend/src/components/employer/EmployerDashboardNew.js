@@ -21,7 +21,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Fade
+  Fade,
+  Badge,
+  Menu,
+  MenuItem,
+  ListItemText,
+  ListItemIcon,
+  Divider
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
@@ -30,6 +36,8 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
 import BusinessIcon from '@mui/icons-material/Business';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 import axios from 'axios';
 import api from '../../utils/axiosConfig';
 import CompanyDescriptionBuilder from './CompanyDescriptionBuilder';
@@ -148,6 +156,12 @@ const EmployerDashboard = () => {
   const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
   const [jobEditMode, setJobEditMode] = useState(false);
   
+  // Notification states
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const notificationsOpen = Boolean(anchorEl);
+  
   const [companyProfile, setCompanyProfile] = useState({
     companyName: '',
     description: '',
@@ -161,6 +175,107 @@ const EmployerDashboard = () => {
   });
 
   const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
+
+  // Function to fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const response = await api.get('/api/notifications');
+      setNotifications(response.data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  }, []);
+
+  // Function to fetch unread notification count
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const response = await api.get('/api/notifications/count');
+      setUnreadCount(response.data.count);
+    } catch (error) {
+      console.error('Error fetching unread notification count:', error);
+    }
+  }, []);
+
+  // Function to mark a notification as read
+  const markAsRead = useCallback(async (notificationId) => {
+    try {
+      await api.patch(`/api/notifications/${notificationId}`);
+      // Update local state to reflect the change
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, status: 'READ', isRead: true } 
+            : notification
+        )
+      );
+      fetchUnreadCount(); // Update the badge count
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  }, [fetchUnreadCount]);
+
+  // Function to mark all notifications as read
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const unreadNotifications = notifications.filter(n => n.status === 'UNREAD');
+      
+      // Mark each unread notification as read
+      const promises = unreadNotifications.map(notification => 
+        api.patch(`/api/notifications/${notification.id}`)
+      );
+      
+      await Promise.all(promises);
+      
+      // Update local state
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => ({
+          ...notification,
+          status: 'READ',
+          isRead: true
+        }))
+      );
+      
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  }, [notifications]);
+
+  // Handle notification icon click
+  const handleNotificationsClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  // Handle notification menu close
+  const handleNotificationsClose = () => {
+    setAnchorEl(null);
+  };
+
+  // Handle notification item click
+  const handleNotificationClick = (notification) => {
+    // Mark as read
+    if (notification.status === 'UNREAD') {
+      markAsRead(notification.id);
+    }
+    
+    // Close the menu
+    handleNotificationsClose();
+    
+    // Navigate to the appropriate view based on notification type
+    if (notification.type === 'APPLICATION') {
+      // Extract data from content
+      const contentObj = notification.contentObj || {};
+      
+      // If we have an application ID, navigate to application details
+      if (contentObj.applicationId) {
+        // For now, just switch to the Applications tab
+        setActiveTab(2);
+        
+        // In a more complex implementation, you might want to navigate to a specific application
+        // or open a dialog with the application details
+      }
+    }
+  };
 
   const fetchEmployerData = useCallback(async () => {
     try {
@@ -228,6 +343,22 @@ const EmployerDashboard = () => {
   useEffect(() => {
     fetchEmployerData();
   }, [fetchEmployerData]);
+  
+  // Effect for fetching notifications and setting up polling
+  useEffect(() => {
+    // Initial fetch
+    fetchNotifications();
+    fetchUnreadCount();
+    
+    // Set up polling interval (every 30 seconds)
+    const intervalId = setInterval(() => {
+      fetchNotifications();
+      fetchUnreadCount();
+    }, 30000);
+    
+    // Clean up on component unmount
+    return () => clearInterval(intervalId);
+  }, [fetchNotifications, fetchUnreadCount]);
   
   const handleProfileSetupComplete = (profileData) => {
     setCompanyProfile(profileData);
@@ -421,11 +552,154 @@ const EmployerDashboard = () => {
       <StyledContainer>
         <Fade in={true} timeout={1000} style={{ transitionDelay: '300ms' }}>
           <Box sx={{ position: 'relative', zIndex: 2, p: 3, animation: `${fadeInUp} 0.8s ease-out` }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-              <BusinessIcon sx={{ color: '#FFD700', fontSize: 40 }} />
-              <Typography variant="h4" sx={{ color: '#FFD700', fontWeight: 600 }}>
-                Employer Dashboard
-              </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <BusinessIcon sx={{ color: '#FFD700', fontSize: 40 }} />
+                <Typography variant="h4" sx={{ color: '#FFD700', fontWeight: 600 }}>
+                  Employer Dashboard
+                </Typography>
+              </Box>
+              
+              {/* Notification Icon with Badge */}
+              <IconButton
+                onClick={handleNotificationsClick}
+                size="large"
+                aria-label="show notifications"
+                aria-controls="notifications-menu"
+                aria-haspopup="true"
+                sx={{
+                  color: '#FFD700',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                  }
+                }}
+              >
+                <Badge
+                  badgeContent={unreadCount}
+                  color="error"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      backgroundColor: '#2C5530',
+                      color: '#FFD700',
+                      fontWeight: 'bold',
+                    }
+                  }}
+                >
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+              
+              {/* Notifications Menu */}
+              <Menu
+                id="notifications-menu"
+                anchorEl={anchorEl}
+                open={notificationsOpen}
+                onClose={handleNotificationsClose}
+                PaperProps={{
+                  sx: {
+                    maxHeight: 400,
+                    width: '350px',
+                    backgroundColor: '#1A1A1A',
+                    border: '1px solid rgba(255, 215, 0, 0.3)',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                  }
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <Box sx={{ padding: '10px 16px', borderBottom: '1px solid rgba(255, 215, 0, 0.3)' }}>
+                  <Typography sx={{ color: '#FFD700', fontWeight: 600 }}>
+                    Notifications {unreadCount > 0 && `(${unreadCount} unread)`}
+                  </Typography>
+                </Box>
+                
+                {notifications.length === 0 ? (
+                  <MenuItem sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                    <ListItemText primary="No notifications" />
+                  </MenuItem>
+                ) : (
+                  <>
+                    {notifications.map((notification) => {
+                      const contentObj = notification.contentObj || {};
+                      const isApplication = notification.type === 'APPLICATION';
+                      
+                      return (
+                        <MenuItem
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          sx={{
+                            borderLeft: notification.status === 'UNREAD' ? '3px solid #2C5530' : 'none',
+                            backgroundColor: notification.status === 'UNREAD' ? 'rgba(44, 85, 48, 0.1)' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                            },
+                            padding: '10px 16px'
+                          }}
+                        >
+                          <ListItemText
+                            primary={
+                              <Typography
+                                sx={{
+                                  color: '#FFD700',
+                                  fontWeight: notification.status === 'UNREAD' ? 600 : 400,
+                                  fontSize: '0.9rem'
+                                }}
+                              >
+                                {isApplication ? 'New Job Application' : 'Notification'}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography
+                                sx={{
+                                  color: 'rgba(255, 255, 255, 0.7)',
+                                  fontWeight: notification.status === 'UNREAD' ? 500 : 400,
+                                  fontSize: '0.8rem'
+                                }}
+                              >
+                                {isApplication && contentObj.candidateName && contentObj.jobTitle ? (
+                                  <>
+                                    {contentObj.candidateName} applied for {contentObj.jobTitle}
+                                    {contentObj.appliedAt && (
+                                      <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', mt: 0.5 }}>
+                                        {new Date(contentObj.appliedAt).toLocaleString()}
+                                      </Box>
+                                    )}
+                                  </>
+                                ) : (
+                                  'You have a new notification'
+                                )}
+                              </Typography>
+                            }
+                          />
+                        </MenuItem>
+                      );
+                    })}
+                    
+                    <Divider sx={{ backgroundColor: 'rgba(255, 215, 0, 0.1)' }} />
+                    
+                    <MenuItem
+                      onClick={markAllAsRead}
+                      disabled={unreadCount === 0}
+                      sx={{
+                        color: unreadCount === 0 ? 'rgba(255, 255, 255, 0.3)' : '#FFD700',
+                        justifyContent: 'center',
+                        padding: '10px 16px'
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: 'inherit', minWidth: '30px' }}>
+                        <DoneAllIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Typography sx={{ fontSize: '0.9rem' }}>
+                            Mark all as read
+                          </Typography>
+                        }
+                      />
+                    </MenuItem>
+                  </>
+                )}
+              </Menu>
             </Box>
             <Box sx={{ position: 'relative', display: 'inline-block', mb: 3 }}>
               <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>

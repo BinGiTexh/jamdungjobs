@@ -13,6 +13,7 @@ import JobSearch from './components/JobSearch';
 import HomePage from './components/home/HomePage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import JobApplyPage from './pages/JobApplyPage';
+import JobDetailsPage from './pages/JobDetailsPage';
 import EmployerApplicationsPage from './pages/EmployerApplicationsPage';
 import EmployerPostJobPage from './pages/EmployerPostJobPageNew';
 import ProfilePage from './components/profile/ProfilePage';
@@ -405,6 +406,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/jobs" element={<JobSearchPage />} />
+              <Route path="/jobs/:jobId" element={<JobDetailsPage />} />
               <Route path="/jobs/:jobId/apply" element={<JobApplyPage />} />
               <Route path="/about" element={<AboutUs />} />
 
