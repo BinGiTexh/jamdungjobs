@@ -30,6 +30,7 @@ model User {
   applications      JobApplication[]
   savedJobs         SavedJob[]
   candidateProfile  CandidateProfile?
+  receivedNotifications Notification[] @relation("UserNotifications")
   
   @@map("users")
 }
@@ -79,6 +80,7 @@ model Job {
   type        JobType
   status      JobStatus @default(ACTIVE)
   salary      Json?     // For salary range: { min: number, max: number, currency: string }
+  featured    Boolean   @default(false)  // Add this field
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
@@ -97,18 +99,24 @@ model Job {
 }
 
 model JobApplication {
-  id          String    @id @default(uuid())
-  status      ApplicationStatus @default(PENDING)
-  resumeUrl   String?
-  coverLetter String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(uuid())
+  status        ApplicationStatus @default(PENDING)
+  resumeUrl     String?
+  coverLetter   String?
+  phoneNumber   String?
+  availability  String?
+  salary        String?
+  additionalInfo String?
+  appliedVia    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   
   // Relations
   job         Job       @relation(fields: [jobId], references: [id])
   jobId       String
   user        User      @relation(fields: [userId], references: [id])
   userId      String
+  notifications Notification[]
   
   @@map("job_applications")
 }
@@ -154,4 +162,32 @@ enum ApplicationStatus {
   SHORTLISTED
   REJECTED
   ACCEPTED
+}
+
+enum NotificationType {
+  APPLICATION
+  MESSAGE
+  SYSTEM
+}
+
+enum NotificationStatus {
+  READ
+  UNREAD
+}
+
+model Notification {
+  id                String            @id @default(uuid())
+  type              NotificationType
+  status            NotificationStatus @default(UNREAD)
+  content           String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  recipient         User              @relation("UserNotifications", fields: [recipientId], references: [id])
+  recipientId       String
+  jobApplication    JobApplication?   @relation(fields: [jobApplicationId], references: [id])
+  jobApplicationId  String?
+  
+  @@map("notifications")
 }

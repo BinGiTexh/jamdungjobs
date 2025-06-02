@@ -1139,6 +1139,140 @@ app.delete('/api/employer/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), asy
 // Job Routes
 
 // Save/unsave job
+// Handle GET requests to /api/jobs/:jobId/:action with a proper error response
+app.get('/api/jobs/:jobId/:action', (req, res) => {
+  const { action } = req.params;
+  if (['save', 'unsave'].includes(action)) {
+    return res.status(405).json({ 
+      message: `Method Not Allowed. Use POST for ${action} operations.` 
+    });
+  }
+  return res.status(404).json({ message: 'Not found' });
+});
+
+// Application Routes
+app.post('/api/jobs/:id/apply', authenticateJWT, checkRole('JOBSEEKER'), upload.single('resume'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { coverLetter } = req.body;
+
+    // Find the job
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        company: true
+      }
+    });
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    // Check if already applied
+    const existingApplication = await prisma.jobApplication.findFirst({
+      where: {
+        jobId: job.id,
+        userId: req.user.id
+      }
+    });
+
+    if (existingApplication) {
+      return res.status(400).json({ message: 'Already applied to this job' });
+    }
+
+    // Get candidate details
+    const candidate = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!candidate) {
+      return res.status(404).json({ message: 'Candidate not found' });
+    }
+
+    // Process resume upload
+    let resumeUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+    if (!resumeUrl) {
+      return res.status(400).json({ message: 'Resume is required' });
+    }
+
+    const application = await prisma.jobApplication.create({
+      data: {
+        job: {
+          connect: { id: job.id }
+        },
+        user: {
+          connect: { id: candidate.id }
+        },
+        status: 'PENDING',
+        resumeUrl,
+        coverLetter: coverLetter || null
+      },
+      include: {
+        job: {
+          include: {
+            company: true
+          }
+        },
+        user: true
+      }
+    });
+
+    // Find employers associated with the company
+    const employers = await prisma.user.findMany({
+      where: {
+        companyId: job.companyId,
+        role: 'EMPLOYER'
+      }
+    });
+
+    // Create notifications for each employer
+    if (employers.length > 0) {
+      const notificationContent = JSON.stringify({
+        jobId: job.id,
+        jobTitle: job.title,
+        applicationId: application.id,
+        candidateName: `${candidate.firstName} ${candidate.lastName}`,
+        candidateEmail: candidate.email,
+        appliedAt: new Date().toISOString()
+      });
+
+      const notificationPromises = employers.map(employer => 
+        prisma.notification.create({
+          data: {
+            type: 'APPLICATION',
+            status: 'UNREAD',
+            content: notificationContent,
+            recipient: {
+              connect: { id: employer.id }
+            },
+            jobApplication: {
+              connect: { id: application.id }
+            }
+          }
+        })
+      );
+
+      await Promise.all(notificationPromises);
+      console.log(`Created ${employers.length} notifications for job application`);
+    }
+
+    res.status(201).json({
+      message: 'Application submitted successfully',
+      application: {
+        ...application,
+        jobTitle: application.job.title,
+        companyName: application.job.company.name,
+        candidateName: `${application.user.firstName} ${application.user.lastName}`,
+        candidateEmail: application.user.email
+      }
+    });
+  } catch (error) {
+    console.error('Create application error:', error);
+    res.status(500).json({ message: 'Error submitting application', error: error.message });
+  }
+});
+
 app.post('/api/jobs/:jobId/:action', authenticateJWT, checkRole('JOBSEEKER'), async (req, res) => {
   try {
     const { jobId, action } = req.params;
@@ -1391,129 +1525,6 @@ app.delete('/api/jobs/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, 
   } catch (error) {
     console.error('Delete job error:', error);
     res.status(500).json({ message: 'Error deleting job listing', error: error.message });
-  }
-});
-
-// Application Routes
-app.post('/api/jobs/:id/apply', authenticateJWT, checkRole('JOBSEEKER'), upload.single('resume'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { coverLetter } = req.body;
-
-    // Find the job
-    const job = await prisma.job.findUnique({
-      where: { id },
-      include: {
-        company: true
-      }
-    });
-
-    if (!job) {
-      return res.status(404).json({ message: 'Job not found' });
-    }
-
-    // Check if already applied
-    const existingApplication = await prisma.jobApplication.findFirst({
-      where: {
-        jobId: job.id,
-        userId: req.user.id
-      }
-    });
-
-    if (existingApplication) {
-      return res.status(400).json({ message: 'Already applied to this job' });
-    }
-
-    // Get candidate details
-    const candidate = await prisma.user.findUnique({
-      where: { id: req.user.id }
-    });
-
-    if (!candidate) {
-      return res.status(404).json({ message: 'Candidate not found' });
-    }
-
-    // Process resume upload
-    let resumeUrl = req.file ? `/uploads/${req.file.filename}` : null;
-
-    if (!resumeUrl) {
-      return res.status(400).json({ message: 'Resume is required' });
-    }
-
-    const application = await prisma.jobApplication.create({
-      data: {
-        job: {
-          connect: { id: job.id }
-        },
-        user: {
-          connect: { id: candidate.id }
-        },
-        status: 'PENDING',
-        resumeUrl,
-        coverLetter: coverLetter || null
-      },
-      include: {
-        job: {
-          include: {
-            company: true
-          }
-        },
-        user: true
-      }
-    });
-
-    // Find employers associated with the company
-    const employers = await prisma.user.findMany({
-      where: {
-        companyId: job.companyId,
-        role: 'EMPLOYER'
-      }
-    });
-
-    // Create notifications for each employer
-    if (employers.length > 0) {
-      const notificationContent = JSON.stringify({
-        jobId: job.id,
-        jobTitle: job.title,
-        applicationId: application.id,
-        candidateName: `${candidate.firstName} ${candidate.lastName}`,
-        candidateEmail: candidate.email,
-        appliedAt: new Date().toISOString()
-      });
-
-      const notificationPromises = employers.map(employer => 
-        prisma.notification.create({
-          data: {
-            type: 'APPLICATION',
-            status: 'UNREAD',
-            content: notificationContent,
-            recipient: {
-              connect: { id: employer.id }
-            },
-            jobApplication: {
-              connect: { id: application.id }
-            }
-          }
-        })
-      );
-
-      await Promise.all(notificationPromises);
-      console.log(`Created ${employers.length} notifications for job application`);
-    }
-
-    res.status(201).json({
-      message: 'Application submitted successfully',
-      application: {
-        ...application,
-        jobTitle: application.job.title,
-        companyName: application.job.company.name,
-        candidateName: `${application.user.firstName} ${application.user.lastName}`,
-        candidateEmail: application.user.email
-      }
-    });
-  } catch (error) {
-    console.error('Create application error:', error);
-    res.status(500).json({ message: 'Error submitting application', error: error.message });
   }
 });
 

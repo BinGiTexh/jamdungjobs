@@ -47,24 +47,66 @@ const ApplicationsList = () => {
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(buildApiUrl('/applications/my'));
-      logDev('debug', 'Applications fetched successfully', sanitizeForLogging({ 
-        count: response.data?.length || 0,
-        statuses: response.data?.map(app => app.status) || []
-      }));
-      setApplications(response.data);
+      // Get the token directly from localStorage
+      const token = localStorage.getItem('jamdung_auth_token');
+      
+      // Log the token presence (not the actual token)
+      logDev('debug', 'Fetching applications - pre request', { 
+        hasToken: !!token,
+        tokenLength: token ? token.length : 0,
+        endpoint: '/applications/my' 
+      });
+      
+      // If no token is available, throw an error to be handled
+      if (!token) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+      
+      // Create a specific instance with the token for this request
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+      
+      // Make the request with explicit headers
+      const response = await axios.get(buildApiUrl('/applications/my'), { headers });
+      
+      // Add more detailed response logging
+      logDev('debug', 'Applications fetched successfully', { 
+        count: response.data?.applications?.length || 0,
+        hasApplications: Array.isArray(response.data?.applications),
+        responseStatus: response.status,
+        contentType: response.headers?.['content-type']
+      });
+      
+      // Log the full response structure (sanitized)
+      logDev('debug', 'Applications response structure', {
+        dataKeys: Object.keys(response.data || {}),
+        isApplicationsArray: Array.isArray(response.data?.applications),
+        firstApplication: response.data?.applications?.[0] ? 
+          { id: response.data.applications[0].id, status: response.data.applications[0].status } : null
+      });
+      
+      setApplications(response.data.applications || []);
       // Clear any previous errors
       setError(null);
     } catch (err) {
-      logError('Error fetching applications', err, sanitizeForLogging({
+      // Add more detailed error logging
+      logError('Error fetching applications', err, {
         module: 'ApplicationsList',
         function: 'fetchApplications',
         endpoint: '/applications/my',
-        errorStatus: err.response?.status
-      }));
+        errorStatus: err.response?.status,
+        errorData: sanitizeForLogging(err.response?.data),
+        errorMessage: err.message,
+        hasResponse: !!err.response
+      });
       
-      // Only set error if it's not a 404 (no applications found)
-      if (err.response && err.response.status !== 404) {
+      // Handle different error cases
+      if (err.message === 'Authentication token not found. Please log in again.') {
+        setError('Please log in to view your applications.');
+      } else if (err.response && err.response.status === 401) {
+        setError('Your session has expired. Please log in again.');
+      } else if (err.response && err.response.status !== 404) {
         setError('Failed to load your applications. Please try again later.');
       }
     } finally {
