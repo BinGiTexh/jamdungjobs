@@ -1602,6 +1602,45 @@ app.patch('/api/notifications/:id', authenticateJWT, async (req, res) => {
   }
 });
 
+// Mark all notifications as read
+app.patch('/api/notifications/read-all', authenticateJWT, async (req, res) => {
+  try {
+    // Find all unread notifications for this user
+    const notifications = await prisma.notification.findMany({
+      where: {
+        recipientId: req.user.id,
+        status: 'UNREAD'
+      }
+    });
+    
+    if (notifications.length === 0) {
+      return res.json({ message: 'No unread notifications found' });
+    }
+    
+    // Update all unread notifications to READ
+    const result = await prisma.notification.updateMany({
+      where: {
+        recipientId: req.user.id,
+        status: 'UNREAD'
+      },
+      data: {
+        status: 'READ'
+      }
+    });
+    
+    res.json({ 
+      message: 'All notifications marked as read',
+      count: result.count
+    });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    res.status(500).json({ 
+      message: 'Error marking all notifications as read', 
+      error: error.message 
+    });
+  }
+});
+
 app.get('/api/notifications/count', authenticateJWT, async (req, res) => {
   try {
     const count = await prisma.notification.count({
