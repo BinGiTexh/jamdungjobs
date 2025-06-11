@@ -28,17 +28,20 @@ const NotificationsMenu = () => {
   const fetchNotifications = useCallback(async () => {
     try {
       const response = await api.get('/api/notifications');
-      setNotifications(response.data);
+      const notificationsData = response.data.data || [];
+      setNotifications(notificationsData);
       
       logDev('debug', 'Fetched notifications', { 
-        count: response.data.length,
-        unreadCount: response.data.filter(n => n.status === 'UNREAD').length
+        count: notificationsData.length,
+        unreadCount: notificationsData.filter(n => n.status === 'UNREAD').length,
+        pagination: response.data.pagination
       });
     } catch (error) {
       logError('Error fetching notifications', error, {
         module: 'NotificationsMenu',
         function: 'fetchNotifications'
       });
+      setNotifications([]);
     }
   }, []);
 
@@ -62,7 +65,7 @@ const NotificationsMenu = () => {
   // Function to mark a notification as read
   const markAsRead = useCallback(async (notificationId) => {
     try {
-      await api.patch(`/api/notifications/${notificationId}`);
+      await api.patch(`/api/notifications/${notificationId}/mark-read`);
       
       // Update local state to reflect the change
       setNotifications(prevNotifications => 
@@ -92,7 +95,7 @@ const NotificationsMenu = () => {
       if (unreadNotifications.length === 0) return;
       
       // Use the new endpoint to mark all notifications as read
-      await api.patch('/api/notifications/read-all');
+      await api.patch('/api/notifications/mark-all-read');
       
       // Update local state
       setNotifications(prevNotifications => 

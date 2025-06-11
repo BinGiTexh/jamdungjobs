@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  scraper-test:
+    build: .
+    container_name: jamdung-scraper-test
+    environment:
+      - NODE_ENV=development
+      - ENABLE_JAMAICA_ENHANCEMENTS=true
+      - LOG_LEVEL=debug
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    command: node test-integration.js
+    networks:
+      - scraper-test-network
+
+networks:
+  scraper-test-network:
+    driver: bridge

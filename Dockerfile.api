@@ -2,19 +2,40 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma
-RUN apt-get update && apt-get install -y openssl
+# Install essential dependencies as root and create directories
+RUN apt-get update && apt-get install -y \
+    openssl \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/uploads/profile-photos /app/uploads/resumes
+
+# Configure npm for minimal install
+RUN echo "optional=false" >> .npmrc \
+    && echo "fund=false" >> .npmrc \
+    && echo "audit=false" >> .npmrc \
+    && echo "loglevel=error" >> .npmrc
 
 # Copy package files
 COPY backend/package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies efficiently
+RUN npm ci --production --no-optional \
+    && npm cache clean --force \
+    && chown -R node:node /app
 
-# Copy application code
-COPY backend/ .
+# Switch to non-root user
+USER node
 
-# Generate Prisma client
-RUN npx prisma generate
+# Copy application code with correct ownership
+COPY --chown=node:node backend/ .
 
-CMD ["node", "server.js"]
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Expose port
+EXPOSE 5000
+
+# Start development server
+CMD ["npm", "run", "dev"]

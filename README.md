@@ -1,3 +1,86 @@
+# JamDung Jobs
+
+## Development Setup
+
+### Quick Start
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/jamdungjobs.git
+   cd jamdungjobs
+   ```
+
+2. Run the development setup script:
+   ```bash
+   chmod +x dev-setup.sh
+   ./dev-setup.sh
+   ```
+
+The setup script will:
+- Check for required dependencies
+- Set up development environment files
+- Start the development containers
+- Initialize the database
+- Provide access URLs and helpful commands
+
+### Development URLs
+
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:3000
+- API Health: http://localhost:3000/health
+- Database: postgresql://localhost:5432
+
+### Useful Commands
+
+- View logs:
+  ```bash
+  docker compose -f docker-compose.dev.yml logs -f
+  ```
+
+- Restart a service:
+  ```bash
+  docker compose -f docker-compose.dev.yml restart [service]
+  ```
+
+- Stop the environment:
+  ```bash
+  docker compose -f docker-compose.dev.yml down
+  ```
+
+- Clean restart:
+  ```bash
+  ./dev-setup.sh --clean
+  ```
+
+### Development Features
+
+- Hot reloading for both frontend and backend
+- Source maps for debugging
+- Health monitoring
+- Database migrations
+- Development optimizations
+
+### Troubleshooting
+
+If you encounter any issues:
+
+1. Check the logs:
+   ```bash
+   docker compose -f docker-compose.dev.yml logs
+   ```
+
+2. Verify service health:
+   ```bash
+   curl http://localhost:3000/health
+   ```
+
+3. Clean restart:
+   ```bash
+   ./dev-setup.sh --clean
+   ```
+
+For more information, check the logs in the `logs/` directory.
+
 # JamdungJobs 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

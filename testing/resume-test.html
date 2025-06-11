@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        #pdfViewer {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ccc;
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Resume API Test</h1>
+    
+    <div class="container">
+        <h2>Authentication</h2>
+        <p>Enter your JWT token below:</p>
+        <textarea id="tokenInput" rows="5" style="width: 100%;" placeholder="Paste your JWT token here"></textarea>
+        <p>
+            <button onclick="saveToken()">Save Token</button>
+            <button onclick="clearToken()">Clear Token</button>
+        </p>
+        <div id="tokenStatus"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Test Resume API</h2>
+        <button onclick="testResumeAPI()">Test Resume API</button>
+        <button onclick="testProfileAPI()">Test Profile API</button>
+        <div id="apiResult"></div>
+    </div>
+    
+    <div id="pdfContainer" class="container hidden">
+        <h2>PDF Viewer</h2>
+        <object id="pdfViewer" type="application/pdf" data="">
+            Your browser does not support PDF viewing. <a id="pdfDownload" href="#" download="resume.pdf">Download the PDF</a> instead.
+        </object>
+    </div>
+    
+    <script>
+        // Check if token exists in localStorage
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('jdj_token');
+            const tokenStatus = document.getElementById('tokenStatus');
+            
+            if (token) {
+                tokenStatus.innerHTML = `<p style="color: green;">Token found in localStorage. First 10 chars: ${token.substring(0, 10)}...</p>`;
+                document.getElementById('tokenInput').value = token;
+            } else {
+                tokenStatus.innerHTML = '<p style="color: red;">No token found in localStorage.</p>';
+            }
+        });
+        
+        // Save token to localStorage
+        function saveToken() {
+            const token = document.getElementById('tokenInput').value.trim();
+            const tokenStatus = document.getElementById('tokenStatus');
+            
+            if (token) {
+                localStorage.setItem('jdj_token', token);
+                localStorage.setItem('token', token); // Also save as 'token' for compatibility
+                tokenStatus.innerHTML = `<p style="color: green;">Token saved to localStorage. First 10 chars: ${token.substring(0, 10)}...</p>`;
+            } else {
+                tokenStatus.innerHTML = '<p style="color: red;">Please enter a token.</p>';
+            }
+        }
+        
+        // Clear token from localStorage
+        function clearToken() {
+            localStorage.removeItem('jdj_token');
+            localStorage.removeItem('token');
+            document.getElementById('tokenInput').value = '';
+            document.getElementById('tokenStatus').innerHTML = '<p style="color: red;">Token cleared from localStorage.</p>';
+        }
+        
+        // Test the resume API
+        function testResumeAPI() {
+            const token = localStorage.getItem('jdj_token') || localStorage.getItem('token');
+            const apiResult = document.getElementById('apiResult');
+            
+            if (!token) {
+                apiResult.innerHTML = '<p style="color: red;">No token found. Please save a token first.</p>';
+                return;
+            }
+            
+            apiResult.innerHTML = '<p>Testing resume API...</p>';
+            
+            fetch('http://localhost:5000/api/candidate/resume', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Resume API response:', data);
+                
+                let resultHTML = '<h3>API Response:</h3>';
+                resultHTML += `<p>Resume filename: ${data.resumeFileName || 'Not found'}</p>`;
+                resultHTML += `<p>Resume URL exists: ${!!data.resumeUrl}</p>`;
+                
+                if (data.resumeUrl) {
+                    // Display the PDF
+                    document.getElementById('pdfViewer').setAttribute('data', data.resumeUrl);
+                    document.getElementById('pdfDownload').setAttribute('href', data.resumeUrl);
+                    document.getElementById('pdfContainer').classList.remove('hidden');
+                    
+                    resultHTML += `<p>Resume URL starts with: ${data.resumeUrl.substring(0, 30)}...</p>`;
+                }
+                
+                apiResult.innerHTML = resultHTML;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                apiResult.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            });
+        }
+        
+        // Test the profile API
+        function testProfileAPI() {
+            const token = localStorage.getItem('jdj_token') || localStorage.getItem('token');
+            const apiResult = document.getElementById('apiResult');
+            
+            if (!token) {
+                apiResult.innerHTML = '<p style="color: red;">No token found. Please save a token first.</p>';
+                return;
+            }
+            
+            apiResult.innerHTML = '<p>Testing profile API...</p>';
+            
+            fetch('http://localhost:5000/api/candidate/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Profile API response:', data);
+                
+                let resultHTML = '<h3>Profile API Response:</h3>';
+                resultHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                apiResult.innerHTML = resultHTML;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                apiResult.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            });
+        }
+    </script>
+</body>
+</html>

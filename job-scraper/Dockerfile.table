@@ -1,0 +1,105 @@
+FROM node:20-slim
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy app source
+COPY . .
+
+# Create the table display script
+RUN echo '#!/usr/bin/env node\n\
+\n\
+/**\n\
+ * Display enhanced jobs in a tabular format inside Docker container\n\
+ */\n\
+\n\
+import fs from "fs";\n\
+import path from "path";\n\
+import { fileURLToPath } from "url";\n\
+\n\
+// Get the directory name\n\
+const __filename = fileURLToPath(import.meta.url);\n\
+const __dirname = path.dirname(__filename);\n\
+\n\
+// Path to the enhanced jobs file\n\
+const enhancedJobsPath = path.join(__dirname, "data", "enhanced-jobs.json");\n\
+\n\
+// Function to create a table row with fixed column widths\n\
+function formatTableRow(columns, widths) {\n\
+  return columns.map((col, i) => {\n\
+    const value = col === null || col === undefined ? "" : String(col);\n\
+    return value.padEnd(widths[i]);\n\
+  }).join(" | ");\n\
+}\n\
+\n\
+// Function to create a separator line\n\
+function createSeparator(widths) {\n\
+  return widths.map(w => "-".repeat(w)).join("-+-");\n\
+}\n\
+\n\
+// Main function to display jobs in a table\n\
+function displayJobsTable() {\n\
+  try {\n\
+    // Check if the enhanced jobs file exists\n\
+    if (!fs.existsSync(enhancedJobsPath)) {\n\
+      console.error("\\x1b[31mEnhanced jobs file not found. Please run the demo first.\\x1b[0m");\n\
+      return;\n\
+    }\n\
+\n\
+    // Read the enhanced jobs file\n\
+    const jobsData = JSON.parse(fs.readFileSync(enhancedJobsPath, "utf8"));\n\
+    \n\
+    if (!Array.isArray(jobsData) || jobsData.length === 0) {\n\
+      console.error("\\x1b[31mNo jobs found in the enhanced jobs file.\\x1b[0m");\n\
+      return;\n\
+    }\n\
+\n\
+    // Define column headers and widths\n\
+    const headers = ["Title", "Company", "Location", "Industry", "Salary Range (JMD)", "Skills"];\n\
+    const widths = [30, 25, 30, 25, 25, 50];\n\
+    \n\
+    // Print table header\n\
+    console.log("\\x1b[32m=== JamDung Jobs - Enhanced Jobs Table ===\\x1b[0m");\n\
+    console.log();\n\
+    console.log(formatTableRow(headers, widths));\n\
+    console.log(createSeparator(widths));\n\
+    \n\
+    // Print each job row\n\
+    jobsData.forEach(job => {\n\
+      const salaryRange = `${job.salary.min.toLocaleString()} - ${job.salary.max.toLocaleString()} ${job.salary.currency}`;\n\
+      const skills = job.skills.slice(0, 3).join(", ") + (job.skills.length > 3 ? "..." : "");\n\
+      \n\
+      const row = [\n\
+        job.title,\n\
+        job.companyName,\n\
+        job.location,\n\
+        job.industry,\n\
+        salaryRange,\n\
+        skills\n\
+      ];\n\
+      \n\
+      console.log(formatTableRow(row, widths));\n\
+    });\n\
+    \n\
+    console.log();\n\
+    console.log(`\\x1b[34mTotal jobs: ${jobsData.length}\\x1b[0m`);\n\
+    \n\
+  } catch (error) {\n\
+    console.error("\\x1b[31mError displaying jobs table:", error.message, "\\x1b[0m");\n\
+  }\n\
+}\n\
+\n\
+// Run the function\n\
+displayJobsTable();\n\
+' > /usr/src/app/display-table.js
+
+RUN chmod +x /usr/src/app/display-table.js
+
+# Command to run when container starts
+CMD ["node", "/usr/src/app/display-table.js"]

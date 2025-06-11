@@ -1,0 +1,306 @@
+// This is your Prisma schema file
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  role              Role              @default(JOBSEEKER)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Profile information
+  title             String?
+  bio               String?
+  location          String?
+  phoneNumber       String?
+  
+  // Relations
+  company           Company?          @relation("CompanyEmployees", fields: [companyId], references: [id])
+  companyId         String?
+  applications      JobApplication[]
+  savedJobs         SavedJob[]
+  candidateProfile  CandidateProfile?
+  receivedNotifications Notification[] @relation("UserNotifications")
+  
+  // New relations for notification system
+  sentMessages                Message[]
+  threadParticipations        MessageThreadParticipant[]
+  profileViewsInitiated       ProfileView[]          @relation("ViewerRelation")
+  profileViewsReceived        ProfileView[]          @relation("ViewedUserRelation")
+  jobRecommendations          JobRecommendation[]
+  scheduledReminders          ScheduledReminder[]
+  
+  @@map("users")
+}
+
+model CandidateProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  title           String?
+  bio             String?
+  location        String?
+  skills          Json?     // Array of skills
+  education       Json?     // Array of education objects
+  photoUrl        String?   // Base64 encoded photo
+  resumeUrl       String?   // Base64 encoded resume
+  resumeFileName  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  user            User      @relation(fields: [userId], references: [id])
+  
+  @@map("candidate_profiles")
+}
+
+model Company {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  location    String?
+  website     String?
+  logoUrl     String?   // URL to logo image
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  employees   User[]    @relation("CompanyEmployees")
+  jobs        Job[]
+  
+  @@map("companies")
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  location    String
+  type        JobType
+  status      JobStatus @default(ACTIVE)
+  salary      Json?     // For salary range: { min: number, max: number, currency: string }
+  featured    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  company     Company   @relation(fields: [companyId], references: [id])
+  companyId   String
+  applications JobApplication[]
+  savedBy     SavedJob[]
+  
+  // Skills and requirements
+  skills      String[]
+  experience  String?
+  education   String?
+  
+  // New relations for notification system
+  recommendations JobRecommendation[]
+  
+  @@map("jobs")
+}
+
+model JobApplication {
+  id            String    @id @default(uuid())
+  status        ApplicationStatus @default(PENDING)
+  resumeUrl     String?
+  coverLetter   String?
+  phoneNumber   String?
+  availability  String?
+  salary        String?
+  additionalInfo String?
+  appliedVia    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  job         Job       @relation(fields: [jobId], references: [id])
+  jobId       String
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  notifications Notification[]
+  
+  @@map("job_applications")
+}
+
+model SavedJob {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  
+  // Relations
+  job       Job       @relation(fields: [jobId], references: [id])
+  jobId     String
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  
+  @@unique([jobId, userId])
+  @@map("saved_jobs")
+}
+
+// Updated notification system models
+
+enum Role {
+  ADMIN
+  EMPLOYER
+  JOBSEEKER
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  TEMPORARY
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  EXPIRED
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  SHORTLISTED
+  REJECTED
+  ACCEPTED
+}
+
+// Updated NotificationType enum with all the required types
+enum NotificationType {
+  APPLICATION_UPDATE    // For application status changes
+  MESSAGE               // For messages from employers/recruiters
+  JOB_RECOMMENDATION    // For job recommendations
+  SAVED_JOB_UPDATE      // For saved job updates (expiration/removal)
+  PROFILE_VIEW          // For when employers view profiles
+  REMINDER              // For reminders (interviews, profile completion)
+  SYSTEM                // For system notifications
+}
+
+enum NotificationStatus {
+  READ
+  UNREAD
+}
+
+// Updated Notification model with new fields
+model Notification {
+  id                String            @id @default(uuid())
+  type              NotificationType
+  status            NotificationStatus @default(UNREAD)
+  title             String            @default("Notification")
+  message           String
+  relatedEntityIds  Json?
+  metadata          Json?
+  dismissed         Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  recipient         User              @relation("UserNotifications", fields: [recipientId], references: [id])
+  recipientId       String
+  jobApplication    JobApplication?   @relation(fields: [jobApplicationId], references: [id])
+  jobApplicationId  String?
+  
+  @@map("notifications")
+}
+
+// Message thread models for employer/job seeker messaging
+model MessageThread {
+  id            String                     @id @default(uuid())
+  title         String?
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  
+  // Relations
+  participants  MessageThreadParticipant[]
+  messages      Message[]
+  
+  @@map("message_threads")
+}
+
+model MessageThreadParticipant {
+  // Note: Using UUID for thread_id to match message_threads table
+  threadId      String
+  userId        String
+  
+  // Relations
+  thread        MessageThread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@id([threadId, userId])
+  @@map("message_thread_participants")
+}
+
+model Message {
+  id            String         @id @default(uuid())
+  threadId      String
+  senderId      String
+  content       String
+  createdAt     DateTime       @default(now())
+  readAt        DateTime?
+  
+  // Relations
+  thread        MessageThread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender        User           @relation(fields: [senderId], references: [id])
+  
+  @@map("messages")
+}
+
+// Profile view tracking
+model ProfileView {
+  id            String      @id @default(uuid())
+  viewerId      String
+  viewedUserId  String
+  viewedAt      DateTime    @default(now())
+  
+  // Relations
+  viewer        User        @relation("ViewerRelation", fields: [viewerId], references: [id])
+  viewedUser    User        @relation("ViewedUserRelation", fields: [viewedUserId], references: [id])
+  
+  @@map("profile_views")
+}
+
+// Job recommendations
+model JobRecommendation {
+  id            String      @id @default(uuid())
+  userId        String
+  jobId         String
+  score         Float
+  reason        String?
+  viewed        Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  
+  // Relations
+  user          User        @relation(fields: [userId], references: [id])
+  job           Job         @relation(fields: [jobId], references: [id])
+  
+  @@map("job_recommendations")
+}
+
+// Scheduled reminders for interviews and profile completion
+model ScheduledReminder {
+  id            String      @id @default(uuid())
+  userId        String
+  type          String
+  scheduledFor  DateTime
+  content       Json
+  processed     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  
+  // Relations
+  user          User        @relation(fields: [userId], references: [id])
+  
+  @@map("scheduled_reminders")
+}
+

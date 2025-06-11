@@ -1,0 +1,60 @@
+name: Infrastructure Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/infrastructure.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+        env:
+          TF_WORKSPACE: production
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -var="domain_name=${{ secrets.DOMAIN_NAME }}" -var="admin_email=${{ secrets.ADMIN_EMAIL }}"
+        env:
+          TF_WORKSPACE: production
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        working-directory: terraform
+        run: terraform apply -auto-approve -var="domain_name=${{ secrets.DOMAIN_NAME }}" -var="admin_email=${{ secrets.ADMIN_EMAIL }}"
+        env:
+          TF_WORKSPACE: production
+
+      - name: Output Infrastructure Values
+        if: success()
+        working-directory: terraform
+        run: |
+          echo "CLOUDFRONT_DISTRIBUTION_ID=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_ENV
+          echo "S3_WEBSITE_BUCKET=$(terraform output -raw s3_website_bucket)" >> $GITHUB_ENV
+          echo "API_URL=$(terraform output -raw api_url)" >> $GITHUB_ENV
+

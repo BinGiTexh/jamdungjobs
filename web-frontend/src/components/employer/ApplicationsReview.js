@@ -54,7 +54,6 @@ const ApplicationsReview = ({ jobId }) => {
 
   const fetchApplications = async () => {
     setLoading(true);
-    // Define endpoint outside try block so it's accessible in catch block
     const endpoint = jobId 
       ? buildApiUrl(`/jobs/${jobId}/applications`) 
       : buildApiUrl('/applications/employer');
@@ -98,7 +97,6 @@ const ApplicationsReview = ({ jobId }) => {
         responseType: 'blob'
       });
       
-      // Create a blob link to download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -106,9 +104,10 @@ const ApplicationsReview = ({ jobId }) => {
       document.body.appendChild(link);
       link.click();
       
-      // Clean up
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
+      
+      logDev('debug', 'Resume downloaded successfully', { applicationId });
     } catch (err) {
       logError('Error downloading resume', err, {
         module: 'ApplicationsReview',
@@ -127,7 +126,6 @@ const ApplicationsReview = ({ jobId }) => {
         status: newStatus
       });
       
-      // Update local state
       setApplications(prevApplications => 
         prevApplications.map(app => 
           app.id === applicationId ? { ...app, status: newStatus } : app
@@ -140,7 +138,7 @@ const ApplicationsReview = ({ jobId }) => {
       logDev('debug', 'Application status updated', {
         applicationId,
         oldStatus: selectedApplication?.status,
-        newStatus: newStatus
+        newStatus
       });
     } catch (err) {
       logError('Error updating application status', err, {
@@ -167,7 +165,6 @@ const ApplicationsReview = ({ jobId }) => {
       
       setFeedback('');
       setFeedbackDialogOpen(false);
-      // Show success message or update UI as needed
       logDev('debug', 'Feedback sent successfully', {
         applicationId: selectedApplication.id,
         recipientId: selectedApplication.user?.id
@@ -182,25 +179,6 @@ const ApplicationsReview = ({ jobId }) => {
         status: err.response?.status
       });
       setError('Failed to send feedback. Please try again.');
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'APPLIED':
-        return { bg: '#e3f2fd', color: '#1565c0' }; // Blue
-      case 'REVIEWING':
-        return { bg: '#fff8e1', color: '#f57f17' }; // Amber
-      case 'INTERVIEW':
-        return { bg: '#e8f5e9', color: '#2e7d32' }; // Green
-      case 'OFFERED':
-        return { bg: '#f3e5f5', color: '#7b1fa2' }; // Purple
-      case 'REJECTED':
-        return { bg: '#ffebee', color: '#c62828' }; // Red
-      case 'WITHDRAWN':
-        return { bg: '#fafafa', color: '#616161' }; // Grey
-      default:
-        return { bg: '#e0e0e0', color: '#212121' }; // Default grey
     }
   };
 
@@ -223,6 +201,25 @@ const ApplicationsReview = ({ jobId }) => {
     { value: 'OFFERED', label: 'Offered' },
     { value: 'REJECTED', label: 'Rejected' }
   ];
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'APPLIED':
+        return { bg: '#e3f2fd', color: '#1565c0' }; // Blue
+      case 'REVIEWING':
+        return { bg: '#fff8e1', color: '#f57f17' }; // Amber
+      case 'INTERVIEW':
+        return { bg: '#e8f5e9', color: '#2e7d32' }; // Green
+      case 'OFFERED':
+        return { bg: '#f3e5f5', color: '#7b1fa2' }; // Purple
+      case 'REJECTED':
+        return { bg: '#ffebee', color: '#c62828' }; // Red
+      case 'WITHDRAWN':
+        return { bg: '#fafafa', color: '#616161' }; // Grey
+      default:
+        return { bg: '#e0e0e0', color: '#212121' }; // Default grey
+    }
+  };
 
   return (
     <Fade in={true} timeout={800}>
@@ -406,80 +403,13 @@ const ApplicationsReview = ({ jobId }) => {
                       {selectedApplication.user?.email}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="textSecondary">Phone</Typography>
-                    <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedApplication.phoneNumber || 'Not provided'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="textSecondary">Applied On</Typography>
-                    <Typography variant="body1" sx={{ mb: 2 }}>
-                      {formatDate(selectedApplication.createdAt)}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="textSecondary">Availability</Typography>
-                    <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedApplication.availability?.replace('_', ' ') || 'Not specified'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="textSecondary">Expected Salary</Typography>
-                    <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedApplication.salary || 'Not specified'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="textSecondary">Status</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel>Application Status</InputLabel>
-                        <Select
-                          value={selectedApplication.status}
-                          onChange={(e) => handleStatusChange(selectedApplication.id, e.target.value)}
-                          label="Application Status"
-                          disabled={statusUpdateLoading}
-                        >
-                          {statusOptions.map(option => (
-                            <MenuItem key={option.value} value={option.value}>
-                              {option.label}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      {statusUpdateLoading && <CircularProgress size={24} />}
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="textSecondary">Cover Letter</Typography>
-                    <Paper variant="outlined" sx={{ p: 2, mb: 2, backgroundColor: '#f9f9f9' }}>
-                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                        {selectedApplication.coverLetter || 'No cover letter provided'}
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                  {selectedApplication.additionalInfo && (
-                    <Grid item xs={12}>
-                      <Typography variant="subtitle2" color="textSecondary">Additional Information</Typography>
-                      <Paper variant="outlined" sx={{ p: 2, mb: 2, backgroundColor: '#f9f9f9' }}>
-                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                          {selectedApplication.additionalInfo}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  )}
+                  {/* Add more application details */}
                 </Grid>
               </DialogContent>
               <DialogActions sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
                 <Button 
                   onClick={handleCloseDialog}
-                  sx={{
-                    color: '#2C5530',
-                    '&:hover': {
-                      backgroundColor: 'rgba(44, 85, 48, 0.05)'
-                    }
-                  }}
+                  sx={{ color: '#2C5530' }}
                 >
                   Close
                 </Button>
@@ -492,29 +422,10 @@ const ApplicationsReview = ({ jobId }) => {
                     color: '#000',
                     '&:hover': {
                       background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                    },
-                    textTransform: 'none',
+                    }
                   }}
                 >
                   Download Resume
-                </Button>
-                <Button 
-                  variant="contained"
-                  onClick={() => {
-                    setFeedbackDialogOpen(true);
-                    handleCloseDialog();
-                  }}
-                  startIcon={<EmailIcon />}
-                  sx={{
-                    background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                    color: '#000',
-                    '&:hover': {
-                      background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                    },
-                    textTransform: 'none',
-                  }}
-                >
-                  Contact Applicant
                 </Button>
               </DialogActions>
             </>
@@ -558,12 +469,7 @@ const ApplicationsReview = ({ jobId }) => {
           <DialogActions sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
             <Button 
               onClick={() => setFeedbackDialogOpen(false)}
-              sx={{
-                color: '#2C5530',
-                '&:hover': {
-                  backgroundColor: 'rgba(44, 85, 48, 0.05)'
-                }
-              }}
+              sx={{ color: '#2C5530' }}
             >
               Cancel
             </Button>
@@ -576,8 +482,7 @@ const ApplicationsReview = ({ jobId }) => {
                 color: '#000',
                 '&:hover': {
                   background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                },
-                textTransform: 'none',
+                }
               }}
             >
               Send Message

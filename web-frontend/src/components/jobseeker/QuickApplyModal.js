@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
-import axios from 'axios';
+import api from '../../utils/api';
 import { buildApiUrl } from '../../config';
 import { useAuth } from '../../context/AuthContext';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
@@ -63,7 +63,7 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
   const fetchProfileData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(buildApiUrl('/candidate/profile'));
+      const response = await api.get(buildApiUrl('/candidate/profile'));
       setProfileData(response.data);
       
       // Pre-fill application data from profile
@@ -176,8 +176,8 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
       // Log application payload in development (sanitized)
       logDev('debug', 'Submitting application', sanitizeForLogging(payload));
 
-      // Make the API call to submit the application
-      const response = await axios.post('/api/applications', payload);
+      // Submit application to backend
+      const response = await api.post(`/api/jobs/${job.id}/apply`, payload);
       
       if (response.status === 201) {
         setSuccess(true);

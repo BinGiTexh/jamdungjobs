@@ -1,0 +1,91 @@
+# Stage 1: Development dependencies
+FROM node:18.19.0-slim AS deps
+
+WORKDIR /app
+
+# Install necessary build tools and dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files for dependency installation
+COPY package*.json ./
+
+# Install dependencies with legacy peer deps support
+RUN npm install --legacy-peer-deps \
+    && npm install -g npm@latest \
+    && npm cache clean --force
+
+# Stage 2: Development environment
+FROM node:18.19.0-slim
+
+# Create non-root user for development
+RUN groupadd -r reactdev && \
+    useradd -r -g reactdev -m frontenduser && \
+    mkdir -p /app /app/node_modules /app/src /app/public && \
+    chown -R frontenduser:reactdev /app
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependencies from deps stage
+COPY --from=deps --chown=frontenduser:reactdev /app/node_modules ./node_modules
+COPY --chown=frontenduser:reactdev package*.json ./
+
+# Set development environment variables
+ENV NODE_ENV=development \
+    PATH=/app/node_modules/.bin:$PATH \
+    # React development settings
+    REACT_APP_ENV=development \
+    REACT_APP_API_URL=http://localhost:3000 \
+    BROWSER=none \
+    # Hot reloading configuration
+    CHOKIDAR_USEPOLLING=true \
+    WATCHPACK_POLLING=true \
+    FAST_REFRESH=true \
+    WDS_SOCKET_PORT=0 \
+    # Source map and debugging
+    GENERATE_SOURCEMAP=true \
+    # Development performance settings
+    TSC_WATCHFILE=UseFsEventsWithFallbackDynamicPolling \
+    NODE_OPTIONS="--max-old-space-size=4096" \
+    # For better error reporting
+    REACT_EDITOR=code
+
+# Set up cache and temp directories
+RUN mkdir -p /home/frontenduser/.npm /home/frontenduser/.cache && \
+    chown -R frontenduser:reactdev /home/frontenduser
+
+# Switch to non-root user
+USER frontenduser
+
+# Set up volume mount points for development
+VOLUME [ "/app/src", "/app/public", "/app/node_modules" ]
+
+# Copy and setup entrypoint script
+COPY --chown=frontenduser:reactdev docker-entrypoint.dev.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.dev.sh
+
+# Expose development server port
+EXPOSE 3000
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
+# Set entrypoint and default command
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.dev.sh"]
+CMD ["npm", "start"]
+

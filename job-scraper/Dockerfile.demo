@@ -1,0 +1,32 @@
+FROM node:20-slim
+
+# Install dependencies for utilities
+RUN apt-get update && apt-get install -y \
+    curl \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Create directories for data
+RUN mkdir -p data logs
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy app source
+COPY . .
+
+# Expose port for demo API
+EXPOSE 3501
+
+# Create a script to run the demo
+RUN echo '#!/bin/bash\nnode demo-enhancements.js\necho "Demo completed! Check the data/enhanced-jobs.json file for results."' > /usr/src/app/run-demo.sh
+RUN chmod +x /usr/src/app/run-demo.sh
+
+# Command to run when container starts
+CMD ["/usr/src/app/run-demo.sh"]

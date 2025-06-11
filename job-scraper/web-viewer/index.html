@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JamDung Jobs Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --jamaican-green: #009B3A;
+            --jamaican-yellow: #FED100;
+            --jamaican-black: #000000;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .navbar {
+            background-color: var(--jamaican-green);
+        }
+        
+        .navbar-brand {
+            color: white !important;
+            font-weight: bold;
+        }
+        
+        .navbar-brand span {
+            color: var(--jamaican-yellow);
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: var(--jamaican-green);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .badge-industry {
+            background-color: var(--jamaican-yellow);
+            color: var(--jamaican-black);
+        }
+        
+        .badge-location {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .badge-salary {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .badge-skill {
+            background-color: #17a2b8;
+            color: white;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .source-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.8rem;
+        }
+        
+        .footer {
+            background-color: var(--jamaican-green);
+            color: white;
+            padding: 20px 0;
+            margin-top: 30px;
+        }
+        
+        .footer a {
+            color: var(--jamaican-yellow);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#"><span>Jam</span>Dung Jobs</a>
+            <span class="navbar-text text-white">
+                Jamaica's Premier Job Platform
+            </span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-success">
+                    <h4 class="alert-heading">Welcome to JamDung Jobs!</h4>
+                    <p>Below are job listings enhanced with Jamaica-specific data including normalized locations, industry categorization, skill extraction, and salary estimation.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row" id="job-listings">
+            <!-- Job listings will be inserted here by JavaScript -->
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>About JamDung Jobs</h5>
+                    <p>A specialized job board platform designed to connect Jamaican job seekers with local employment opportunities.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h5>BingiTech</h5>
+                    <p>Creating technology that is truly designed for and by Jamaicans.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Fetch the enhanced jobs data
+                const response = await fetch('/data/enhanced-jobs.json');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch job data');
+                }
+                
+                const jobs = await response.json();
+                const jobListingsContainer = document.getElementById('job-listings');
+                
+                // Display each job
+                jobs.forEach(job => {
+                    const jobCard = document.createElement('div');
+                    jobCard.className = 'col-md-6 col-lg-4';
+                    
+                    // Format salary
+                    const formattedSalary = `${job.salary.min.toLocaleString()} - ${job.salary.max.toLocaleString()} ${job.salary.currency}/${job.salary.period || 'monthly'}`;
+                    
+                    // Create skills badges HTML
+                    const skillsHtml = job.skills.map(skill => 
+                        `<span class="badge badge-skill">${skill}</span>`
+                    ).join(' ');
+                    
+                    // Set source badge color
+                    let sourceBadgeClass = 'bg-secondary';
+                    if (job.source === 'linkedin') sourceBadgeClass = 'bg-primary';
+                    if (job.source === 'caribbeanjobs') sourceBadgeClass = 'bg-success';
+                    if (job.source === 'ejamjobs') sourceBadgeClass = 'bg-warning text-dark';
+                    
+                    jobCard.innerHTML = `
+                        <div class="card h-100 position-relative">
+                            <span class="badge ${sourceBadgeClass} source-badge">${job.source}</span>
+                            <div class="card-header">
+                                ${job.title}
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">${job.companyName}</h5>
+                                <div class="mb-2">
+                                    <span class="badge badge-industry">${job.industry}</span>
+                                    <span class="badge badge-location">${job.location}</span>
+                                </div>
+                                <p class="card-text">${job.description}</p>
+                                <div class="mb-3">
+                                    <span class="badge badge-salary">${formattedSalary}</span>
+                                </div>
+                                <div class="skills-container">
+                                    <strong>Skills:</strong>
+                                    <div class="mt-2">
+                                        ${skillsHtml}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <a href="${job.url}" class="btn btn-sm btn-success" target="_blank">Apply Now</a>
+                            </div>
+                        </div>
+                    `;
+                    
+                    jobListingsContainer.appendChild(jobCard);
+                });
+                
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+                document.getElementById('job-listings').innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger">
+                            Failed to load job listings: ${error.message}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

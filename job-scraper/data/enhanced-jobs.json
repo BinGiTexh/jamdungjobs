@@ -1,0 +1,132 @@
+[
+  {
+    "title": "Software Developer",
+    "companyName": "Tech Jamaica Ltd",
+    "location": "Kingston, Jamaica, Jamaica",
+    "description": "We are looking for a skilled Software Developer to join our team in Kingston. The ideal candidate will have experience with JavaScript, React, and Node.js. Knowledge of database systems like PostgreSQL is a plus. Must be able to work in an agile environment and collaborate with cross-functional teams.",
+    "url": "https://example.com/jobs/software-developer",
+    "source": "linkedin",
+    "industry": "Information Technology",
+    "skills": [
+      "Javascript",
+      "React",
+      "Node.js",
+      "Postgresql",
+      "Database",
+      "Software",
+      "Agile"
+    ],
+    "salary": {
+      "min": 180000,
+      "max": 360000,
+      "currency": "JMD",
+      "period": "monthly"
+    },
+    "validation": {
+      "errors": [],
+      "warnings": [],
+      "isValid": true
+    }
+  },
+  {
+    "title": "Customer Service Representative",
+    "companyName": "Global Connect BPO",
+    "location": "Montego Bay, St. James, Jamaica",
+    "description": "Customer service position for a growing BPO in Montego Bay. Must have excellent communication skills, both written and verbal. Experience with call center software and customer relationship management tools is preferred. Knowledge of Jamaican culture and Patois is an advantage.",
+    "url": "https://example.com/jobs/customer-service",
+    "source": "caribbeanjobs",
+    "industry": "Business Process Outsourcing",
+    "skills": [
+      "Software",
+      "Communication",
+      "Customer Service",
+      "Management",
+      "Patois",
+      "Jamaican Culture",
+      "Call Center"
+    ],
+    "salary": {
+      "min": 54000,
+      "max": 81000,
+      "currency": "JMD",
+      "period": "monthly"
+    },
+    "validation": {
+      "errors": [],
+      "warnings": [],
+      "isValid": true
+    }
+  },
+  {
+    "title": "Hotel Front Desk Manager",
+    "companyName": "Sunrise Beach Resort",
+    "location": "Ocho Rios, St. Ann, Jamaica",
+    "description": "Luxury resort in Ocho Rios seeking an experienced Front Desk Manager. Responsibilities include managing the front desk team, ensuring guest satisfaction, and handling reservations. Degree in Hospitality Management and 3+ years of experience in a similar role required. Must have excellent leadership and problem-solving skills.",
+    "url": "https://example.com/jobs/hotel-manager",
+    "source": "ejamjobs",
+    "industry": "Tourism and Hospitality",
+    "skills": [
+      "Leadership",
+      "Problem-solving",
+      "Management",
+      "Hospitality"
+    ],
+    "salary": {
+      "min": 220000,
+      "max": 440000,
+      "currency": "JMD",
+      "period": "monthly"
+    },
+    "validation": {
+      "errors": [],
+      "warnings": [],
+      "isValid": true
+    }
+  },
+  {
+    "title": "Agricultural Technician",
+    "companyName": "Jamaica Farms Ltd",
+    "location": "St. Elizabeth, Jamaica, Jamaica",
+    "description": "Looking for an Agricultural Technician to support our farming operations in St Elizabeth. Responsibilities include monitoring crop health, implementing pest control measures, and assisting with harvest. Knowledge of sustainable farming practices and experience with tropical crops is required.",
+    "url": "https://example.com/jobs/agricultural-technician",
+    "source": "caribbeanjobs",
+    "industry": "Information Technology",
+    "skills": [
+      "Sustainable Farming"
+    ],
+    "salary": {
+      "min": 78000,
+      "max": 144000,
+      "currency": "JMD",
+      "period": "monthly"
+    },
+    "validation": {
+      "errors": [],
+      "warnings": [],
+      "isValid": true
+    }
+  },
+  {
+    "title": "Digital Marketing Specialist",
+    "companyName": "Kingston Creative Agency",
+    "location": "Kingston, Jamaica, Jamaica",
+    "description": "Creative agency seeking a Digital Marketing Specialist with experience in social media management, content creation, and SEO. Knowledge of the Jamaican market and cultural trends is essential. Skills in graphic design and video editing are a plus.",
+    "url": "https://example.com/jobs/marketing-specialist",
+    "source": "linkedin",
+    "industry": "Marketing and Creative",
+    "skills": [
+      "Management"
+    ],
+    "salary": {
+      "min": 100000,
+      "max": 180000,
+      "currency": "JMD",
+      "period": "monthly"
+    },
+    "validation": {
+      "errors": [],
+      "warnings": [],
+      "isValid": true
+    }
+  }
+]

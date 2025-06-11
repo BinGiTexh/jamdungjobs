@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: jamdung-api-dev
+    ports:
+      - "3000:3000"  # API port
+      - "9229:9229"  # Debug port
+    volumes:
+      - ./backend:/app:delegated
+      - /app/node_modules
+      - backend_prisma:/app/prisma
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-jamdung}
+      - DEBUG=backend:*
+      - JWT_SECRET=${JWT_SECRET:-dev_secret_key}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma generate &&
+             npx prisma migrate dev &&
+             nodemon --inspect=0.0.0.0:9229 server.js"
+
+  db:
+    image: postgres:15-alpine
+    container_name: jamdung-db-dev
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-jamdung}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/prisma/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: jamdung-frontend-dev
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./web-frontend:/app:delegated
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:3000
+      - WDS_SOCKET_PORT=0
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  backend_prisma:
+
+networks:
+  default:
+    name: jamdung_dev_network
+

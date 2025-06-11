@@ -145,7 +145,7 @@ const ProfilePage = () => {
     try {
       // Use the new endpoint for employer profiles
       const endpoint = user?.role === 'EMPLOYER' 
-        ? 'http://localhost:5000/api/employer/create-company'
+        ? 'http://localhost:5000/api/employer/profile'
         : 'http://localhost:5000/api/users/me';
       
       const dataToSubmit = user?.role === 'EMPLOYER'
@@ -189,7 +189,7 @@ const ProfilePage = () => {
         userId: user?.id,
         role: user?.role,
         status: err.response?.status,
-        endpoint: user?.role === 'EMPLOYER' ? 'employer/create-company' : 'users/me'
+        endpoint: user?.role === 'EMPLOYER' ? 'employer/profile' : 'users/me'
       });
       setError(err.message || 'An error occurred while updating the profile');
     } finally {

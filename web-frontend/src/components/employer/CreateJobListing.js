@@ -1,240 +1,173 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Button,
+  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Grid,
-  Chip,
-  Paper,
-  styled,
-  Alert,
-  CircularProgress,
-  InputAdornment,
-  FormHelperText,
-  Divider
+  Box,
+  Typography,
+  styled
 } from '@mui/material';
+import PropTypes from 'prop-types';
 import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
-import axios from 'axios';
-import api from '../../utils/axiosConfig';
-import { useAuth } from '../../context/AuthContext';
-import WorkIcon from '@mui/icons-material/Work';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import BusinessIcon from '@mui/icons-material/Business';
-import DescriptionIcon from '@mui/icons-material/Description';
-import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
-
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
-  backgroundColor: 'rgba(20, 20, 20, 0.85)',
-  border: '1px solid rgba(255, 215, 0, 0.3)',
-  position: 'relative',
-  overflow: 'hidden',
-  marginBottom: theme.spacing(3),
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%)',
-    opacity: 0.3,
-    zIndex: 0,
-  },
-}));
 
 const StyledButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(45deg, #007E1B 30%, #009921 90%)',
-  color: 'white',
+  backgroundColor: '#FFD700',
+  color: '#000000',
   '&:hover': {
-    background: 'linear-gradient(45deg, #005714 30%, #007E1B 90%)',
+    backgroundColor: '#FFC700',
   },
-  padding: '10px 24px',
-  fontWeight: 500,
 }));
 
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  marginBottom: theme.spacing(3),
+const StyledDialog = styled(Dialog)(({ theme }) => ({
+  '& .MuiDialog-paper': {
+    backgroundColor: '#1a1a1a',
+    color: '#FFFFFF',
+    minWidth: '600px',
+  },
+}));
+
+const StyledTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
     '& fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.3)',
+      borderColor: '#FFD700',
     },
     '&:hover fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.5)',
+      borderColor: '#FFD700',
     },
     '&.Mui-focused fieldset': {
       borderColor: '#FFD700',
     },
   },
   '& .MuiInputLabel-root': {
-    color: 'rgba(255, 215, 0, 0.7)',
-  },
-  '& .MuiInputBase-input': {
-    color: 'white',
-  },
-}));
-
-const StyledSelect = styled(Select)(({ theme }) => ({
-  marginBottom: theme.spacing(3),
-  '& .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(255, 215, 0, 0.3)',
-  },
-  '&:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(255, 215, 0, 0.5)',
-  },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#FFD700',
-  },
-  '& .MuiInputBase-input': {
-    color: 'white',
-  },
-  '& .MuiSvgIcon-root': {
     color: '#FFD700',
   },
-}));
-
-const StyledFormHelperText = styled(FormHelperText)(({ theme }) => ({
-  color: 'rgba(255, 255, 255, 0.7)',
-  marginTop: theme.spacing(0.5),
-  marginBottom: theme.spacing(2),
-}));
-
-const StyledInputLabel = styled(InputLabel)(({ theme }) => ({
-  color: 'rgba(255, 215, 0, 0.7)',
-  '&.Mui-focused': {
-    color: '#FFD700',
+  '& .MuiOutlinedInput-input': {
+    color: '#FFFFFF',
   },
-}));
+});
 
-const StyledChip = styled(Chip)(({ theme }) => ({
-  margin: theme.spacing(0.5),
-  backgroundColor: 'rgba(44, 85, 48, 0.8)',
-  color: '#FFD700',
-  borderColor: 'rgba(255, 215, 0, 0.5)',
-  '& .MuiChip-deleteIcon': {
-    color: 'rgba(255, 215, 0, 0.7)',
-    '&:hover': {
-      color: '#FFD700',
+const StyledFormControl = styled(FormControl)({
+  '& .MuiOutlinedInput-root': {
+    '& fieldset': {
+      borderColor: '#FFD700',
+    },
+    '&:hover fieldset': {
+      borderColor: '#FFD700',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: '#FFD700',
     },
   },
-}));
+  '& .MuiInputLabel-root': {
+    color: '#FFD700',
+  },
+  '& .MuiSelect-icon': {
+    color: '#FFD700',
+  },
+  '& .MuiOutlinedInput-input': {
+    color: '#FFFFFF',
+  },
+});
 
-const jobTypes = [
-  'Full-time',
-  'Part-time',
-  'Contract',
-  'Temporary',
-  'Internship',
-  'Freelance'
-];
+const getLocationDisplay = (location) => {
+  if (!location) return '';
+  if (typeof location === 'string') return location;
+  return location.formattedAddress || location.mainText || location.name || '';
+};
 
-const experienceLevels = [
-  'Entry Level',
-  'Junior',
-  'Mid-Level',
-  'Senior',
-  'Lead',
-  'Manager',
-  'Executive'
-];
-
-const CreateJobListing = ({ onSuccess }) => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [previewMode, setPreviewMode] = useState(false);
-  
+const DialogCreateJobListing = ({ open, onClose, onSave }) => {
   const [jobData, setJobData] = useState({
     title: '',
-    company: user?.companyName || '',
     location: null,
+    employmentType: 'FULL_TIME',
     description: '',
     requirements: '',
     responsibilities: '',
-    benefits: '',
-    jobType: 'Full-time',
-    experienceLevel: 'Mid-Level',
     salaryMin: '',
     salaryMax: '',
+    experienceLevel: 'ENTRY_LEVEL',
     skills: [],
-    remote: false,
-    applicationDeadline: ''
+    applicationDeadline: '',
   });
 
-  const [errors, setErrors] = useState({});
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    logDev('debug', 'Job form field change', { field: name, context: 'createJobListing' });
-    
     setJobData(prev => ({
       ...prev,
       [name]: value
     }));
-    
-    // Clear error for this field if it exists
-    if (errors[name]) {
-      setErrors(prev => ({
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
         ...prev,
-        [name]: null
+        [name]: ''
       }));
     }
   };
 
-  const handleLocationSelect = (location) => {
-    logDev('debug', 'Job location selected', { 
-      location: location ? sanitizeForLogging(location) : 'none',
-      context: 'createJobListing'
-    });
-    
+  const handleLocationChange = (location) => {
     setJobData(prev => ({
       ...prev,
       location
     }));
-    
-    if (errors.location) {
-      setErrors(prev => ({
+    if (formErrors.location) {
+      setFormErrors(prev => ({
         ...prev,
-        location: null
+        location: ''
       }));
     }
   };
 
-  const handleSkillsChange = (skills) => {
-    logDev('debug', 'Job skills updated', { 
-      skillCount: skills.length, 
-      skills: sanitizeForLogging(skills),
-      context: 'createJobListing'
-    });
-    
+  const handleSkillsChange = (newSkills) => {
     setJobData(prev => ({
       ...prev,
-      skills
+      skills: newSkills
     }));
+    if (formErrors.skills) {
+      setFormErrors(prev => ({
+        ...prev,
+        skills: ''
+      }));
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const validateForm = () => {
+    const errors = {};
+    if (!jobData.title.trim()) errors.title = 'Title is required';
+    if (!jobData.location) errors.location = 'Location is required';
+    if (!jobData.description.trim()) errors.description = 'Description is required';
+    if (!jobData.requirements.trim()) errors.requirements = 'Requirements are required';
+    if (!jobData.responsibilities.trim()) errors.responsibilities = 'Responsibilities are required';
+    if (!jobData.salaryMin) errors.salaryMin = 'Minimum salary is required';
+    if (!jobData.salaryMax) errors.salaryMax = 'Maximum salary is required';
+    if (Number(jobData.salaryMin) > Number(jobData.salaryMax)) {
+      errors.salaryMin = 'Minimum salary cannot be greater than maximum salary';
+    }
+    if (jobData.skills.length === 0) errors.skills = 'At least one skill is required';
     
-    logDev('info', 'Job listing form submission attempt', { 
-      title: jobData.title,
-      company: jobData.company,
-      context: 'createJobListing' 
-    });
-    setLoading(true);
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
     try {
-      // Format the job data for the API
       const formattedJobData = {
         ...jobData,
-        location: jobData.location?.formattedAddress || jobData.location,
+        location: getLocationDisplay(jobData.location),
         locationData: jobData.location,
         skills: jobData.skills.map(skill => skill.name || skill),
         salaryMin: parseFloat(jobData.salaryMin),
@@ -244,401 +177,143 @@ const CreateJobListing = ({ onSuccess }) => {
           : null
       };
       
-      logDev('info', 'Creating job listing', { 
-        title: formattedJobData.title,
-        company: formattedJobData.company,
-        skillCount: formattedJobData.skills.length,
-        context: 'createJobListing' 
-      });
-      
-      const response = await api.post('/api/employer/jobs', formattedJobData);
-      
-      logDev('info', 'Job listing created successfully', { 
-        jobId: response.data.id || 'unknown',
-        title: formattedJobData.title,
-        context: 'createJobListing' 
-      });
-      
-      setMessage({
-        type: 'success',
-        text: 'Job listing created successfully!'
-      });
-      
-      // Reset form after successful submission
-      setJobData({
-        title: '',
-        company: user?.companyName || '',
-        location: null,
-        description: '',
-        requirements: '',
-        responsibilities: '',
-        benefits: '',
-        jobType: 'Full-time',
-        experienceLevel: 'Mid-Level',
-        salaryMin: '',
-        salaryMax: '',
-        skills: [],
-        remote: false,
-        applicationDeadline: ''
-      });
-      
-      // Call the success callback if provided
-      if (onSuccess) {
-        onSuccess(response.data);
-      }
+      await onSave(formattedJobData);
+      onClose();
     } catch (error) {
-      logError('Error creating job listing', { 
-        error: sanitizeForLogging(error),
-        title: jobData.title,
-        company: jobData.company, 
-        errorMessage: error.response?.data?.message,
-        context: 'createJobListing'
-      });
-      
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.message || 'Failed to create job listing'
-      });
+      console.error('Error creating job listing:', error);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const togglePreview = () => {
-    const newPreviewMode = !previewMode;
-    logDev('debug', `${newPreviewMode ? 'Entering' : 'Exiting'} job preview mode`, { 
-      context: 'createJobListing' 
-    });
-    setPreviewMode(newPreviewMode);
-  };
+  return (
+    <StyledDialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle sx={{ color: '#FFD700' }}>Create New Job Listing</DialogTitle>
+      <DialogContent>
+        <Grid container spacing={3} sx={{ mt: 1 }}>
+          <Grid item xs={12}>
+            <StyledTextField
+              fullWidth
+              label="Job Title"
+              name="title"
+              value={jobData.title}
+              onChange={handleInputChange}
+              error={!!formErrors.title}
+              helperText={formErrors.title}
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <JamaicaLocationProfileAutocomplete
+              value={jobData.location}
+              onChange={handleLocationChange}
+              error={!!formErrors.location}
+              helperText={formErrors.location}
+            />
+          </Grid>
 
-  const renderJobPreview = () => {
-    return (
-      <StyledPaper>
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Typography variant="h4" sx={{ color: '#FFD700', mb: 2, fontWeight: 600 }}>
-            {jobData.title || 'Job Title'}
-          </Typography>
-          
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3, alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <BusinessIcon sx={{ color: '#FFD700', mr: 1 }} />
-              <Typography variant="body1" sx={{ color: 'white' }}>
-                {jobData.company || 'Company Name'}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <LocationOnIcon sx={{ color: '#FFD700', mr: 1 }} />
-              <Typography variant="body1" sx={{ color: 'white' }}>
-                {jobData.location?.formattedAddress || jobData.location?.name || 'Location'}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <WorkIcon sx={{ color: '#FFD700', mr: 1 }} />
-              <Typography variant="body1" sx={{ color: 'white' }}>
-                {jobData.jobType} • {jobData.experienceLevel}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <AttachMoneyIcon sx={{ color: '#FFD700', mr: 1 }} />
-              <Typography variant="body1" sx={{ color: 'white' }}>
-                ${jobData.salaryMin.toLocaleString ? jobData.salaryMin.toLocaleString() : jobData.salaryMin || '0'} - 
-                ${jobData.salaryMax.toLocaleString ? jobData.salaryMax.toLocaleString() : jobData.salaryMax || '0'} JMD
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
-              Skills Required
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {jobData.skills.length > 0 ? (
-                jobData.skills.map((skill, index) => (
-                  <StyledChip 
-                    key={index} 
-                    label={skill.name || skill} 
-                    variant="outlined" 
-                  />
-                ))
-              ) : (
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                  No skills specified
-                </Typography>
-              )}
-            </Box>
-          </Box>
-          
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
-              Job Description
-            </Typography>
-            <Typography variant="body1" sx={{ color: 'white', whiteSpace: 'pre-line' }}>
-              {jobData.description || 'No description provided'}
-            </Typography>
-          </Box>
-          
-          {jobData.responsibilities && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
-                Responsibilities
-              </Typography>
-              <Typography variant="body1" sx={{ color: 'white', whiteSpace: 'pre-line' }}>
-                {jobData.responsibilities}
-              </Typography>
-            </Box>
-          )}
-          
-          {jobData.requirements && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
-                Requirements
-              </Typography>
-              <Typography variant="body1" sx={{ color: 'white', whiteSpace: 'pre-line' }}>
-                {jobData.requirements}
-              </Typography>
-            </Box>
-          )}
-          
-          {jobData.benefits && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
-                Benefits
-              </Typography>
-              <Typography variant="body1" sx={{ color: 'white', whiteSpace: 'pre-line' }}>
-                {jobData.benefits}
-              </Typography>
-            </Box>
-          )}
-          
-          {jobData.applicationDeadline && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                Application Deadline: {new Date(jobData.applicationDeadline).toLocaleDateString()}
-              </Typography>
-            </Box>
-          )}
-        </Box>
-      </StyledPaper>
-    );
-  };
+          <Grid item xs={12}>
+            <StyledFormControl fullWidth>
+              <InputLabel>Employment Type</InputLabel>
+              <Select
+                value={jobData.employmentType}
+                label="Employment Type"
+                name="employmentType"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="FULL_TIME">Full Time</MenuItem>
+                <MenuItem value="PART_TIME">Part Time</MenuItem>
+                <MenuItem value="CONTRACT">Contract</MenuItem>
+                <MenuItem value="TEMPORARY">Temporary</MenuItem>
+                <MenuItem value="INTERNSHIP">Internship</MenuItem>
+              </Select>
+            </StyledFormControl>
+          </Grid>
 
-  const renderJobForm = () => {
-    return (
-      <form onSubmit={handleSubmit}>
-        <StyledPaper>
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Typography variant="h5" sx={{ color: '#FFD700', mb: 3, fontWeight: 600 }}>
-              Job Details
-            </Typography>
-            
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <StyledTextField
-                  fullWidth
-                  label="Job Title"
-                  name="title"
-                  value={jobData.title}
-                  onChange={handleChange}
-                  error={!!errors.title}
-                  helperText={errors.title}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <WorkIcon sx={{ color: '#FFD700' }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <StyledTextField
-                  fullWidth
-                  label="Company Name"
-                  name="company"
-                  value={jobData.company}
-                  onChange={handleChange}
-                  error={!!errors.company}
-                  helperText={errors.company}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <BusinessIcon sx={{ color: '#FFD700' }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="body1" sx={{ color: '#FFD700', mb: 1 }}>
-                    Location
-                  </Typography>
-                  <JamaicaLocationProfileAutocomplete
-                    value={jobData.location}
-                    onChange={handleLocationSelect}
-                    placeholder="Job Location in Jamaica"
-                  />
-                  {errors.location && (
-                    <FormHelperText error>{errors.location}</FormHelperText>
-                  )}
-                </Box>
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth sx={{ mb: 3 }}>
-                  <StyledInputLabel id="job-type-label">Job Type</StyledInputLabel>
-                  <StyledSelect
-                    labelId="job-type-label"
-                    name="jobType"
-                    value={jobData.jobType}
-                    onChange={handleChange}
-                    label="Job Type"
-                  >
-                    {jobTypes.map((type) => (
-                      <MenuItem key={type} value={type} sx={{ color: 'black' }}>
-                        {type}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth sx={{ mb: 3 }}>
-                  <StyledInputLabel id="experience-level-label">Experience Level</StyledInputLabel>
-                  <StyledSelect
-                    labelId="experience-level-label"
-                    name="experienceLevel"
-                    value={jobData.experienceLevel}
-                    onChange={handleChange}
-                    label="Experience Level"
-                  >
-                    {experienceLevels.map((level) => (
-                      <MenuItem key={level} value={level} sx={{ color: 'black' }}>
-                        {level}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <StyledTextField
-                  fullWidth
-                  label="Minimum Salary (JMD)"
-                  name="salaryMin"
-                  type="number"
-                  value={jobData.salaryMin}
-                  onChange={handleChange}
-                  error={!!errors.salaryMin}
-                  helperText={errors.salaryMin}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <AttachMoneyIcon sx={{ color: '#FFD700' }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <StyledTextField
-                  fullWidth
-                  label="Maximum Salary (JMD)"
-                  name="salaryMax"
-                  type="number"
-                  value={jobData.salaryMax}
-                  onChange={handleChange}
-                  error={!!errors.salaryMax}
-                  helperText={errors.salaryMax}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <AttachMoneyIcon sx={{ color: '#FFD700' }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="body1" sx={{ color: '#FFD700', mb: 1 }}>
-                    Required Skills
-                  </Typography>
-                  <SkillsAutocomplete
-                    value={jobData.skills}
-                    onChange={handleSkillsChange}
-                    placeholder="Add required skills"
-                  />
-                  <StyledFormHelperText>
-                    Add skills that are required for this position
-                  </StyledFormHelperText>
-                </Box>
-              </Grid>
-              
-              <Grid item xs={12}>
-                <StyledTextField
-                  fullWidth
-                  label="Application Deadline"
-                  name="applicationDeadline"
-                  type="date"
-                  value={jobData.applicationDeadline}
-                  onChange={handleChange}
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        </StyledPaper>
-        
-        <StyledPaper>
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Typography variant="h5" sx={{ color: '#FFD700', mb: 3, fontWeight: 600 }}>
-              Job Description
-            </Typography>
-            
+          <Grid item xs={12}>
+            <StyledFormControl fullWidth>
+              <InputLabel>Experience Level</InputLabel>
+              <Select
+                value={jobData.experienceLevel}
+                label="Experience Level"
+                name="experienceLevel"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="ENTRY_LEVEL">Entry Level</MenuItem>
+                <MenuItem value="MID_LEVEL">Mid Level</MenuItem>
+                <MenuItem value="SENIOR_LEVEL">Senior Level</MenuItem>
+                <MenuItem value="EXECUTIVE">Executive</MenuItem>
+              </Select>
+            </StyledFormControl>
+          </Grid>
+
+          <Grid item xs={6}>
+            <StyledTextField
+              fullWidth
+              label="Minimum Salary (JMD)"
+              name="salaryMin"
+              type="number"
+              value={jobData.salaryMin}
+              onChange={handleInputChange}
+              error={!!formErrors.salaryMin}
+              helperText={formErrors.salaryMin}
+            />
+          </Grid>
+
+          <Grid item xs={6}>
+            <StyledTextField
+              fullWidth
+              label="Maximum Salary (JMD)"
+              name="salaryMax"
+              type="number"
+              value={jobData.salaryMax}
+              onChange={handleInputChange}
+              error={!!formErrors.salaryMax}
+              helperText={formErrors.salaryMax}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <StyledTextField
+              fullWidth
+              label="Application Deadline"
+              name="applicationDeadline"
+              type="date"
+              value={jobData.applicationDeadline}
+              onChange={handleInputChange}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <SkillsAutocomplete
+              value={jobData.skills}
+              onChange={handleSkillsChange}
+              error={!!formErrors.skills}
+              helperText={formErrors.skills}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
             <StyledTextField
               fullWidth
               label="Job Description"
               name="description"
               multiline
-              rows={6}
-              value={jobData.description}
-              onChange={handleChange}
-              error={!!errors.description}
-              helperText={errors.description || "Provide a detailed description of the job"}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1.5 }}>
-                    <DescriptionIcon sx={{ color: '#FFD700' }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            
-            <Divider sx={{ my: 3, borderColor: 'rgba(255, 215, 0, 0.3)' }} />
-            
-            <StyledTextField
-              fullWidth
-              label="Responsibilities"
-              name="responsibilities"
-              multiline
               rows={4}
-              value={jobData.responsibilities}
-              onChange={handleChange}
-              helperText="Describe the key responsibilities of this role"
+              value={jobData.description}
+              onChange={handleInputChange}
+              error={!!formErrors.description}
+              helperText={formErrors.description}
             />
-            
+          </Grid>
+
+          <Grid item xs={12}>
             <StyledTextField
               fullWidth
               label="Requirements"
@@ -646,74 +321,49 @@ const CreateJobListing = ({ onSuccess }) => {
               multiline
               rows={4}
               value={jobData.requirements}
-              onChange={handleChange}
-              helperText="List qualifications, experience, and skills required"
+              onChange={handleInputChange}
+              error={!!formErrors.requirements}
+              helperText={formErrors.requirements}
             />
-            
+          </Grid>
+
+          <Grid item xs={12}>
             <StyledTextField
               fullWidth
-              label="Benefits"
-              name="benefits"
+              label="Responsibilities"
+              name="responsibilities"
               multiline
               rows={4}
-              value={jobData.benefits}
-              onChange={handleChange}
-              helperText="Describe perks, benefits, and advantages of this position"
+              value={jobData.responsibilities}
+              onChange={handleInputChange}
+              error={!!formErrors.responsibilities}
+              helperText={formErrors.responsibilities}
             />
-          </Box>
-        </StyledPaper>
-        
-        {message && (
-          <Alert 
-            severity={message.type} 
-            sx={{ 
-              mb: 3,
-              backgroundColor: message.type === 'success' ? 'rgba(44, 85, 48, 0.9)' : 'rgba(211, 47, 47, 0.9)',
-              color: 'white',
-              '& .MuiAlert-icon': {
-                color: '#FFD700'
-              }
-            }}
-            onClose={() => setMessage(null)}
-          >
-            {message.text}
-          </Alert>
-        )}
-        
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-          <Button
-            variant="outlined"
-            onClick={togglePreview}
-            sx={{
-              color: '#FFD700',
-              borderColor: '#FFD700',
-              '&:hover': {
-                borderColor: '#FFD700',
-                backgroundColor: 'rgba(255, 215, 0, 0.1)'
-              }
-            }}
-          >
-            {previewMode ? 'Edit Job' : 'Preview Job'}
-          </Button>
-          
-          <StyledButton
-            type="submit"
-            variant="contained"
-            disabled={loading}
-            startIcon={loading && <CircularProgress size={20} color="inherit" />}
-          >
-            {loading ? 'Creating...' : 'Create Job Listing'}
-          </StyledButton>
-        </Box>
-      </form>
-    );
-  };
+          </Grid>
+        </Grid>
+      </DialogContent>
 
-  return (
-    <Box>
-      {previewMode ? renderJobPreview() : renderJobForm()}
-    </Box>
+      <DialogActions sx={{ padding: 2 }}>
+        <Button onClick={onClose} sx={{ color: '#FFD700' }}>
+          Cancel
+        </Button>
+        <StyledButton
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          variant="contained"
+        >
+          {isSubmitting ? 'Creating...' : 'Create Job Listing'}
+        </StyledButton>
+      </DialogActions>
+    </StyledDialog>
   );
 };
 
-export default CreateJobListing;
+DialogCreateJobListing.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired
+};
+
+export default DialogCreateJobListing;
+

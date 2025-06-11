@@ -1,5 +1,3 @@
-# docker-compose.yml
-
 version: '3.8'
 
 services:
@@ -39,6 +37,14 @@ services:
       dockerfile: Dockerfile.api
     ports:
       - "5000:5000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     environment:
       - PORT=5000
       - DATABASE_URL=postgresql://jobboard:jobboard@postgres:5432/jobboard
@@ -47,9 +53,12 @@ services:
       - AWS_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
+      - UPLOAD_PATH=/app/uploads
     volumes:
-      - api_node_modules:/app/node_modules
       - ../backend:/app:delegated
+      - /app/node_modules
+      - uploads:/app/uploads
+    command: ["npm", "run", "dev"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,7 +89,7 @@ services:
       - api
 
 volumes:
-  api_node_modules:
   frontend_node_modules:
   postgres_data:
   uploads:
+    name: jamdung_uploads  # Named volume for better identification

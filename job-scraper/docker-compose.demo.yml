@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  scraper-demo:
+    build: 
+      context: .
+      dockerfile: Dockerfile.demo
+    container_name: jamdung-scraper-demo
+    environment:
+      - NODE_ENV=development
+      - ENABLE_JAMAICA_ENHANCEMENTS=true
+      - LOG_LEVEL=debug
+    volumes:
+      - ./data:/usr/src/app/data
+    ports:
+      - "3501:3501"
+    networks:
+      - scraper-demo-network
+
+networks:
+  scraper-demo-network:
+    driver: bridge

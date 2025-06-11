@@ -88,26 +88,89 @@ api.interceptors.request.use(
   }
 );
 
+// Helper function to safely parse JSON
+const safeJSONParse = (data) => {
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      logError('JSON parse error', { error: e, data: data.substring(0, 100) });
+      return {};
+    }
+  }
+  return data || {};
+};
+
 // Add a response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => {
-    return response;
+    if (!response) {
+      logDev('warn', 'Received null/undefined response');
+      return { data: {} };
+    }
+
+    try {
+      // Ensure response.data exists and is properly parsed
+      if (response.data === undefined || response.data === null) {
+        logDev('warn', 'Received undefined/null response data', {
+          url: response.config?.url,
+          method: response.config?.method
+        });
+        response.data = {};
+      } else {
+        // Parse the response data if it's a string
+        response.data = safeJSONParse(response.data);
+      }
+
+      // Ensure the data is an object or array
+      if (typeof response.data !== 'object') {
+        logDev('warn', 'Response data is not an object/array', {
+          type: typeof response.data,
+          url: response.config?.url
+        });
+        response.data = { value: response.data };
+      }
+
+      return response;
+    } catch (error) {
+      logError('Response transformation error', {
+        error,
+        url: response.config?.url,
+        method: response.config?.method
+      });
+      return { data: {} };
+    }
   },
   (error) => {
+    // Ensure error.response exists
+    if (!error.response) {
+      error.response = {
+        status: 500,
+        data: { message: 'Network error or server timeout' }
+      };
+    }
+
+    // Ensure error.response.data exists and is an object
+    if (!error.response.data || typeof error.response.data !== 'object') {
+      error.response.data = {
+        message: typeof error.response.data === 'string' 
+          ? error.response.data 
+          : 'Unknown error occurred'
+      };
+    }
+
     // Log the error but don't automatically log out the user
     // This allows components to handle auth errors themselves
-    // Log errors with improved context
-    logError('API request failed', error, {
+    logError('API request failed', {
+      error: sanitizeForLogging(error),
       status: error.response?.status,
       url: error.config?.url,
       method: error.config?.method,
       module: 'axiosConfig',
-      interceptor: 'response'
+      interceptor: 'response',
+      data: sanitizeForLogging(error.response?.data)
     });
-    
-    // Only log detailed error data in development
-    logDev('debug', 'API error details:', sanitizeForLogging(error.response?.data));
-    
+
     return Promise.reject(error);
   }
 );

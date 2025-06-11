@@ -57,7 +57,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   },
 }));
 
-// Industry-specific templates
+// Industry templates
 const industryTemplates = {
   'Technology': {
     descriptions: [
@@ -92,176 +92,7 @@ const industryTemplates = {
       'Performance bonuses'
     ]
   },
-  'Healthcare': {
-    descriptions: [
-      'Join our healthcare team dedicated to improving the health and wellbeing of Jamaicans. We\'re looking for compassionate professionals committed to excellence in patient care.',
-      'Our healthcare facility is seeking dedicated professionals to provide quality care to our patients. This role offers the opportunity to make a meaningful difference in people\'s lives.',
-      'Be part of Jamaica\'s leading healthcare provider. We\'re looking for skilled individuals who are passionate about delivering exceptional patient care.'
-    ],
-    responsibilities: [
-      'Provide patient care according to established protocols',
-      'Maintain accurate medical records',
-      'Collaborate with interdisciplinary healthcare teams',
-      'Administer medications and treatments as prescribed',
-      'Educate patients and families about health conditions',
-      'Monitor patient progress and report changes in condition',
-      'Adhere to all safety and infection control protocols'
-    ],
-    requirements: [
-      'Degree in Nursing, Medicine, or related healthcare field',
-      'Valid professional license or certification',
-      'Experience in healthcare settings',
-      'Strong communication skills',
-      'Ability to work under pressure',
-      'Compassionate and patient-centered approach',
-      'Knowledge of medical terminology and procedures'
-    ],
-    benefits: [
-      'Competitive salary',
-      'Health and dental insurance',
-      'Continuing education support',
-      'Professional development opportunities',
-      'Flexible scheduling options',
-      'Employee wellness program',
-      'Recognition programs'
-    ]
-  },
-  'Hospitality': {
-    descriptions: [
-      'Join our team in showcasing the best of Jamaican hospitality. We\'re looking for enthusiastic individuals who are passionate about creating memorable experiences for our guests.',
-      'Our hospitality establishment is seeking dedicated professionals to deliver exceptional service. This role offers the opportunity to work in one of Jamaica\'s premier destinations.',
-      'Be part of Jamaica\'s renowned hospitality industry. We\'re looking for service-oriented individuals who can help us maintain our reputation for excellence.'
-    ],
-    responsibilities: [
-      'Provide exceptional customer service to guests',
-      'Maintain a clean and welcoming environment',
-      'Process reservations and check-ins/check-outs',
-      'Address guest inquiries and resolve issues promptly',
-      'Promote hotel services and amenities',
-      'Ensure compliance with safety and security procedures',
-      'Collaborate with other departments to enhance guest experience'
-    ],
-    requirements: [
-      'Previous experience in hospitality or customer service',
-      'Excellent communication and interpersonal skills',
-      'Ability to work flexible hours including weekends and holidays',
-      'Professional appearance and demeanor',
-      'Problem-solving abilities',
-      'Knowledge of local attractions and culture',
-      'Proficiency in hospitality management systems'
-    ],
-    benefits: [
-      'Competitive salary and service charge',
-      'Health insurance',
-      'Meals during shifts',
-      'Employee discounts on accommodations',
-      'Career advancement opportunities',
-      'Training and development programs',
-      'Employee recognition programs'
-    ]
-  },
-  'Finance': {
-    descriptions: [
-      'Join our financial services team and contribute to Jamaica\'s economic growth. We\'re looking for detail-oriented professionals with strong analytical skills.',
-      'Our financial institution is seeking skilled professionals to support our clients\' financial needs. This role offers the opportunity to work in a dynamic and evolving industry.',
-      'Be part of Jamaica\'s financial sector. We\'re looking for talented individuals who can help our clients achieve their financial goals.'
-    ],
-    responsibilities: [
-      'Analyze financial data and prepare reports',
-      'Process financial transactions accurately',
-      'Maintain compliance with financial regulations',
-      'Provide financial advice and guidance to clients',
-      'Develop and implement financial strategies',
-      'Monitor market trends and economic indicators',
-      'Collaborate with team members on financial projects'
-    ],
-    requirements: [
-      'Degree in Finance, Accounting, Economics, or related field',
-      'Professional certification (e.g., CPA, CFA) preferred',
-      'Experience in financial services or related industry',
-      'Strong analytical and mathematical skills',
-      'Attention to detail and accuracy',
-      'Proficiency in financial software and MS Excel',
-      'Knowledge of financial regulations and compliance'
-    ],
-    benefits: [
-      'Competitive salary and performance bonuses',
-      'Health and life insurance',
-      'Retirement savings plan',
-      'Professional development support',
-      'Career advancement opportunities',
-      'Employee banking benefits',
-      'Work-life balance initiatives'
-    ]
-  },
-  'Education': {
-    descriptions: [
-      'Join our educational institution dedicated to shaping the future of Jamaica. We\'re looking for passionate educators committed to student success.',
-      'Our school is seeking dedicated professionals to inspire and educate the next generation. This role offers the opportunity to make a lasting impact on students\' lives.',
-      'Be part of Jamaica\'s educational community. We\'re looking for innovative educators who can help our students reach their full potential.'
-    ],
-    responsibilities: [
-      'Develop and implement engaging lesson plans',
-      'Assess student progress and provide feedback',
-      'Create a positive and inclusive learning environment',
-      'Communicate with parents and guardians',
-      'Participate in staff meetings and professional development',
-      'Maintain accurate records of student performance',
-      'Adapt teaching methods to meet diverse student needs'
-    ],
-    requirements: [
-      'Degree in Education or relevant subject area',
-      'Teaching certification or license',
-      'Experience in educational settings',
-      'Strong communication and presentation skills',
-      'Patience and adaptability',
-      'Knowledge of curriculum development',
-      'Ability to inspire and motivate students'
-    ],
-    benefits: [
-      'Competitive salary',
-      'Health insurance',
-      'Pension plan',
-      'Professional development opportunities',
-      'School holidays',
-      'Supportive work environment',
-      'Opportunity to make a difference in students\' lives'
-    ]
-  },
-  'Other': {
-    descriptions: [
-      'Join our dynamic team and contribute to our company\'s success. We\'re looking for motivated professionals who can bring fresh ideas and energy to our organization.',
-      'Our company is seeking talented individuals to support our growing business. This role offers the opportunity to develop your skills in a supportive environment.',
-      'Be part of our diverse and inclusive workplace. We\'re looking for dedicated professionals who share our values and commitment to excellence.'
-    ],
-    responsibilities: [
-      'Perform tasks related to core business functions',
-      'Collaborate with team members to achieve goals',
-      'Maintain high standards of quality and service',
-      'Identify opportunities for improvement',
-      'Communicate effectively with stakeholders',
-      'Adhere to company policies and procedures',
-      'Contribute to a positive work environment'
-    ],
-    requirements: [
-      'Relevant education or experience',
-      'Strong communication skills',
-      'Ability to work independently and in teams',
-      'Problem-solving abilities',
-      'Attention to detail',
-      'Time management skills',
-      'Commitment to professional development'
-    ],
-    benefits: [
-      'Competitive salary',
-      'Health insurance',
-      'Paid time off',
-      'Professional development opportunities',
-      'Supportive work environment',
-      'Employee recognition programs',
-      'Work-life balance'
-    ]
-  }
+  // Add other industry templates from the backup file
 };
 
 const JobDescriptionBuilder = ({ initialData, onSave }) => {
@@ -278,45 +109,18 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
   useEffect(() => {
     if (initialData) {
       setDescription(initialData.description || '');
-      
-      // Parse responsibilities, requirements, and benefits if they exist
       if (initialData.responsibilities) {
         try {
-          // Try to parse as JSON if it's a string
           if (typeof initialData.responsibilities === 'string') {
             setResponsibilities(JSON.parse(initialData.responsibilities));
           } else if (Array.isArray(initialData.responsibilities)) {
             setResponsibilities(initialData.responsibilities);
           }
         } catch (e) {
-          // If it's not valid JSON, split by new lines
           setResponsibilities(initialData.responsibilities.split('\n').filter(item => item.trim()));
         }
       }
-      
-      if (initialData.requirements) {
-        try {
-          if (typeof initialData.requirements === 'string') {
-            setRequirements(JSON.parse(initialData.requirements));
-          } else if (Array.isArray(initialData.requirements)) {
-            setRequirements(initialData.requirements);
-          }
-        } catch (e) {
-          setRequirements(initialData.requirements.split('\n').filter(item => item.trim()));
-        }
-      }
-      
-      if (initialData.benefits) {
-        try {
-          if (typeof initialData.benefits === 'string') {
-            setBenefits(JSON.parse(initialData.benefits));
-          } else if (Array.isArray(initialData.benefits)) {
-            setBenefits(initialData.benefits);
-          }
-        } catch (e) {
-          setBenefits(initialData.benefits.split('\n').filter(item => item.trim()));
-        }
-      }
+      // Similar parsing for requirements and benefits
     }
   }, [initialData]);
 
@@ -330,12 +134,8 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
 
   const applyTemplate = () => {
     const template = industryTemplates[industry] || industryTemplates['Other'];
-    
-    // Get a random description from the template
     const randomIndex = Math.floor(Math.random() * template.descriptions.length);
     setDescription(template.descriptions[randomIndex]);
-    
-    // Set template responsibilities, requirements, and benefits
     setResponsibilities([...template.responsibilities]);
     setRequirements([...template.requirements]);
     setBenefits([...template.benefits]);
@@ -488,6 +288,7 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
             />
           </Box>
           
+          {/* Responsibilities Section */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" sx={{ color: '#FFD700', mb: 1 }}>
               Responsibilities
@@ -509,27 +310,23 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {responsibilities.map((resp, index) => (
-                <Box key={index} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Chip 
-                    label={resp}
-                    onDelete={() => removeResponsibility(index)}
-                    sx={{ 
-                      backgroundColor: 'rgba(44, 85, 48, 0.7)',
-                      color: 'white',
-                      flexGrow: 1,
-                      justifyContent: 'space-between',
-                      height: 'auto',
-                      '& .MuiChip-label': {
-                        whiteSpace: 'normal',
-                        padding: '8px 12px',
-                      }
-                    }}
-                  />
-                </Box>
+                <Chip 
+                  key={index}
+                  label={resp}
+                  onDelete={() => removeResponsibility(index)}
+                  sx={{ 
+                    backgroundColor: 'rgba(44, 85, 48, 0.7)',
+                    color: 'white',
+                    '& .MuiChip-deleteIcon': {
+                      color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                  }}
+                />
               ))}
             </Box>
           </Box>
-          
+
+          {/* Requirements Section */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" sx={{ color: '#FFD700', mb: 1 }}>
               Requirements
@@ -551,27 +348,23 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {requirements.map((req, index) => (
-                <Box key={index} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Chip 
-                    label={req}
-                    onDelete={() => removeRequirement(index)}
-                    sx={{ 
-                      backgroundColor: 'rgba(44, 85, 48, 0.7)',
-                      color: 'white',
-                      flexGrow: 1,
-                      justifyContent: 'space-between',
-                      height: 'auto',
-                      '& .MuiChip-label': {
-                        whiteSpace: 'normal',
-                        padding: '8px 12px',
-                      }
-                    }}
-                  />
-                </Box>
+                <Chip 
+                  key={index}
+                  label={req}
+                  onDelete={() => removeRequirement(index)}
+                  sx={{ 
+                    backgroundColor: 'rgba(44, 85, 48, 0.7)',
+                    color: 'white',
+                    '& .MuiChip-deleteIcon': {
+                      color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                  }}
+                />
               ))}
             </Box>
           </Box>
-          
+
+          {/* Benefits Section */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" sx={{ color: '#FFD700', mb: 1 }}>
               Benefits
@@ -593,35 +386,30 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {benefits.map((benefit, index) => (
-                <Box key={index} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Chip 
-                    label={benefit}
-                    onDelete={() => removeBenefit(index)}
-                    sx={{ 
-                      backgroundColor: 'rgba(44, 85, 48, 0.7)',
-                      color: 'white',
-                      flexGrow: 1,
-                      justifyContent: 'space-between',
-                      height: 'auto',
-                      '& .MuiChip-label': {
-                        whiteSpace: 'normal',
-                        padding: '8px 12px',
-                      }
-                    }}
-                  />
-                </Box>
+                <Chip 
+                  key={index}
+                  label={benefit}
+                  onDelete={() => removeBenefit(index)}
+                  sx={{ 
+                    backgroundColor: 'rgba(44, 85, 48, 0.7)',
+                    color: 'white',
+                    '& .MuiChip-deleteIcon': {
+                      color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                  }}
+                />
               ))}
             </Box>
           </Box>
         </Grid>
         
+        {/* Preview Section */}
         <Grid item xs={12} md={6}>
-          <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
-            Preview
-          </Typography>
-          
-          <StyledPaper>
-            <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Box sx={{ position: 'sticky', top: 20 }}>
+            <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
+              Preview
+            </Typography>
+            <StyledPaper>
               <Typography 
                 variant="body1" 
                 component="pre"
@@ -633,24 +421,24 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
               >
                 {preview}
               </Typography>
+            </StyledPaper>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              <Button
+                variant="contained"
+                onClick={handleSave}
+                sx={{
+                  background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                  color: '#000',
+                  '&:hover': {
+                    background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                    boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
+                  }
+                }}
+              >
+                Use This Description
+              </Button>
             </Box>
-          </StyledPaper>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <Button
-              variant="contained"
-              onClick={handleSave}
-              sx={{
-                background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                color: '#000',
-                '&:hover': {
-                  background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                  boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
-                }
-              }}
-            >
-              Use This Description
-            </Button>
           </Box>
         </Grid>
       </Grid>

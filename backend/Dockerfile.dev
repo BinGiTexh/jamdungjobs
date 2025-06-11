@@ -1,0 +1,79 @@
+# Stage 1: Dependencies
+FROM node:20.10.0-slim AS deps
+
+WORKDIR /app
+
+# Install system dependencies including netcat for database checks
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    curl \
+    netcat-traditional \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files for dependency installation
+COPY package*.json ./
+
+# Install dependencies with clear cache and offline mirror
+RUN npm ci --include=dev \
+    && npm cache clean --force
+
+# Stage 2: Development environment
+FROM node:20.10.0-slim
+
+# Create non-root user and set up directories
+RUN groupadd -r nodejs && \
+    useradd -r -g nodejs -m nodeuser && \
+    mkdir -p /app /app/prisma /app/node_modules && \
+    chown -R nodeuser:nodejs /app
+
+WORKDIR /app
+
+# Install system dependencies and development tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    curl \
+    git \
+    netcat-traditional \
+    && rm -rf /var/lib/apt/lists/* && \
+    npm install -g nodemon prisma
+
+# Copy dependencies from deps stage
+COPY --from=deps --chown=nodeuser:nodejs /app/node_modules ./node_modules
+COPY --chown=nodeuser:nodejs package*.json ./
+
+# Set development environment variables
+ENV NODE_ENV=development \
+    PATH=/app/node_modules/.bin:$PATH \
+    DEBUG=backend:* \
+    HOST=0.0.0.0 \
+    PORT=3000 \
+    PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node
+
+# Create cache directories for npm
+RUN mkdir -p /home/nodeuser/.npm && \
+    chown -R nodeuser:nodejs /home/nodeuser/.npm
+
+# Switch to non-root user
+USER nodeuser
+
+# Set up volume mount points for development
+VOLUME [ "/app/prisma", "/app/node_modules" ]
+
+# Copy and set up entrypoint script
+COPY --chown=nodeuser:nodejs docker-entrypoint.dev.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.dev.sh
+
+# Expose ports for application and debugging
+EXPOSE 3000 9229
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.dev.sh"]
+CMD ["nodemon", "--inspect=0.0.0.0:9229", "server.js"]
+

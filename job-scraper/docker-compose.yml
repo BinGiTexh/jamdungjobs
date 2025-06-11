@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  scraper:
+    build: .
+    container_name: jamdung-job-scraper
+    restart: unless-stopped
+    ports:
+      - "3500:3500"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/scraper_db
+      - SCRAPE_INTERVAL=0 */6 * * *  # Run every 6 hours
+      - JAMDUNG_API_URL=http://api:3000  # URL of the main JamDung Jobs backend API
+      - JAMDUNG_API_TOKEN=${JAMDUNG_API_TOKEN}  # Admin API token from .env file
+      - LOG_LEVEL=info
+      - ENABLE_JAMAICA_ENHANCEMENTS=true
+      - LINKEDIN_PAGES=5
+      - LINKEDIN_QUERY=jobs+in+jamaica
+      - CARIBBEANJOBS_PAGES=5
+      - EJAMJOBS_PAGES=5
+    volumes:
+      - ./data:/usr/src/app/data
+      - ./logs:/usr/src/app/logs
+    depends_on:
+      - postgres
+    networks:
+      - scraper-network
+      - jamdung-network  # To connect to the existing network
+
+  postgres:
+    image: postgres:15
+    container_name: scraper-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=scraper_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Using a different port to avoid conflicts with existing postgres
+    networks:
+      - scraper-network
+
+networks:
+  scraper-network:
+    driver: bridge
+  jamdung-network:
+    external: true  # This connects to your existing JamDung Jobs network
+
+volumes:
+  postgres-data:
+  
+# Health check configuration for the scraper service
+x-healthcheck:
+  scraper:
+    test: ["CMD", "curl", "-f", "http://localhost:3500"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 40s

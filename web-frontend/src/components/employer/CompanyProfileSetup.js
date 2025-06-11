@@ -1,537 +1,739 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import React, { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
-  Typography,
+  Grid,
   TextField,
   Button,
-  Paper,
-  Stepper,
-  Step,
-  StepLabel,
-  Grid,
+  Typography,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  styled,
   CircularProgress,
   Alert,
-  Fade,
-  styled
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DeleteIcon from '@mui/icons-material/Delete';
+import api from '../../utils/axiosConfig';
+import { logError } from '../../utils/loggingUtils';
 
-// Styled components for Jamaican theme
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
-  backgroundColor: 'rgba(10, 10, 10, 0.85)',
-  border: '1px solid rgba(255, 215, 0, 0.3)',
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+  '& .MuiOutlinedInput-root': {
+    color: '#FFFFFF',
+    '& fieldset': {
+      borderColor: 'rgba(255, 215, 0, 0.3)',
+    },
+    '&:hover fieldset': {
+      borderColor: 'rgba(255, 215, 0, 0.5)',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: '#FFD700',
+    },
+  },
+  '& .MuiInputLabel-root': {
+    color: 'rgba(255, 215, 0, 0.7)',
+  },
+}));
+
+const ImagePreview = styled(Box)(({ theme }) => ({
+  width: '100%',
+  height: 200,
+  borderRadius: theme.shape.borderRadius,
+  border: '2px dashed rgba(255, 215, 0, 0.3)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: theme.spacing(2),
   position: 'relative',
   overflow: 'hidden',
-  marginBottom: theme.spacing(3),
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%)',
-    opacity: 0.3,
-    zIndex: 0,
-  },
-}));
-
-const AnimatedButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-  color: '#000',
   '&:hover': {
-    background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
+    border: '2px dashed #FFD700',
+    '& .MuiBox-root': {
+      opacity: 1,
+    },
   },
-  transition: 'all 0.3s ease',
-  textTransform: 'none',
-  fontWeight: 600,
-  padding: '10px 24px',
-  borderRadius: '8px',
 }));
 
-const VisuallyHiddenInput = styled('input')({
-  clip: 'rect(0 0 0 0)',
-  clipPath: 'inset(50%)',
-  height: 1,
-  overflow: 'hidden',
+const UploadOverlay = styled(Box)(({ theme }) => ({
   position: 'absolute',
-  bottom: 0,
+  top: 0,
   left: 0,
-  whiteSpace: 'nowrap',
-  width: 1,
-});
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  opacity: 0,
+  transition: 'opacity 0.2s ease-in-out'
+}));
 
-const CompanyProfileSetup = ({ onComplete }) => {
-  const { } = useAuth(); // Using Auth context without extracting user
-  const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(0);
+// Utility function to safely format location values
+const formatLocationValue = (location) => {
+  if (!location) {
+    return null;
+  }
+
+  try {
+    // If it's already a properly formatted object, return it
+    if (location.mainText && location.name) {
+      return location;
+    }
+
+    // Handle string input
+    const locationStr = typeof location === 'string' ? location.trim() : '';
+    if (!locationStr) {
+      return null;
+    }
+
+    // Parse the location string
+    const parts = locationStr.split(',').map(part => part.trim()).filter(Boolean);
+    if (!parts.length) {
+      return null;
+    }
+
+    return {
+      mainText: parts[0],
+      secondaryText: parts.length > 1 ? parts.slice(1).join(', ') : 'Jamaica',
+      name: parts[0],
+      parish: parts.length > 1 ? parts[1] : 'Jamaica',
+      formattedAddress: parts.join(', ')
+    };
+  } catch (error) {
+    console.error('Error formatting location:', error);
+    return null;
+  }
+};
+
+const CompanyProfileSetup = ({
+  open, 
+  onClose, 
+  initialData, 
+  onSave,
+  loading: externalLoading,
+  error: externalError,
+  success: externalSuccess 
+}) => {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+  const [formData, setFormData] = useState({
+    companyName: initialData?.companyName ?? initialData?.name ?? '',
+    industry: initialData?.industry || '',
+    location: typeof initialData?.location === 'string' ? initialData.location : '',
+    website: initialData?.website || '',
+    description: initialData?.description || '',
+    logoUrl: initialData?.logoUrl || null,
+    logo: null
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  
-  const [companyData, setCompanyData] = useState({
-    companyName: '',
-    industry: '',
-    location: null,
-    description: '',
-    website: '',
-    logoFile: null,
-    logoPreview: null
+  const [message, setMessage] = useState({
+    type: null,
+    text: null
   });
-  
-  const steps = ['Company Details', 'Company Description', 'Review & Finish'];
-  
-  // Handle input changes
-  const handleChange = (field) => (e) => {
-    setCompanyData({
-      ...companyData,
-      [field]: e.target.value
-    });
-  };
-  
-  // Handle location selection
-  const handleLocationChange = (location) => {
-    setCompanyData({
-      ...companyData,
-      location
-    });
-  };
-  
-  // Handle logo upload
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setCompanyData({
-          ...companyData,
-          logoFile: file,
-          logoPreview: e.target.result
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  // Handle form navigation
-  const handleNext = () => {
-    if (activeStep === steps.length - 1) {
-      handleSubmit();
-    } else {
-      setActiveStep((prevStep) => prevStep + 1);
-    }
-  };
-  
-  const handleBack = () => {
-    setActiveStep((prevStep) => prevStep - 1);
-  };
-  
-  // Validate current step
-  const validateStep = () => {
-    setError(null);
-    
-    if (activeStep === 0) {
-      if (!companyData.companyName.trim()) {
-        setError('Company name is required');
-        return false;
-      }
-      if (!companyData.industry.trim()) {
-        setError('Industry is required');
-        return false;
-      }
-      if (!companyData.location) {
-        setError('Location is required');
-        return false;
-      }
-    } else if (activeStep === 1) {
-      if (!companyData.description.trim()) {
-        setError('Company description is required');
-        return false;
-      }
-    }
-    
-    return true;
-  };
-  
-  // Handle form submission
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
+  const [logoPreview, setLogoPreview] = useState(initialData?.logoUrl || null);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [imageLoading, setImageLoading] = useState({
+    logo: false
+  });
+
+  // Clear validation errors when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setValidationErrors({});
       setError(null);
-      
-      // Prepare data for API
-      const apiData = {
-        name: companyData.companyName,
-        // Remove industry field as it doesn't exist in the Prisma schema
-        description: companyData.description,
-        website: companyData.website,
-        // Handle location data properly
-        location: typeof companyData.location === 'object' ? 
-          companyData.location.formattedAddress : 
-          companyData.location
-      };
-      
-      logDev('debug', 'Sending company data to API:', sanitizeForLogging(apiData));
-      
-      // Save to localStorage as a backup
-      localStorage.setItem('employerCompanyProfile', JSON.stringify({
-        companyName: companyData.companyName,
-        industry: companyData.industry,
-        location: companyData.location,
-        description: companyData.description,
-        website: companyData.website,
-        logoUrl: companyData.logoPreview
+      setMessage({ type: null, text: null });
+    }
+  }, [open]);
+
+  // Handle external success/error states
+  useEffect(() => {
+    if (externalError) {
+      setMessage({
+        type: 'error',
+        text: externalError
+      });
+    } else if (externalSuccess) {
+      setMessage({
+        type: 'success',
+        text: 'Profile updated successfully!'
+      });
+    }
+  }, [externalError, externalSuccess]);
+
+  // Initialize form with data if editing, or empty if creating new
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        companyName: initialData.companyName ?? initialData.name ?? '',
+        industry: initialData.industry || '',
+        location: typeof initialData.location === 'string' ? initialData.location : '',
+        website: initialData.website || '',
+        description: initialData.description || '',
+        logoUrl: initialData.logoUrl || null,
+        logo: null
+      });
+      setLogoPreview(initialData.logoUrl || null);
+    }
+  }, [initialData]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear validation error for the field being changed
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: null
       }));
+    }
+  };
+
+  const handleLocationChange = (newLocation) => {
+    try {
+      // Handle null/empty case
+      if (!newLocation) {
+        setFormData(prev => ({ ...prev, location: '' }));
+        return;
+      }
+
+      // Build location string with all components
+      const locationParts = [
+        newLocation.name || newLocation.mainText,
+        newLocation.parish,
+        'Jamaica'
+      ].filter(Boolean);
+
+      const locationString = locationParts.join(', ');
       
-      try {
-        // Try to create a new company profile using our new endpoint
-        const response = await axios.post('http://localhost:5000/api/employer/create-company', apiData, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
-          }
-        });
-        
-        logDev('debug', 'Company profile created:', sanitizeForLogging(response.data));
-        
-        // If we have a logo, we would upload it here
-        // This would be a separate API call with FormData
-        
-        setSuccess(true);
-        
-        // Wait a moment before completing
-        setTimeout(() => {
-          if (onComplete) {
-            onComplete({
-              ...companyData,
-              // Add any data returned from the API
-              id: response.data?.id || null
-            });
-          }
-        }, 1000);
-        
-      } catch (apiError) {
-        logError('Failed to create company profile in API', apiError, {
-          module: 'CompanyProfileSetup',
-          action: 'create-company',
-          companyName: apiData.name
-        });
-        
-        // If the API fails, we still have the data in localStorage
-        setSuccess(true);
-        
-        // Wait a moment before completing
-        setTimeout(() => {
-          if (onComplete) {
-            onComplete(companyData);
-          }
-        }, 1000);
-        
-        // Show a warning that we're using localStorage
-        setError('Warning: Could not save to database. Data is stored locally only.');
+      console.log('Setting location:', {
+        newLocation,
+        locationString
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        location: locationString
+      }));
+
+      // Clear any validation errors
+      if (validationErrors.location) {
+        setValidationErrors(prev => ({
+          ...prev,
+          location: null
+        }));
       }
     } catch (error) {
-      logError('Error creating company profile', error, {
-        module: 'CompanyProfileSetup',
-        action: 'handleSubmit'
+      console.error('Error handling location change:', error);
+      setError('Invalid location format');
+      setFormData(prev => ({ ...prev, location: '' }));
+    }
+  };
+
+  const validateImageFile = (file) => {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    
+    if (!allowedTypes.includes(file.type)) {
+      return 'Only JPEG, PNG, and GIF images are allowed';
+    }
+    if (file.size > maxSize) {
+      return 'Image size should not exceed 5MB';
+    }
+    return null;
+  };
+
+  const handleImageUpload = async (event, type) => {
+    const file = event.target.files[0];
+    if (file) {
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      setImageLoading(prev => ({ ...prev, [type]: true }));
+      try {
+        const reader = new FileReader();
+        await new Promise((resolve, reject) => {
+          reader.onloadend = resolve;
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        setLogoPreview(reader.result);
+        setFormData(prev => ({ 
+          ...prev, 
+          logo: file,
+          logoUrl: reader.result 
+        }));
+      } catch (err) {
+        setError(`Failed to load ${type} image. Please try again.`);
+      } finally {
+        setImageLoading(prev => ({ ...prev, [type]: false }));
+      }
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setLogoPreview(null);
+    setFormData(prev => ({ 
+      ...prev, 
+      logo: null,
+      logoUrl: null 
+    }));
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.companyName?.trim()) {
+      errors.companyName = 'Company name is required';
+    }
+    if (!formData.industry?.trim()) {
+      errors.industry = 'Industry is required';
+    }
+    if (!formData.description?.trim()) {
+      errors.description = 'Company description is required';
+    }
+    if (formData.website?.trim() && !formData.website.trim().match(/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/)) {
+      errors.website = 'Please enter a valid website URL (e.g., https://example.com)';
+    }
+    
+    // Validate location
+    try {
+      if (!formData.location) {
+        errors.location = 'Location is required';
+      } else if (typeof formData.location !== 'string') {
+        errors.location = 'Location must be a valid text value';
+      } else if (!formData.location.trim()) {
+        errors.location = 'Location cannot be empty';
+      } else {
+        // Validate the location format
+        const formattedLocation = formatLocationValue(formData.location);
+        if (!formattedLocation) {
+          errors.location = 'Invalid location format';
+        }
+      }
+    } catch (error) {
+      console.error('Error validating location:', error);
+      errors.location = 'Invalid location format';
+    }
+    
+    // Validate logo file if present
+    if (formData.logo instanceof File) {
+      const validationError = validateImageFile(formData.logo);
+      if (validationError) {
+        errors.logo = validationError;
+      }
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Clear any existing errors first
+    setError(null);
+    setValidationErrors({});
+
+    if (!validateForm()) {
+      setError('Please fix the validation errors before submitting.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const formDataToSend = new FormData();
+      
+      // Validate and format all text fields
+      const sanitizedData = {
+        companyName: formData.companyName?.trim() || '',
+        industry: formData.industry?.trim() || '',
+        location: typeof formData.location === 'string' ? formData.location.trim() : '',
+        website: formData.website?.trim() || '',
+        description: formData.description?.trim() || ''
+      };
+      
+      // Append sanitized text fields
+      Object.entries(sanitizedData).forEach(([key, value]) => {
+        formDataToSend.append(key, value);
       });
-      setError('Failed to create company profile. Please try again.');
+
+      // Handle logo file upload - ensure it's a valid File object
+      if (formData.logo instanceof File) {
+        formDataToSend.append('logo', formData.logo);
+      }
+
+      // Use PUT if we have initialData (updating), POST if new profile
+      const method = initialData ? 'put' : 'post';
+      const response = await api[method]('/api/employer/profile', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data) {
+        console.log(response.data)
+        // Extract company object from API response (supports both nested and flat)
+        const company = response.data.data?.company || response.data.company || response.data;
+        // Map the response data back to our form structure
+        const mappedData = {
+          companyName: company.name,
+          industry: company.industry,
+          location: company.location,
+          website: company.website,
+          description: company.description,
+          logoUrl: company.logoUrl,
+          logo: null
+        };
+        
+        setFormData(mappedData);
+        setLogoPreview(company.logoUrl);
+        
+        if (onSave) {
+          // Pass only the company object upwards for simplicity
+          onSave(company);
+        }
+        
+        // Show success message
+        setMessage({
+          type: 'success',
+          text: `Company profile ${initialData ? 'updated' : 'created'} successfully!`
+        });
+        
+        // Close dialog after a brief delay to show success message
+        const timer = setTimeout(() => {
+          handleCancel();
+        }, 1500);
+
+        // Cleanup timer if component unmounts
+        return () => clearTimeout(timer);
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      logError('Error updating company profile:', err);
+      setError(err.response?.data?.message || 'Failed to update company profile. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-  
-  // Render step content
-  const renderStepContent = () => {
-    switch (activeStep) {
-      case 0:
-        return (
+
+  const resetForm = useCallback(() => {
+    if (initialData) {
+      setFormData({
+        companyName: initialData.companyName ?? initialData.name ?? '',
+        industry: initialData.industry || '',
+        location: typeof initialData.location === 'string' ? initialData.location : '',
+        website: initialData.website || '',
+        description: initialData.description || '',
+        logoUrl: initialData.logoUrl || null,
+        logo: null
+      });
+      setLogoPreview(initialData.logoUrl || null);
+    } else {
+      setFormData({
+        companyName: '',
+        industry: '',
+        location: '',
+        website: '',
+        description: '',
+        logoUrl: null,
+        logo: null
+      });
+      setLogoPreview(null);
+    }
+    setError(null);
+    setMessage({ type: null, text: null });
+    setValidationErrors({});
+    setImageLoading({ logo: false });
+  }, [initialData]);
+
+  const handleCancel = () => {
+    resetForm();
+    onClose();
+  };
+
+  // Reset form when dialog opens with initial data
+  useEffect(() => {
+    if (open) {
+      resetForm();
+    }
+  }, [open, resetForm]);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={handleCancel}
+      fullScreen={fullScreen}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          backgroundColor: 'rgba(20, 20, 20, 0.95)',
+          backgroundImage: 'none',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          border: '1px solid rgba(255, 215, 0, 0.2)',
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        color: '#FFD700',
+        fontSize: '1.5rem',
+        fontWeight: 600,
+        borderBottom: '1px solid rgba(255, 215, 0, 0.1)',
+        pb: 2
+      }}>
+        Company Profile Setup
+      </DialogTitle>
+
+      <DialogContent sx={{ p: 3 }}>
+        {message.type && (
+          <Alert 
+            severity={message.type}
+            sx={{ mb: 3 }} 
+            onClose={() => setMessage({ type: null, text: null })}
+          >
+            {message.text}
+          </Alert>
+        )}
+
+        {error && !message.type && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }} 
+            onClose={() => setError(null)}
+          >
+            {error}
+          </Alert>
+        )}
+
+        <form id="company-profile-form" onSubmit={handleSubmit}>
           <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Company Name"
-                value={companyData.companyName}
-                onChange={handleChange('companyName')}
-                required
-                variant="outlined"
-                InputProps={{
-                  sx: { color: '#FFFFFF' }
-                }}
-                InputLabelProps={{
-                  sx: { color: 'rgba(255, 255, 255, 0.7)' }
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Industry"
-                value={companyData.industry}
-                onChange={handleChange('industry')}
-                required
-                variant="outlined"
-                placeholder="e.g., Technology, Healthcare, Education"
-                InputProps={{
-                  sx: { color: '#FFFFFF' }
-                }}
-                InputLabelProps={{
-                  sx: { color: 'rgba(255, 255, 255, 0.7)' }
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <JamaicaLocationProfileAutocomplete
-                value={companyData.location}
-                onChange={handleLocationChange}
-                required
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Website"
-                value={companyData.website}
-                onChange={handleChange('website')}
-                variant="outlined"
-                placeholder="https://www.example.com"
-                InputProps={{
-                  sx: { color: '#FFFFFF' }
-                }}
-                InputLabelProps={{
-                  sx: { color: 'rgba(255, 255, 255, 0.7)' }
-                }}
-              />
-            </Grid>
-            
             <Grid item xs={12}>
               <Typography variant="subtitle1" sx={{ color: '#FFD700', mb: 1 }}>
                 Company Logo
               </Typography>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Button
-                  component="label"
-                  variant="outlined"
-                  startIcon={<CloudUploadIcon />}
-                  sx={{
-                    color: '#FFD700',
-                    borderColor: '#FFD700',
-                    '&:hover': {
-                      borderColor: '#FFD700',
-                      backgroundColor: 'rgba(255, 215, 0, 0.1)'
-                    }
-                  }}
-                >
-                  Upload Logo
-                  <VisuallyHiddenInput type="file" accept="image/*" onChange={handleLogoUpload} />
-                </Button>
-                
-                {companyData.logoPreview && (
-                  <Box
-                    sx={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: '4px',
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255, 215, 0, 0.3)'
-                    }}
-                  >
-                    <img
-                      src={companyData.logoPreview}
+              <ImagePreview>
+                {logoPreview ? (
+                  <>
+                    <Box
+                      component="img"
+                      src={logoPreview}
                       alt="Company Logo"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                      }}
                     />
+                    <UploadOverlay>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <input
+                          accept="image/*"
+                          type="file"
+                          id="logo-upload"
+                          hidden
+                          onChange={(e) => handleImageUpload(e, 'logo')}
+                        />
+                        <label htmlFor="logo-upload">
+                          <IconButton 
+                            component="span" 
+                            sx={{ color: '#FFD700' }}
+                            disabled={imageLoading.logo}
+                          >
+                            {imageLoading.logo ? (
+                              <CircularProgress size={24} sx={{ color: '#FFD700' }} />
+                            ) : (
+                              <CloudUploadIcon />
+                            )}
+                          </IconButton>
+                        </label>
+                        <IconButton
+                          onClick={() => handleRemoveImage()}
+                          sx={{ color: '#FFD700' }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </UploadOverlay>
+                  </>
+                ) : (
+                  <Box sx={{ textAlign: 'center' }}>
+                    <input
+                      accept="image/*"
+                      type="file"
+                      id="logo-upload"
+                      hidden
+                      onChange={(e) => handleImageUpload(e, 'logo')}
+                    />
+                    <label htmlFor="logo-upload">
+                      <IconButton component="span" sx={{ color: '#FFD700' }}>
+                        <CloudUploadIcon sx={{ fontSize: 40 }} />
+                      </IconButton>
+                    </label>
+                    <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
+                      Upload Company Logo
+                    </Typography>
                   </Box>
                 )}
-              </Box>
+              </ImagePreview>
             </Grid>
-          </Grid>
-        );
-        
-      case 1:
-        return (
-          <Grid container spacing={3}>
+
             <Grid item xs={12}>
-              <Typography variant="subtitle1" sx={{ color: '#FFD700', mb: 1 }}>
-                Company Description
-              </Typography>
-              <TextField
+              <StyledTextField
+                fullWidth
+                label="Company Name"
+                name="companyName"
+                value={formData.companyName}
+                onChange={handleChange}
+                required
+                error={!!validationErrors.companyName}
+                helperText={validationErrors.companyName}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <StyledTextField
+                fullWidth
+                label="Industry"
+                name="industry"
+                value={formData.industry}
+                onChange={handleChange}
+                required
+                error={!!validationErrors.industry}
+                helperText={validationErrors.industry}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <StyledTextField
+                fullWidth
+                label="Website"
+                name="website"
+                value={formData.website}
+                onChange={handleChange}
+                placeholder="https://example.com"
+                error={!!validationErrors.website}
+                helperText={validationErrors.website}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <JamaicaLocationProfileAutocomplete
+                value={formData.location ? formatLocationValue(formData.location) : null}
+                onChange={handleLocationChange}
+                error={!!validationErrors.location}
+                helperText={validationErrors.location}
+                placeholder="Select location"
+                required
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <StyledTextField
                 fullWidth
                 multiline
-                rows={8}
-                value={companyData.description}
-                onChange={handleChange('description')}
+                rows={4}
+                label="Company Description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
                 required
-                variant="outlined"
-                placeholder="Describe your company, mission, values, and what makes it unique..."
-                InputProps={{
-                  sx: { color: '#FFFFFF' }
+                error={!!validationErrors.description}
+                helperText={validationErrors.description}
+                InputLabelProps={{
+                  shrink: true,
                 }}
               />
             </Grid>
           </Grid>
-        );
-        
-      case 2:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h6" sx={{ color: '#FFD700', mb: 3 }}>
-                Review Your Company Profile
-              </Typography>
-              
-              <Box sx={{ mb: 3, p: 3, backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 2 }}>
-                <Grid container spacing={2}>
-                  {companyData.logoPreview && (
-                    <Grid item xs={12} sm={3} sx={{ display: 'flex', justifyContent: 'center' }}>
-                      <Box
-                        sx={{
-                          width: 100,
-                          height: 100,
-                          borderRadius: '4px',
-                          overflow: 'hidden',
-                          border: '1px solid rgba(255, 215, 0, 0.3)'
-                        }}
-                      >
-                        <img
-                          src={companyData.logoPreview}
-                          alt="Company Logo"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      </Box>
-                    </Grid>
-                  )}
-                  
-                  <Grid item xs={12} sm={companyData.logoPreview ? 9 : 12}>
-                    <Typography variant="h5" sx={{ color: '#FFFFFF', mb: 1 }}>
-                      {companyData.companyName}
-                    </Typography>
-                    
-                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
-                      {companyData.industry} • {companyData.location?.formattedAddress || 'No location'}
-                    </Typography>
-                    
-                    {companyData.website && (
-                      <Typography variant="body2" sx={{ color: '#4FC3F7', mb: 2 }}>
-                        {companyData.website}
-                      </Typography>
-                    )}
-                    
-                    <Typography variant="body1" sx={{ color: '#FFFFFF', whiteSpace: 'pre-wrap' }}>
-                      {companyData.description}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-            </Grid>
-          </Grid>
-        );
-        
-      default:
-        return null;
-    }
-  };
-  
-  // If success, show completion screen
-  if (success) {
-    return (
-      <Fade in={true}>
-        <StyledPaper>
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <CheckCircleIcon sx={{ fontSize: 60, color: '#4CAF50', mb: 2 }} />
-            <Typography variant="h5" sx={{ color: '#FFFFFF', mb: 2 }}>
-              Company Profile Created Successfully!
-            </Typography>
-            <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 4 }}>
-              Your company profile has been set up. You can now post jobs and manage your employer dashboard.
-            </Typography>
-          </Box>
-        </StyledPaper>
-      </Fade>
-    );
-  }
-  
-  return (
-    <Fade in={true}>
-      <StyledPaper>
-        <Typography variant="h5" sx={{ color: '#FFD700', mb: 4 }}>
-          Set Up Your Company Profile
-        </Typography>
-        
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel StepIconProps={{ sx: { color: '#FFD700' } }}>
-                <Typography sx={{ color: activeStep === steps.indexOf(label) ? '#FFD700' : 'rgba(255, 255, 255, 0.7)' }}>
-                  {label}
-                </Typography>
-              </StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-        
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-        
-        {renderStepContent()}
-        
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-          <Button
-            variant="outlined"
-            onClick={activeStep === 0 ? () => navigate('/employer/dashboard') : handleBack}
-            startIcon={<ArrowBackIcon />}
-            sx={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              borderColor: 'rgba(255, 255, 255, 0.3)',
-              '&:hover': {
-                borderColor: '#FFFFFF',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)'
-              }
-            }}
-          >
-            {activeStep === 0 ? 'Cancel' : 'Back'}
-          </Button>
-          
-          <AnimatedButton
-            onClick={() => {
-              if (validateStep()) {
-                handleNext();
-              }
-            }}
-            endIcon={activeStep < steps.length - 1 ? <ArrowForwardIcon /> : undefined}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <CircularProgress size={24} sx={{ mr: 1, color: '#000' }} />
-                {activeStep === steps.length - 1 ? 'Creating...' : 'Saving...'}
-              </>
-            ) : (
-              activeStep === steps.length - 1 ? 'Create Company Profile' : 'Continue'
-            )}
-          </AnimatedButton>
-        </Box>
-      </StyledPaper>
-    </Fade>
+        </form>
+      </DialogContent>
+      <DialogActions sx={{ 
+        p: 3, 
+        borderTop: '1px solid rgba(255, 215, 0, 0.1)',
+        gap: 2 
+      }}>
+        <Button
+          onClick={handleCancel}
+          sx={{
+            color: 'rgba(255, 255, 255, 0.7)',
+            '&:hover': {
+              color: '#FFFFFF',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            }
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          form="company-profile-form"
+          variant="contained"
+          disabled={loading || externalLoading}
+          sx={{
+            backgroundColor: '#FFD700',
+            color: '#000000',
+            '&:hover': {
+              backgroundColor: '#FFE44D'
+            },
+            '&:disabled': {
+              backgroundColor: 'rgba(255, 215, 0, 0.3)',
+              color: 'rgba(0, 0, 0, 0.4)'
+            }
+          }}
+        >
+          {(loading || externalLoading) ? (
+            <CircularProgress size={24} sx={{ color: '#000000' }} />
+          ) : (
+            'Save Profile'
+          )}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
+};
+
+CompanyProfileSetup.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  initialData: PropTypes.object,
+  onSave: PropTypes.func.isRequired,
+  loading: PropTypes.bool,
+  error: PropTypes.string,
+  success: PropTypes.bool
+};
+
+CompanyProfileSetup.defaultProps = {
+  initialData: null,
+  loading: false,
+  error: null,
+  success: false
 };
 
 export default CompanyProfileSetup;

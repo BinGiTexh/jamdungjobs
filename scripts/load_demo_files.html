@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Load Demo Files</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      color: #2C5530;
+    }
+    button {
+      background-color: #2C5530;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+    button:hover {
+      background-color: #FFD700;
+      color: black;
+    }
+    .preview {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      padding: 15px;
+      background-color: white;
+    }
+    img {
+      max-width: 300px;
+      max-height: 300px;
+      display: block;
+      margin: 10px 0;
+    }
+    .success {
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>JamDung Jobs - Load Demo Files</h1>
+  <p>This page will load your photo and resume for the candidate dashboard demo.</p>
+  
+  <div>
+    <h2>Profile Photo</h2>
+    <button id="loadPhoto">Load Photo from Downloads</button>
+    <div id="photoPreview" class="preview">
+      <p>Photo preview will appear here</p>
+    </div>
+  </div>
+  
+  <div>
+    <h2>Resume</h2>
+    <button id="loadResume">Load Resume</button>
+    <div id="resumePreview" class="preview">
+      <p>Resume info will appear here</p>
+    </div>
+  </div>
+  
+  <div>
+    <h2>Status</h2>
+    <div id="status"></div>
+  </div>
+  
+  <script>
+    // Load photo
+    document.getElementById('loadPhoto').addEventListener('click', async () => {
+      try {
+        // Read the photo file from the script
+        const response = await fetch('/scripts/photo_base64.txt');
+        if (!response.ok) {
+          throw new Error('Failed to load photo');
+        }
+        
+        const photoBase64 = await response.text();
+        
+        // Save to localStorage
+        localStorage.setItem('candidatePhotoUrl', photoBase64);
+        
+        // Show preview
+        const photoPreview = document.getElementById('photoPreview');
+        photoPreview.innerHTML = '';
+        
+        const img = document.createElement('img');
+        img.src = photoBase64;
+        photoPreview.appendChild(img);
+        
+        document.getElementById('status').innerHTML += '<p class="success">Photo loaded successfully!</p>';
+      } catch (error) {
+        console.error('Error loading photo:', error);
+        document.getElementById('status').innerHTML += `<p style="color:red">Error loading photo: ${error.message}</p>`;
+      }
+    });
+    
+    // Load resume
+    document.getElementById('loadResume').addEventListener('click', async () => {
+      try {
+        // For demo purposes, we'll just store the filename
+        const resumeFileName = 'malik_cameron_resume.pdf';
+        localStorage.setItem('candidateResumeFileName', resumeFileName);
+        
+        // Show info
+        document.getElementById('resumePreview').innerHTML = `
+          <p>Resume filename: <strong>${resumeFileName}</strong></p>
+          <p>This will appear in your candidate profile.</p>
+        `;
+        
+        document.getElementById('status').innerHTML += '<p class="success">Resume info loaded successfully!</p>';
+      } catch (error) {
+        console.error('Error loading resume info:', error);
+        document.getElementById('status').innerHTML += `<p style="color:red">Error loading resume info: ${error.message}</p>`;
+      }
+    });
+  </script>
+</body>
+</html>

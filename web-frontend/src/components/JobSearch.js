@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Grid,
@@ -17,7 +17,9 @@ import {
   ButtonGroup,
   Tooltip,
   Snackbar,
-  Alert
+  Alert,
+  Dialog,
+  DialogContent
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -28,7 +30,7 @@ import { SkillsAutocomplete } from './common/SkillsAutocomplete';
 import { SalaryRangeInput } from './common/SalaryRangeInput';
 import { SalaryDisplay } from './common/SalaryDisplay';
 import QuickApplyModal from './jobseeker/QuickApplyModal';
-import axios from 'axios';
+import api from '../utils/api';
 import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
 
 // Styled components for Jamaican theme
@@ -101,8 +103,12 @@ const JobSearch = () => {
     salaryMax: 300000,
     remote: false
   });
-  const [loading, setLoading] = useState(false);
-  const [resultsCount, setResultsCount] = useState(0);
+  const [searchState, setSearchState] = useState({
+    loading: false,
+    showLoadingModal: false,
+    error: null,
+    resultsCount: 0
+  });
   const [quickApplyJob, setQuickApplyJob] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -113,6 +119,16 @@ const JobSearch = () => {
   const jobTypes = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY'];
 
   const handleFilterChange = (field, value) => {
+    // Add special handling for location to prevent JSON issues
+    if (field === 'location' && (!value || Object.keys(value).length === 0)) {
+      // If location is being cleared, set it to null instead of undefined
+      setFilters(prev => ({
+        ...prev,
+        [field]: null
+      }));
+      return;
+    }
+    
     setFilters(prev => ({
       ...prev,
       [field]: value
@@ -155,51 +171,187 @@ const JobSearch = () => {
     return matchScore;
   };
 
-  const searchJobs = useCallback(async () => {
+  // Validate and format search parameters
+  const formatSearchParams = () => {
+    const params = {};
+    
     try {
-      setLoading(true);
+      // Format search query - ensure string
+      const queryTrim = filters.query?.trim();
+      if (queryTrim && typeof queryTrim === 'string') {
+        params.query = queryTrim;
+      }
       
-      logDev('debug', 'Initiating job search', sanitizeForLogging({
-        query: filters.query,
-        location: filters.location ? `${filters.location.name}, ${filters.location.parish || ''}` : null,
-        radius: filters.locationRadius,
-        jobType: filters.jobType,
-        skillsCount: filters.skills.length,
-        salaryRange: `${filters.salaryMin}-${filters.salaryMax}`,
-        remote: filters.remote
+      // Handle location with more flexible matching
+      if (filters.location && typeof filters.location === 'object') {
+        const locationInput = filters.location.name;
+        
+        if (locationInput && typeof locationInput === 'string') {
+          // Clean and normalize the location input
+          const locationParts = locationInput
+            .split(',')
+            .map(part => part.trim())
+            .filter(Boolean);
+          
+          // Use only the first part (city/town name) for searching
+          if (locationParts.length > 0) {
+            // Remove any additional text (like 'City' or 'Town')
+            const cleanLocation = locationParts[0]
+              .replace(/\s+(city|town|parish|district)$/i, '')
+              .trim();
+            
+            if (cleanLocation) {
+              params.location = cleanLocation;
+              // Always use partial matching for more flexible results
+              params.locationMatchMode = 'partial';
+              params.locationSearchType = 'flexible';
+            }
+          }
+        }
+      }
+      
+      // Format job type - only include if explicitly selected
+      if (filters.jobType && typeof filters.jobType === 'string' && filters.jobType !== '') {
+        const validType = jobTypes.includes(filters.jobType);
+        if (validType) {
+          params.type = filters.jobType;
+        }
+      }
+      
+      // Format salary range - ensure numbers
+      const minSalary = parseInt(filters.salaryMin, 10);
+      const maxSalary = parseInt(filters.salaryMax, 10);
+      
+      if (!isNaN(minSalary) && minSalary >= 0) {
+        params.minSalary = minSalary;
+      }
+      
+      if (!isNaN(maxSalary) && maxSalary >= 0) {
+        params.maxSalary = maxSalary;
+      }
+      
+      // Ensure minSalary <= maxSalary
+      if (params.minSalary > params.maxSalary && params.maxSalary !== 0) {
+        [params.minSalary, params.maxSalary] = [params.maxSalary, params.minSalary];
+      }
+      
+      // Format skills as an array with validation
+      if (Array.isArray(filters.skills)) {
+        params.skills = filters.skills
+          .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
+          .map(skill => skill.trim());
+      }
+      
+      // Log the formatted parameters for debugging
+      logDev('debug', 'Formatted search parameters', sanitizeForLogging(params));
+      
+    } catch (error) {
+      logError('Error formatting search parameters', error, {
+        module: 'JobSearch',
+        function: 'formatSearchParams',
+        filters: sanitizeForLogging(filters)
+      });
+      
+      // Return default params if formatting fails
+      return {
+        query: '',
+        location: '',
+        type: '',
+        minSalary: 0,
+        maxSalary: 0,
+        skills: []
+      };
+    }
+    
+    return params;
+  };
+
+  // Define searchJobs as a regular function (not useCallback) to avoid dependency issues
+  const searchJobs = async () => {
+    try {
+      setSearchState(prev => ({
+        ...prev,
+        loading: true,
+        showLoadingModal: true,
+        error: null
       }));
       
-      // Prepare search params
-      let searchParams = { ...filters };
+      const searchParams = formatSearchParams();
       
-      // Format Jamaica-specific location data for the API
-      if (filters.location) {
-        // Convert the location object to a string for the API
-        // The backend will parse this back into an object
-        const locationString = filters.location.name || '';
-        const parishString = filters.location.parish ? `, ${filters.location.parish}` : '';
-        
-        searchParams.location = `${locationString}${parishString}`;
-        searchParams.locationRadius = filters.location.radius || filters.locationRadius;
-        
-        // Also include the structured data for the backend to use if it can parse JSON
-        searchParams.locationData = JSON.stringify({
-          name: filters.location.name,
-          parish: filters.location.parish,
-          placeId: filters.location.placeId,
-          radius: filters.location.radius || filters.locationRadius
-        });
-      }
+      logDev('debug', 'Initiating job search with formatted params', sanitizeForLogging(searchParams));
+      
       
       logDev('debug', 'Searching with Jamaica-specific params:', sanitizeForLogging(searchParams));
       
-      const response = await axios.get('/api/jobs/search', { params: searchParams });
+      // Validate and clean search parameters before sending
+      const cleanParams = {};
+      
+      // Only include non-empty parameters with more flexible validation
+      Object.entries(searchParams).forEach(([key, value]) => {
+        if (Array.isArray(value) && value.length > 0) {
+          cleanParams[key] = value;
+        } else if (typeof value === 'number' && value > 0) {
+          cleanParams[key] = value;
+        } else if (typeof value === 'string' && value.trim() !== '') {
+          const trimmedValue = value.trim();
+          
+          switch (key) {
+            case 'location':
+              // Keep location search flexible
+              cleanParams[key] = trimmedValue;
+              // Add match mode for backend processing
+              cleanParams.locationMatchMode = 'partial';
+              break;
+              
+            case 'query':
+              // Keep query matching flexible
+              cleanParams[key] = trimmedValue;
+              cleanParams.queryMatchMode = 'partial';
+              break;
+              
+            default:
+              cleanParams[key] = trimmedValue;
+          }
+        }
+      });
+      
+      // Add status filter for active jobs
+      cleanParams.status = 'ACTIVE';
+      
+      // Log if searching with minimal filters
+      if (Object.keys(cleanParams).length <= 1) { // Only has status filter
+        logDev('debug', 'Searching with minimal filters - returning all active jobs');
+      }
+
+      // Add artificial delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Use the configured API utility instead of axios directly
+      const response = await api.get('/api/jobs/search', { 
+        params: cleanParams,
+        timeout: 15000, // Increased timeout for better reliability
+        paramsSerializer: params => {
+          return Object.entries(params)
+            .map(([key, value]) => {
+              if (Array.isArray(value)) {
+                return `${encodeURIComponent(key)}=${encodeURIComponent(JSON.stringify(value))}`;
+              }
+              return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+            })
+            .join('&');
+        }
+      });
+      
       let jobResults = response.data.jobs || response.data;
       
+      if (!Array.isArray(jobResults)) {
+        throw new Error('Invalid response format from the server');
+      }
+      
       // Calculate skill match score for each job if skills filter is applied
-      if (filters.skills && filters.skills.length > 0) {
+      if (searchParams.skills?.length > 0) {
         jobResults = jobResults.map(job => {
-          const skillMatchScore = calculateSkillMatchScore(job.skills, filters.skills);
+          const skillMatchScore = calculateSkillMatchScore(job.skills, searchParams.skills);
           return {
             ...job,
             skillMatchScore
@@ -213,11 +365,18 @@ const JobSearch = () => {
       logDev('info', 'Job search results processed', {
         resultCount: jobResults.length,
         resultsWithSkillMatch: jobResults.filter(job => job.skillMatchScore !== undefined).length,
-        highMatchCount: jobResults.filter(job => job.skillMatchScore > 75).length
+        highMatchCount: jobResults.filter(job => job.skillMatchScore > 75).length,
+        appliedFilters: Object.keys(searchParams)
       });
       
       setJobs(jobResults);
-      setResultsCount(jobResults.length);
+      setSearchState(prev => ({
+        ...prev,
+        loading: false,
+        showLoadingModal: false,
+        error: null,
+        resultsCount: jobResults.length
+      }));
     } catch (error) {
       logError('Error searching jobs', error, {
         module: 'JobSearch',
@@ -225,14 +384,113 @@ const JobSearch = () => {
         filters: sanitizeForLogging(filters),
         endpoint: '/api/jobs/search'
       });
-    } finally {
-      setLoading(false);
+      
+      // Handle specific error cases
+      let errorMessage = 'An error occurred while searching for jobs';
+      if (error.response) {
+        // Server responded with an error
+        switch (error.response.status) {
+          case 400:
+            errorMessage = 'Invalid search parameters. Please check your filters and try again.';
+            break;
+          case 404:
+            errorMessage = 'The search service is currently unavailable.';
+            break;
+          case 429:
+            errorMessage = 'Too many search requests. Please wait a moment and try again.';
+            break;
+          case 500:
+            errorMessage = 'The search service is experiencing issues. Please try again later.';
+            break;
+          default:
+            errorMessage = `Search error: ${error.response.data?.message || 'Unknown error'}`;
+        }
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = 'The search request timed out. Please try again.';
+      } else if (!navigator.onLine) {
+        errorMessage = 'No internet connection. Please check your connection and try again.';
+      }
+      
+      setSearchState(prev => ({
+        ...prev,
+        loading: false,
+        showLoadingModal: false,
+        error: errorMessage,
+        resultsCount: 0
+      }));
+      
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      });
     }
-  }, [filters]);
+  };
 
+  const handleSearch = async () => {
+    // Prevent multiple simultaneous searches
+    if (searchState.loading) {
+      return;
+    }
+
+    let searchStartTime = Date.now();
+    const MIN_LOADING_TIME = 1000; // Minimum time to show loading state (ms)
+    let searchPromise;
+    
+    try {
+      // Show loading modal immediately before any async operations
+      setSearchState(prev => ({
+        ...prev,
+        loading: true,
+        showLoadingModal: true,
+        error: null,
+        resultsCount: 0
+      }));
+      
+      // Start the search in the background
+      searchPromise = searchJobs();
+      
+      // Ensure minimum loading time
+      const loadingPromise = new Promise(resolve => 
+        setTimeout(resolve, MIN_LOADING_TIME)
+      );
+      
+      // Wait for both search and minimum loading time
+      await Promise.all([searchPromise, loadingPromise]);
+      
+    } catch (error) {
+      logDev('error', 'Search failed in handleSearch', { error: error.message });
+      // Error handling is done in searchJobs, but we still need to ensure
+      // the loading state is cleaned up properly
+    } finally {
+      // Only clean up loading state if this is the most recent search
+      const currentTime = Date.now();
+      if (currentTime - searchStartTime >= MIN_LOADING_TIME) {
+        setSearchState(prev => ({
+          ...prev,
+          loading: false,
+          showLoadingModal: false,
+          // Preserve any error state that might have been set
+          error: prev.error
+        }));
+      }
+    }
+  };
+
+  // Only search jobs on initial load or when user explicitly clicks search
+  // Don't automatically search when filters change
   useEffect(() => {
+    // Initial search when component mounts
+    setSearchState(prev => ({
+      ...prev,
+      loading: true,
+      showLoadingModal: false, // Don't show modal on initial load
+      error: null,
+      resultsCount: 0
+    }));
     searchJobs();
-  }, [searchJobs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);  // Empty dependency array to only run on mount
 
   const handleQuickApply = (job) => {
     if (!isAuthenticated) {
@@ -432,48 +690,84 @@ const JobSearch = () => {
                   sx={formFieldStyle}
                 />
               </Grid>
+            </Grid>
 
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  onClick={searchJobs}
-                  fullWidth
-                  disabled={loading}
-                  sx={{
-                    py: 1.5,
-                    mt: 2,
-                    background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                    color: '#000',
-                    fontWeight: 600,
-                    fontSize: '1.1rem',
-                    '&:hover': {
-                      background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
-                    },
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <CircularProgress size={24} sx={{ mr: 1, color: '#000' }} />
-                      Searching...
-                    </>
-                  ) : 'Search Jobs'}
-                </Button>
-              </Grid>
+            <Grid item xs={12}>
+              <Button
+                variant="contained"
+                onClick={handleSearch}
+                disabled={searchState.loading}
+                fullWidth
+                sx={{
+                  py: 1.5,
+                  mt: 2,
+                  background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                  color: '#000',
+                  fontWeight: 600,
+                  fontSize: '1.1rem',
+                  '&:hover': {
+                    background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                {searchState.loading ? (
+                  <>
+                    <CircularProgress size={20} sx={{ mr: 1, color: 'black' }} />
+                    Searching...
+                  </>
+                ) : (
+                  'Search Jobs'
+                )}
+              </Button>
             </Grid>
           </CardContent>
         </StyledCard>
 
-        {/* Results Count */}
-        <Typography variant="subtitle1" gutterBottom sx={{ color: '#FFD700', fontWeight: 500, mb: 2 }}>
-          {resultsCount} jobs found
-        </Typography>
+        {/* Results Count with Loading Indicator */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ color: '#FFD700', fontWeight: 500 }}>
+            {searchState.loading ? 'Searching...' : `${searchState.resultsCount} jobs found`}
+          </Typography>
+          {searchState.loading && (
+            <CircularProgress size={24} sx={{ color: '#FFD700' }} />
+          )}
+        </Box>
+        
+        {/* Error Message */}
+        {searchState.error && (
+          <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(244, 67, 54, 0.1)', borderRadius: 1 }}>
+            <Typography color="error">
+              {searchState.error}
+            </Typography>
+          </Box>
+        )}
 
-        {/* Job Listings */}
+        {/* Job Listings with Loading State */}
         <Grid container spacing={3} sx={{ position: 'relative', zIndex: 2 }}>
-          {jobs.map(job => (
+          {searchState.loading ? (
+            // Loading skeleton cards
+            Array(3).fill(0).map((_, index) => (
+              <Grid item xs={12} key={`skeleton-${index}`}>
+                <StyledCard>
+                  <CardContent sx={{ position: 'relative', zIndex: 1, opacity: 0.7 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Box sx={{ width: '70%', height: 28, backgroundColor: 'rgba(255, 215, 0, 0.2)', borderRadius: 1 }} />
+                      <Box sx={{ width: '40%', height: 20, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
+                      <Box sx={{ width: '90%', height: 60, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        {Array(3).fill(0).map((_, i) => (
+                          <Box key={i} sx={{ width: 60, height: 24, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 4 }} />
+                        ))}
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </StyledCard>
+              </Grid>
+            ))
+          ) : jobs.length > 0 ? jobs.map(job => (
             <Grid item xs={12} key={job.id}>
               <StyledCard>
                 <CardContent sx={{ position: 'relative', zIndex: 1 }}>
@@ -603,7 +897,25 @@ const JobSearch = () => {
                 </CardContent>
               </StyledCard>
             </Grid>
-          ))}
+          )) : (
+            // No results state
+            <Grid item xs={12}>
+              <Box sx={{ 
+                textAlign: 'center', 
+                py: 5, 
+                backgroundColor: 'rgba(20, 20, 20, 0.85)',
+                border: '1px solid rgba(255, 215, 0, 0.3)',
+                borderRadius: 2
+              }}>
+                <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
+                  No jobs found matching your criteria
+                </Typography>
+                <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  Try adjusting your search filters or using different keywords
+                </Typography>
+              </Box>
+            </Grid>
+          )}
         </Grid>
       </StyledContainer>
       
@@ -616,6 +928,47 @@ const JobSearch = () => {
           onSuccess={handleApplicationSuccess}
         />
       )}
+      
+      {/* Loading Modal */}
+      <Dialog
+        open={searchState.loading && searchState.showLoadingModal}
+        disableEscapeKeyDown
+        disableBackdropClick={searchState.loading}
+        keepMounted
+        onClose={(event, reason) => {
+          // Prevent closing when loading
+          if (searchState.loading) {
+            return;
+          }
+          // Allow closing only when not loading
+          if (reason !== 'backdropClick') {
+            setSearchState(prev => ({
+              ...prev,
+              showLoadingModal: false
+            }));
+          }
+        }}
+        PaperProps={{
+          style: {
+            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+            border: '2px solid #FFD700',
+            borderRadius: '8px',
+            padding: '20px',
+            maxWidth: '400px',
+            width: '100%'
+          }
+        }}
+      >
+        <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+          <CircularProgress size={60} sx={{ color: '#FFD700', mb: 3 }} />
+          <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
+            Searching Jobs
+          </Typography>
+          <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            Finding the perfect opportunities for you in Jamaica...
+          </Typography>
+        </DialogContent>
+      </Dialog>
       
       {/* Snackbar for notifications */}
       <Snackbar 

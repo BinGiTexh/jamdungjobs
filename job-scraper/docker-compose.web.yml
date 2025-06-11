@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  web-viewer:
+    image: nginx:alpine
+    container_name: jamdung-jobs-viewer
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web-viewer:/usr/share/nginx/html
+      - ./data:/usr/share/nginx/html/data
+    networks:
+      - scraper-demo-network
+
+networks:
+  scraper-demo-network:
+    driver: bridge

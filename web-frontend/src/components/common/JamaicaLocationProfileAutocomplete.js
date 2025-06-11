@@ -66,7 +66,19 @@ export const JamaicaLocationProfileAutocomplete = ({
         formattedAddress: `${parish}, Jamaica`
       }));
       
-    return [...results, ...parishResults].slice(0, 10);
+    // Merge and deduplicate options by mainText + secondaryText to ensure unique keys
+    const merged = [...results, ...parishResults];
+    const seen = new Set();
+    const unique = [];
+    for (const opt of merged) {
+      const dedupKey = `${opt.mainText}|${opt.secondaryText}`;
+      if (!seen.has(dedupKey)) {
+        seen.add(dedupKey);
+        unique.push(opt);
+      }
+    }
+    
+    return unique.slice(0, 10);
   };
 
   // Update options when input changes

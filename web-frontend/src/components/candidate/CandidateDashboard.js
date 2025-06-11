@@ -24,7 +24,7 @@ import {
   Fade
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
-import { buildApiUrl } from '../../config';
+import { buildApiUrl, buildAssetUrl } from '../../config';
 import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import api from '../../utils/axiosConfig';
@@ -41,6 +41,7 @@ import GetAppIcon from '@mui/icons-material/GetApp';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 import Avatar from '@mui/material/Avatar';
 
 // Styled components for Jamaican theme - matching login page styling
@@ -203,8 +204,8 @@ const CandidateDashboard = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { logout } = useAuth();
   
-  // State for profile data
-  const [profile, setProfile] = useState({
+  // Default profile structure with empty arrays
+  const defaultProfile = {
     firstName: '',
     lastName: '',
     email: '',
@@ -212,13 +213,38 @@ const CandidateDashboard = () => {
     location: '',
     title: '',
     bio: '',
-    skills: [],
+    skills: [], // Initialize empty skills array
     education: [],
     experience: [],
     profilePicture: null,
     resumeFileName: null,
-    resumeUrl: null
+    resumeUrl: null,
+    photoUrl: null
+  };
+
+  // Helper function to ensure valid skills array
+  const getValidSkills = (profile) => {
+    if (!profile) return [];
+    const skills = profile.skills;
+    if (!skills) return [];
+    if (Array.isArray(skills)) return skills.filter(skill => !!skill);
+    return [];
+  };
+
+  // Helper function to ensure skills is always an array
+  const ensureSkillsArray = (profile) => ({
+    ...profile,
+    skills: Array.isArray(profile?.skills) ? profile.skills : []
   });
+
+  // Helper to build full asset URL using shared helper
+  const getFullUrl = (relativeUrl) => {
+    if (!relativeUrl || typeof relativeUrl !== 'string') return '';
+    return buildAssetUrl(relativeUrl);
+  };
+
+  // State for profile data
+  const [profile, setProfile] = useState(defaultProfile);
   
   // UI state
   const [tabValue, setTabValue] = useState(0);
@@ -228,7 +254,7 @@ const CandidateDashboard = () => {
   const [showResumePreview, setShowResumePreview] = useState(false);
   
   // Form state
-  const [editedProfile, setEditedProfile] = useState({...profile});
+  const [editedProfile, setEditedProfile] = useState({...defaultProfile});
   
   // File upload state
   const [selectedFile, setSelectedFile] = useState(null);
@@ -244,10 +270,16 @@ const CandidateDashboard = () => {
   const handleEditToggle = () => {
     if (editMode) {
       // If we're exiting edit mode, reset the edited profile to the current profile
-      setEditedProfile({...profile});
+      setEditedProfile({
+        ...profile,
+        skills: Array.isArray(profile?.skills) ? profile.skills : []
+      });
     } else {
       // If we're entering edit mode, initialize the edited profile with the current profile
-      setEditedProfile({...profile});
+      setEditedProfile({
+        ...profile,
+        skills: Array.isArray(profile?.skills) ? profile.skills : []
+      });
     }
     setEditMode(!editMode);
   };
@@ -297,55 +329,72 @@ const CandidateDashboard = () => {
   // Constants for localStorage keys (must match the ones in AuthContext.js)
   const TOKEN_KEY = 'jamdung_auth_token';
   
-  useEffect(() => {
-    // Get token information
-    const token = localStorage.getItem(TOKEN_KEY);
-    logDev('debug', 'Token exists:', !!token);
-    if (token) {
-      logDev('debug', 'Token first 10 chars:', token.substring(0, 10) + '...');
-    } else {
-      // Check for legacy token
-      const legacyToken = localStorage.getItem('token');
-      if (legacyToken) {
-        logDev('debug', 'Legacy token exists, migrating...');
-        localStorage.setItem(TOKEN_KEY, legacyToken);
+  // Fetch profile data
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch user profile data
+      const userResponse = await api.get('/api/jobseeker/profile');
+      
+      if (!userResponse.data) {
+        throw new Error('No profile data returned from server');
       }
+      
+      logDev('debug', 'Fetched profile data:', userResponse.data);
+      
+      // Handle different backend response shapes (e.g., { success, data: {...} } or raw user object)
+      const userData = userResponse.data?.data || userResponse.data || {};
+      
+      const candidateData = userData.candidateProfile || userData.candidate_profile || {};
+      
+      // Extract photo and resume URLs from the candidateProfile
+      const photoUrl = candidateData.photoUrl || null;
+      const resumeUrl = candidateData.resumeUrl || null;
+      const resumeFileName = candidateData.resumeFileName || null;
+      
+      // Update both profile states with defaults for any missing fields
+      const updatedProfile = {
+        ...defaultProfile,
+        ...userData,
+        photoUrl,
+        resumeUrl,
+        resumeFileName,
+        // Ensure arrays are always properly initialized
+        skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
+        education: candidateData.education || [],
+        experience: candidateData.experience || [],
+      };
+      
+      logDev('debug', 'Profile URLs:', {
+        photoUrl,
+        fullPhotoUrl: getFullUrl(photoUrl),
+        resumeUrl,
+        fullResumeUrl: getFullUrl(resumeUrl),
+        resumeFileName
+      });
+      
+      const sanitizedProfile = {
+        ...updatedProfile,
+        skills: getValidSkills(updatedProfile.skills)
+      };
+      
+      setProfile(sanitizedProfile);
+      setEditedProfile(sanitizedProfile);
+      
+      return sanitizedProfile;
+    } catch (error) {
+      logError('Error fetching profile data', { error: sanitizeForLogging(error), context: 'candidateDashboard' });
+      setMessage({ type: 'error', text: 'Failed to load profile data. Please try again later.' });
+      return null;
+    } finally {
+      setLoading(false);
     }
-    
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        // Use individual try/catch blocks for each API call to handle them independently
-        try {
-          const profileRes = await api.get('/api/candidate/profile');
-          
-          // Only use the data from the API response, don't mix with demo files
-          // This ensures each user only sees their own profile data
-          setProfile({
-            ...profileRes.data
-          });
-        } catch (profileError) {
-          logError('Error fetching profile', { error: sanitizeForLogging(profileError), context: 'candidateDashboard' });
-          // Don't show an error message for this specifically, as we'll show a general one below if needed
-        }
-        
-        // Set a welcome message if the profile is empty
-        if (!profile.firstName && !profile.lastName) {
-          setMessage({ 
-            type: 'success', 
-            text: 'Welcome to your dashboard! Complete your profile to get started.' 
-          });
-        }
-      } catch (error) {
-        logError('Error in dashboard initialization', { error: sanitizeForLogging(error), context: 'candidateDashboard' });
-        // Only show error if it's a critical failure
-        setMessage({ type: 'error', text: 'Something went wrong. Please try again later.' });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchDashboardData();
+  };
+  
+  // Load profile data when component mounts
+  useEffect(() => {
+    fetchProfileData();
   }, []);
   
   // Handle save profile changes
@@ -354,33 +403,47 @@ const CandidateDashboard = () => {
       setLoading(true);
       logDev('debug', 'Updating profile with data:', editedProfile);
       
-      // Get the token for explicit authorization
-      const token = localStorage.getItem(TOKEN_KEY);
+      // Combine user and jobseeker profile data into one payload for backend
+      const payload = {
+        first_name: editedProfile.firstName,
+        last_name: editedProfile.lastName,
+        phone_number: editedProfile.phone,
+        title: editedProfile.title,
+        bio: editedProfile.bio,
+        location: editedProfile.location,
+        skills: editedProfile.skills,
+        education: editedProfile.education,
+        locationData: editedProfile.locationData || null
+      };
       
-      // Make API call to update profile using PUT instead of POST
-    // Ensure locationData is included in the profile update
-    const profileData = {
-      ...editedProfile,
-      // Make sure locationData is included if it exists
-      locationData: editedProfile.locationData || null
-    };
-    
-    logDev('debug', 'Sending profile data with location:', profileData);
-    
-    const response = await api.put('/api/candidate/profile', profileData, {
+      // Send single request to update jobseeker profile (also updates user fields in backend)
+      const profileResponse = await api.put('/api/jobseeker/profile', payload, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
         }
       });
       
-      logDev('debug', 'Profile update response:', response.data);
+      logDev('debug', 'Profile update response:', profileResponse.data);
       
-      // Update local state
-      setProfile(editedProfile);
+      // Extract updated data accommodating different response shapes
+      const responseData = profileResponse.data?.data || profileResponse.data || {};
+      
+      const updatedProfile = {
+        ...profile,
+        ...responseData,
+        ...payload
+      };
+      
+      // Ensure skills array is properly initialized
+      const sanitizedProfile = {
+        ...updatedProfile,
+        skills: Array.isArray(updatedProfile.skills) ? updatedProfile.skills : []
+      };
+      setProfile(sanitizedProfile);
+      setEditedProfile(sanitizedProfile);
+      
       setEditMode(false);
       
-      // Show success message
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
     } catch (error) {
       logError('Error updating profile', { error: sanitizeForLogging(error), userId: profile.id, context: 'candidateDashboard' });
@@ -389,7 +452,6 @@ const CandidateDashboard = () => {
       setLoading(false);
     }
   };
-  
   
   // Handle file selection for resume upload
   const handleFileSelect = (event) => {
@@ -413,6 +475,13 @@ const CandidateDashboard = () => {
       return;
     }
     
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (selectedFile.size > maxSize) {
+      setMessage({ type: 'error', text: `File size exceeds 5MB limit. Your file is ${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB.` });
+      return;
+    }
+    
     setIsUploading(true);
     setUploadProgress(0);
     
@@ -423,9 +492,18 @@ const CandidateDashboard = () => {
       
       // Get the token for explicit authorization
       const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+      
+      logDev('debug', 'Uploading resume:', {
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type
+      });
       
       // Make API call to upload resume with progress tracking
-      const response = await api.post('/api/candidate/resume', formData, {
+      const response = await api.post('/api/jobseeker/profile/resume', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
@@ -433,16 +511,44 @@ const CandidateDashboard = () => {
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(percentCompleted);
+          logDev('debug', `Upload progress: ${percentCompleted}%`);
         }
       });
       
-      logDev('debug', 'Upload response:', response.data);
+      // Safely handle the response data
+      const responseData = response.data || {};
+      logDev('debug', 'Upload response:', responseData);
       
-      // Update profile with new resume info
-      setProfile(prev => ({
+      // Check if we have a valid resumeUrl in the response
+      if (!responseData.resumeUrl) {
+        logError('Invalid resume upload response', { 
+          response: sanitizeForLogging(responseData),
+          context: 'candidateDashboard'
+        });
+        throw new Error('Resume URL not found in server response');
+      }
+      
+      // Update profile with resume URL from response
+      const resumeUrl = getFullUrl(responseData.resumeUrl);
+      const resumeFileName = responseData.resumeFileName || selectedFile.name;
+      
+      const updatedProfile = {
+        ...profile,
+        resumeUrl: resumeUrl,
+        resumeFileName: resumeFileName
+      };
+      
+      logDev('debug', 'Updated profile with resume URL:', {
+        resumeUrl,
+        fullUrl: getFullUrl(resumeUrl),
+        resumeFileName
+      });
+      
+      // Also update editedProfile to keep them in sync
+      setEditedProfile(prev => ({
         ...prev,
         resumeFileName: selectedFile.name,
-        resumeUrl: response.data.resumeUrl
+        resumeUrl: getFullUrl(responseData.resumeUrl)
       }));
       
       // Reset file selection
@@ -450,278 +556,234 @@ const CandidateDashboard = () => {
       
       // Show success message
       setMessage({ type: 'success', text: 'Resume uploaded successfully!' });
+      
+      // Refresh profile data to ensure we have the latest resume info
+      await fetchProfileData();
     } catch (error) {
-      logError('Error uploading resume', { error: sanitizeForLogging(error), fileName: selectedFile?.name, userId: profile.id, context: 'candidateDashboard' });
-      setMessage({ type: 'error', text: 'Failed to upload resume. Please try again.' });
+      // Handle specific error codes
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 400) {
+          setMessage({ type: 'error', text: 'Invalid file format. Please upload a PDF file.' });
+        } else if (status === 401) {
+          setMessage({ type: 'error', text: 'Authentication error. Please log in again.' });
+        } else if (status === 413) {
+          setMessage({ type: 'error', text: 'File too large. Maximum size is 5MB.' });
+        } else {
+          setMessage({ type: 'error', text: `Upload failed: ${error.response.data?.message || error.message}` });
+        }
+      } else {
+        setMessage({ type: 'error', text: `Upload failed: ${error.message}` });
+      }
+      
+      logError('Resume upload error', { 
+        error: sanitizeForLogging(error), 
+        fileName: selectedFile?.name,
+        fileSize: selectedFile?.size,
+        context: 'candidateDashboard' 
+      });
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
-  
-  // Handle view resume
-  const handleViewResume = () => {
-    logDev('debug', 'Viewing resume, file name:', profile.resumeFileName);
-    logDev('debug', 'Resume URL available:', !!profile.resumeUrl);
-    
-    // Get authentication token
-    const token = localStorage.getItem(TOKEN_KEY);
-    logDev('debug', 'Auth token exists:', !!token);
-    if (token) {
-      logDev('debug', 'Token first 10 chars:', token.substring(0, 10) + '...');
-      logDev('debug', 'Token length:', token.length);
-    } else {
-      logError('No authentication token found in localStorage', { context: 'candidateDashboard', action: 'viewResume' });
-      // Check for legacy token
-      const legacyToken = localStorage.getItem('token');
-      if (legacyToken) {
-        logDev('debug', 'Legacy token exists, migrating...');
-        localStorage.setItem(TOKEN_KEY, legacyToken);
-      }
-    }
-    
-    // Check if we need to fetch the resume URL from the server
-    if (!profile.resumeUrl && profile.resumeFileName) {
-      logDev('debug', 'No resume URL in state, fetching from server...');
-      // Show loading message
-      setMessage({
-        type: 'info',
-        text: 'Loading resume...',
-      });
-      
-      // Get the token directly from localStorage for this specific request
-      const authToken = localStorage.getItem(TOKEN_KEY);
-      logDev('debug', 'Using token directly for resume request:', authToken ? 'Token exists' : 'No token');
-      
-      // Fetch the resume URL from the server with explicit authorization header
-      api.get('/api/candidate/resume', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
-      })
-        .then(response => {
-          logDev('debug', 'Fetched resume data from server');
-          
-          if (!response.data.resumeUrl) {
-            logError('Server returned empty resume URL', { context: 'candidateDashboard', userId: profile.id, action: 'viewResume' });
-            setMessage({
-              type: 'error',
-              text: 'Resume data not found on server.'
-            });
-            return;
-          }
-          
-          // Update the profile with the resume URL
-          setProfile(prev => ({
-            ...prev,
-            resumeUrl: response.data.resumeUrl
-          }));
-          
-          // Show the preview dialog
-          setShowResumePreview(true);
-        })
-        .catch(error => {
-          logError('Error fetching resume', { error: sanitizeForLogging(error), context: 'candidateDashboard', userId: profile.id, action: 'viewResume' });
-          setMessage({
-            type: 'error',
-            text: 'Unable to load resume preview. The resume data may not be in the correct format.'
-          });
-        });
-    } else if (profile.resumeUrl) {
-      logDev('debug', 'Resume URL already in state, using it directly');
-      
-      // Check if the URL is a base64 string and ensure it has the correct MIME type
-      if (profile.resumeUrl.startsWith('data:') && !profile.resumeUrl.includes('application/pdf')) {
-        logDev('debug', 'Fixing resume URL format for PDF');
-        
-        // Extract the base64 part (after the comma)
-        const base64Part = profile.resumeUrl.split(',')[1];
-        
-        // Reconstruct with the correct PDF MIME type
-        const resumeUrl = `data:application/pdf;base64,${base64Part}`;
-        
-        // Update the profile with the fixed URL
-        setProfile(prev => ({
-          ...prev,
-          resumeUrl: resumeUrl
-        }));
-      }
-    }
-    
-    // Clear any previous error messages
-    setMessage(null);
-    
-    // Show the preview dialog
-    setShowResumePreview(true);
-  };
-  
-  // Handle close resume preview
-  const handleCloseResumePreview = () => {
-    setShowResumePreview(false);
-  };
-  
-  // Handle download resume
-  const handleDownloadResume = () => {
-    logDev('debug', 'Downloading resume:', profile.resumeFileName);
-    logDev('debug', 'Resume URL available:', !!profile.resumeUrl);
-    
-    // Check if we need to fetch the resume URL from the server
-    if (!profile.resumeUrl && profile.resumeFileName) {
-      // Get the token directly from localStorage for this specific request
-      const authToken = localStorage.getItem(TOKEN_KEY);
-      logDev('debug', 'Using token directly for resume download request:', authToken ? 'Token exists' : 'No token');
-      
-      // Fetch the resume URL from the server with explicit authorization header
-      api.get('/api/candidate/resume', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
-      })
-      .then(response => {
-        if (!response.data.resumeUrl) {
-          setMessage({
-            type: 'error',
-            text: 'Resume data not found on server.'
-          });
-          return;
-        }
-        
-        // Update the profile with the resume URL
-        setProfile(prev => ({
-          ...prev,
-          resumeUrl: response.data.resumeUrl
-        }));
-        
-        // Download the file
-        downloadFile(response.data.resumeUrl);
-      })
-      .catch(error => {
-        logError('Error fetching resume for download', { error: sanitizeForLogging(error), context: 'candidateDashboard', userId: profile.id, action: 'downloadResume' });
-        setMessage({
-          type: 'error',
-          text: 'Unable to download resume. Please try again later.'
-        });
-      });
-    } else if (profile.resumeUrl) {
-      // Download the file directly
-      downloadFile(profile.resumeUrl);
-    } else {
-      setMessage({
-        type: 'error',
-        text: 'No resume available to download.'
-      });
-    }
-  };
-  
-  // Helper function to download a file from a URL
-  const downloadFile = (resumeUrl) => {
-    // Check if the URL is a base64 string and ensure it has the correct MIME type
-    if (resumeUrl.startsWith('data:') && !resumeUrl.includes('application/pdf')) {
-      // Extract the base64 part (after the comma)
-      const base64Part = resumeUrl.split(',')[1];
-      
-      // Reconstruct with the correct PDF MIME type
-      resumeUrl = `data:application/pdf;base64,${base64Part}`;
-    }
-    
-    // Create a temporary link element
-    const downloadLink = document.createElement('a');
-    downloadLink.href = resumeUrl;
-    downloadLink.download = profile.resumeFileName || 'resume.pdf';
-    
-    // Append to the document body, click it, and then remove it
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-  };
-  
+
   // Handle profile picture upload
   const handleProfilePictureUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
-    // Only accept image files
-    if (!file.type.startsWith('image/')) {
-      setMessage({ type: 'error', text: 'Please upload an image file.' });
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setMessage({ type: 'error', text: 'Photo size should be less than 5MB' });
       return;
     }
-    
+
     try {
       setLoading(true);
-      
-      // Create form data with current profile data to prevent losing other fields
+
       const formData = new FormData();
-      
-      // Add all current profile fields
-      formData.append('firstName', profile.firstName || '');
-      formData.append('lastName', profile.lastName || '');
-      formData.append('title', profile.title || '');
-      formData.append('bio', profile.bio || '');
-      formData.append('location', profile.location || '');
-      formData.append('skills', JSON.stringify(profile.skills || []));
-      formData.append('education', JSON.stringify(profile.education || []));
-      formData.append('photoUrl', profile.photoUrl || '');
-      formData.append('resumeFileName', profile.resumeFileName || '');
-      
-      // Add the photo file with the correct field name
-      formData.append('photoFile', file);
-      
-      // Make API call to update profile with the new photo
-      const response = await api.put('/api/candidate/profile', formData, {
+      formData.append('photo', file);
+
+      const response = await api.post('/api/jobseeker/profile/photo', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
+        },
       });
-      
-      // Update both profile and editedProfile with new profile picture URL
-      const updatedPhotoUrl = response.data.profile.photoUrl;
-      
-      setProfile(prev => ({
-        ...prev,
-        photoUrl: updatedPhotoUrl
-      }));
-      
-      // Also update editedProfile to ensure it's saved when clicking Save
-      setEditedProfile(prev => ({
-        ...prev,
-        photoUrl: updatedPhotoUrl
-      }));
-      
-      // Automatically save the profile to ensure changes persist
-      try {
-        await api.put('/api/candidate/profile', {
-          ...profile,
-          photoUrl: updatedPhotoUrl
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-      } catch (saveError) {
-        logError('Error saving profile after photo upload', { error: sanitizeForLogging(saveError), context: 'candidateDashboard', userId: profile.id, action: 'profilePictureUpload' });
+
+      if (!response.data || !response.data.photoUrl) {
+        throw new Error('No photo URL returned from server');
       }
+
+      // Log the response for debugging
+      logDev('debug', 'Profile photo upload response:', response.data);
       
-      // Show success message
+      // Optimistically update the profile photo locally for instant feedback
+      const newPhotoUrl = response.data.photoUrl;
+      setProfile(prev => ({ ...prev, photoUrl: newPhotoUrl }));
+      // Also refresh entire profile to sync other possible changes
+      await fetchProfileData();
+      
       setMessage({ type: 'success', text: 'Profile picture updated successfully!' });
     } catch (error) {
-      logError('Error uploading profile picture', { error: sanitizeForLogging(error), context: 'candidateDashboard', userId: profile.id });
-      setMessage({ type: 'error', text: 'Failed to upload profile picture. Please try again.' });
+      logError('Error uploading profile picture', {
+        error: sanitizeForLogging(error),
+        context: 'candidateDashboard'
+      });
+      setMessage({ type: 'error', text: 'Failed to update profile picture.' });
     } finally {
       setLoading(false);
     }
   };
-  
+
+  // Handle opening resume preview
+  const handleViewResume = () => {
+    if (!profile.resumeUrl) {
+      setMessage({ type: 'error', text: 'No resume available to view.' });
+      return;
+    }
+    setShowResumePreview(true);
+  };
+
+  // Handle resume download
+  const handleDownloadResume = async () => {
+    if (!profile.resumeUrl) {
+      setMessage({ type: 'error', text: 'No resume available to download.' });
+      return;
+    }
+
+    try {
+      // Create a temporary link element to trigger the download
+      const link = document.createElement('a');
+      link.href = getFullUrl(profile.resumeUrl);
+      link.download = profile.resumeFileName || 'resume.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      logDev('debug', 'Resume download initiated:', {
+        fileName: profile.resumeFileName
+      });
+    } catch (error) {
+      logError('Error downloading resume', {
+        error: sanitizeForLogging(error),
+        context: 'candidateDashboard'
+      });
+      setMessage({ type: 'error', text: 'Failed to download resume.' });
+    }
+  };
+
+  // Handle closing resume preview
+  const handleCloseResumePreview = () => {
+    setShowResumePreview(false);
+  };
+
+  // Render resume preview dialog
+  const renderResumePreview = () => (
+    <Dialog
+      open={showResumePreview}
+      onClose={handleCloseResumePreview}
+      maxWidth="md"
+      fullWidth
+      fullScreen={isMobile}
+      PaperProps={{
+        sx: {
+          backgroundColor: 'rgba(20, 20, 20, 0.95)',
+          border: '1px solid rgba(255, 215, 0, 0.3)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+          color: 'white'
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        borderBottom: '1px solid rgba(255, 215, 0, 0.3)',
+        padding: '16px 24px'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6" sx={{ color: '#FFD700', fontWeight: 600 }}>
+            Resume Preview
+          </Typography>
+          <IconButton onClick={handleCloseResumePreview} sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+      <DialogContent sx={{ padding: 0 }}>
+        {profile.resumeUrl ? (
+          <Box sx={{ height: '70vh', overflow: 'auto', backgroundColor: '#fff' }}>
+            <object
+              data={getFullUrl(profile.resumeUrl)}
+              type="application/pdf"
+              width="100%"
+              height="100%"
+              style={{ minHeight: '500px' }}
+            >
+              <Typography variant="body1" sx={{ p: 3, color: '#000' }}>
+                Unable to display PDF. <a href={getFullUrl(profile.resumeUrl)} target="_blank" rel="noopener noreferrer">Download</a> instead.
+              </Typography>
+            </object>
+          </Box>
+        ) : (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>No resume available to preview.</Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>Upload a resume to see it here.</Typography>
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ borderTop: '1px solid rgba(255, 215, 0, 0.3)', padding: '16px 24px' }}>
+        <StyledButton onClick={handleDownloadResume} startIcon={<GetAppIcon />} variant="outlined">
+          Download
+        </StyledButton>
+        <StyledButton onClick={handleCloseResumePreview} variant="contained">
+          Close
+        </StyledButton>
+      </DialogActions>
+    </Dialog>
+  );
+
   // Render profile section
-  const renderProfileSection = () => (
+  const renderProfileSection = () => {
+    // Get the photo URL and log details for debugging
+    const photoUrl = getFullUrl(profile.photoUrl);
+    console.log('Profile photo rendering:', { 
+      originalUrl: profile.photoUrl,
+      processedUrl: photoUrl,
+      profileData: JSON.stringify(profile)
+    });
+    
+    // Force reload the image by adding a timestamp
+    const photoUrlWithTimestamp = photoUrl ? `${photoUrl}?t=${new Date().getTime()}` : '';
+    
+    return (
     <Grid container spacing={3}>
       <Grid item xs={12} md={4}>
         <StyledPaper>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-            <Box sx={{ position: 'relative', mb: 2 }}>
-              <Avatar 
-                src={profile.photoUrl} 
-                alt={`${profile.firstName} ${profile.lastName}`}
-                sx={{ width: 120, height: 120, mb: 2 }}
-              />
+          <Box sx={{ textAlign: 'center', position: 'relative' }}>
+            <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
+              {photoUrl ? (
+                <Box sx={{ position: 'relative' }}>
+                  <Avatar 
+                    src={photoUrlWithTimestamp} 
+                    alt={`${profile.firstName} ${profile.lastName}`}
+                    sx={{ width: 120, height: 120, mb: 2 }}
+                    imgProps={{ 
+                      onError: (e) => {
+                        console.error('Image failed to load:', photoUrlWithTimestamp);
+                        e.target.onerror = null; // Prevent infinite error loop
+                        e.target.src = ''; // Clear the src to show fallback
+                      }
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Avatar
+                  sx={{ width: 120, height: 120, mb: 2, bgcolor: '#009B77' }}
+                >
+                  {profile.firstName && profile.lastName ? 
+                    `${profile.firstName[0]}${profile.lastName[0]}` : '?'}
+                </Avatar>
+              )}
               {editMode && (
                 <label htmlFor="profile-picture-upload">
                   <IconButton 
@@ -766,16 +828,6 @@ const CandidateDashboard = () => {
             </Typography>
             <Typography variant="body2" color="rgba(255, 255, 255, 0.7)" gutterBottom>
               Phone: {profile.phone || 'Not provided'}
-              {editMode && (
-                <StyledButton 
-                  variant="outlined" 
-                  size="small" 
-                  onClick={() => setEditMode(true)}
-                  sx={{ ml: 2, py: 0 }}
-                >
-                  Update
-                </StyledButton>
-              )}
             </Typography>
           </Box>
           
@@ -917,6 +969,35 @@ const CandidateDashboard = () => {
               />
               
               <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 600, color: '#FFD700' }}>
+                Personal Information
+              </Typography>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <StyledTextField
+                    name="firstName"
+                    label="First Name"
+                    value={editedProfile.firstName || ''}
+                    onChange={handleProfileChange}
+                    fullWidth
+                    margin="normal"
+                    placeholder="Your first name"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <StyledTextField
+                    name="lastName"
+                    label="Last Name"
+                    value={editedProfile.lastName || ''}
+                    onChange={handleProfileChange}
+                    fullWidth
+                    margin="normal"
+                    placeholder="Your last name"
+                  />
+                </Grid>
+              </Grid>
+              
+              <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 600, color: '#FFD700' }}>
                 Contact Information
               </Typography>
               
@@ -941,29 +1022,41 @@ const CandidateDashboard = () => {
           </Typography>
           
           <Box sx={{ display: 'flex', flexWrap: 'wrap', mb: 2 }}>
-            {(editMode ? editedProfile.skills : profile.skills).map((skill, index) => (
-              <StyledChip 
-                key={index} 
-                label={skill} 
-                onDelete={editMode ? undefined : undefined}
-              />
-            ))}
-            
-            {(editMode ? editedProfile.skills : profile.skills).length === 0 && (
-              <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">
-                No skills added yet.
-              </Typography>
-            )}
+            {(() => {
+              // Get the appropriate profile based on edit mode
+              const currentProfile = editMode ? editedProfile : profile;
+              
+              // Get validated skills array using helper function
+              const skills = getValidSkills(currentProfile);
+              
+              // Display message if no skills
+              if (!skills || skills.length === 0) {
+                return (
+                  <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">
+                    No skills added yet.
+                  </Typography>
+                );
+              }
+              
+              // Render skills chips
+              return skills.map((skill, index) => (
+                <StyledChip 
+                  key={`skill-${index}-${skill}`}
+                  label={skill}
+                  onDelete={editMode ? undefined : undefined}
+                />
+              ));
+            })()}
           </Box>
           
           {editMode && (
             <Box sx={{ mt: 2 }}>
               <SkillsAutocomplete
-                value={editedProfile.skills}
+                value={getValidSkills(editedProfile)}
                 onChange={(newSkills) => {
                   setEditedProfile(prev => ({
                     ...prev,
-                    skills: newSkills
+                    skills: Array.isArray(newSkills) ? newSkills.filter(skill => !!skill) : []
                   }));
                 }}
                 label="Skills"
@@ -1012,75 +1105,9 @@ const CandidateDashboard = () => {
       </Grid>
     </Grid>
   );
-  
-  // Render resume preview dialog - matching homepage styling
-  const renderResumePreview = () => (
-    <Dialog
-      open={showResumePreview}
-      onClose={handleCloseResumePreview}
-      maxWidth="md"
-      fullWidth
-      fullScreen={isMobile}
-      PaperProps={{
-        sx: {
-          backgroundColor: 'rgba(20, 20, 20, 0.95)',
-          border: '1px solid rgba(255, 215, 0, 0.3)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-          color: 'white'
-        }
-      }}
-    >
-      <DialogTitle sx={{ 
-        background: 'linear-gradient(45deg, #007E1B 30%, #009921 90%)',
-        color: 'white',
-        paddingY: 1.5,
-        borderBottom: '1px solid rgba(255, 215, 0, 0.3)'
-      }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" sx={{ fontWeight: 500 }}>Resume Preview</Typography>
-          <IconButton onClick={handleCloseResumePreview} sx={{ color: 'white' }}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-      <DialogContent sx={{ padding: 3, backgroundColor: 'rgba(20, 20, 20, 0.95)' }}>
-        {profile.resumeUrl ? (
-          <Box sx={{ 
-            borderRadius: theme.shape.borderRadius, 
-            overflow: 'hidden',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-          }}>
-            <object
-              data={profile.resumeUrl}
-              type="application/pdf"
-              width="100%"
-              height="500px"
-              style={{ border: '1px solid rgba(255, 215, 0, 0.3)', borderRadius: theme.shape.borderRadius }}
-            >
-              <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                Unable to display PDF. <a href={profile.resumeUrl} download={profile.resumeFileName || 'resume.pdf'} style={{ color: '#FFD700' }}>Download</a> instead.
-              </Typography>
-            </object>
-          </Box>
-        ) : (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>No resume available to preview.</Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>Upload a resume to see it here.</Typography>
-          </Box>
-        )}
-      </DialogContent>
-      <DialogActions sx={{ borderTop: '1px solid rgba(255, 215, 0, 0.3)', padding: '16px 24px' }}>
-        <StyledButton onClick={handleDownloadResume} startIcon={<GetAppIcon />} variant="outlined">
-          Download
-        </StyledButton>
-        <StyledButton onClick={handleCloseResumePreview} variant="contained">
-          Close
-        </StyledButton>
-      </DialogActions>
-    </Dialog>
-  );
-  
-  return (
+};
+
+return (
     <DashboardWrapper>
       <BackgroundOverlay />
       <StyledContainer>
@@ -1090,86 +1117,90 @@ const CandidateDashboard = () => {
           </Box>
         )}
       
-      {message && (
-        <Alert 
-          severity={message.type} 
-          sx={{ 
-            mb: 3, 
-            zIndex: 2,
-            backgroundColor: 'rgba(30, 30, 30, 0.9)',
-            color: message.type === 'error' ? '#ff6b6b' : message.type === 'success' ? '#51cf66' : '#FFD700',
-            border: '1px solid',
-            borderColor: message.type === 'error' ? '#ff6b6b' : message.type === 'success' ? '#51cf66' : '#FFD700',
-          }}
-          onClose={() => setMessage(null)}
-        >
-          {message.text}
-        </Alert>
-      )}
-      
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        borderBottom: 1, 
-        borderColor: 'rgba(255, 215, 0, 0.3)', 
-        mb: 3 
-      }}>
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{
-            '& .MuiTabs-indicator': {
-              backgroundColor: '#FFD700',
-            },
-            flexGrow: 1
-          }}
-        >
-          <StyledTab label="Profile" />
-          <StyledTab label="Applications" />
-          <StyledTab label="Saved Jobs" />
-          <StyledTab label="Settings" />
-        </Tabs>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <NotificationsMenu />
-        </Box>
-      </Box>
-      
-      {tabValue === 0 && renderProfileSection()}
-      {tabValue === 1 && (
-        <Fade in={true} timeout={800}>
-          <Box>
-            <StyledPaper>
-              <Box sx={{ position: 'relative', zIndex: 2 }}>
-                <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#FFD700' }}>
-                  My Applications
-                </Typography>
-                <ApplicationsList />
-              </Box>
-            </StyledPaper>
-          </Box>
-        </Fade>
-      )}
-      {tabValue === 2 && (
-        <Typography variant="body1">Your saved jobs will appear here.</Typography>
-      )}
-      {tabValue === 3 && (
-        <Box>
-          <Typography variant="h5" gutterBottom>Account Settings</Typography>
-          <StyledButton 
-            variant="outlined" 
-            color="error"
-            onClick={logout}
-            sx={{ mt: 2 }}
+        {message && (
+          <Alert 
+            severity={message.type} 
+            sx={{ 
+              mb: 3, 
+              zIndex: 2,
+              backgroundColor: 'rgba(30, 30, 30, 0.9)',
+              color: message.type === 'error' ? '#ff6b6b' : message.type === 'success' ? '#51cf66' : '#FFD700',
+              border: '1px solid',
+              borderColor: message.type === 'error' ? '#ff6b6b' : message.type === 'success' ? '#51cf66' : '#FFD700',
+            }}
+            onClose={() => setMessage(null)}
           >
-            Logout
-          </StyledButton>
-        </Box>
-      )}
+            {message.text}
+          </Alert>
+        )}
       
-      {renderResumePreview()}
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          borderBottom: 1, 
+          borderColor: 'rgba(255, 215, 0, 0.3)', 
+          mb: 3 
+        }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              '& .MuiTabs-indicator': {
+                backgroundColor: '#FFD700',
+              },
+              flexGrow: 1
+            }}
+          >
+            <StyledTab label="Profile" />
+            <StyledTab label="Applications" />
+            <StyledTab label="Saved Jobs" />
+            <StyledTab label="Settings" />
+          </Tabs>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <NotificationsMenu />
+          </Box>
+        </Box>
+      
+        {tabValue === 0 && renderProfileSection()}
+        {tabValue === 1 && (
+          <Fade in={true} timeout={800}>
+            <Box>
+              <StyledPaper>
+                <Box sx={{ position: 'relative', zIndex: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#FFD700' }}>
+                    My Applications
+                  </Typography>
+                  <ApplicationsList />
+                </Box>
+              </StyledPaper>
+            </Box>
+          </Fade>
+        )}
+        {tabValue === 2 && (
+          <StyledPaper>
+            <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Your saved jobs will appear here.</Typography>
+          </StyledPaper>
+        )}
+        {tabValue === 3 && (
+          <StyledPaper>
+            <Box sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#FFD700' }}>Account Settings</Typography>
+              <StyledButton 
+                variant="outlined" 
+                color="error"
+                onClick={logout}
+                sx={{ mt: 2 }}
+              >
+                Logout
+              </StyledButton>
+            </Box>
+          </StyledPaper>
+        )}
+        
+        {renderResumePreview()}
       </StyledContainer>
     </DashboardWrapper>
   );
