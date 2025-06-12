@@ -17,6 +17,10 @@ const validateProfileUpdate = (data) => {
     errors.push('Education must be an array');
   }
 
+  if (data.experience && !Array.isArray(data.experience)) {
+    errors.push('Experience must be an array');
+  }
+
   if (data.phone_number && !data.phone_number.match(/^\+?[\d\s-()]+$/)) {
     errors.push('Invalid phone number format');
   }
@@ -84,6 +88,7 @@ const createJobseekerRouter = (prisma) => {
         title,
         skills,
         education,
+        experience,
         resume_url,
         photo_url,
         resume_file_name
@@ -131,6 +136,7 @@ const createJobseekerRouter = (prisma) => {
       const candidateUpdateData = {};
       if (Array.isArray(skills) && skills.length) candidateUpdateData.skills = skills;
       if (Array.isArray(education) && education.length) candidateUpdateData.education = education;
+      if (Array.isArray(experience) && experience.length) candidateUpdateData.experience = experience;
       if (bio !== undefined && bio !== '') candidateUpdateData.bio = bio;
       if (resume_url) candidateUpdateData.resumeUrl = resume_url;
       if (photo_url) candidateUpdateData.photoUrl = photo_url;
@@ -222,6 +228,42 @@ const createJobseekerRouter = (prisma) => {
     } catch (error) {
       console.error('Error uploading profile photo:', error);
       return res.status(500).json({ success: false, message: 'Error uploading photo' });
+    }
+  });
+
+  /**
+   * @route   POST /api/jobseeker/profile/resume
+   * @desc    Upload / replace resume PDF (max 5 MB)
+   * @access  Private – Jobseeker
+   * Front-end expects fields: resumeUrl, resumeFileName
+   */
+  router.post('/profile/resume', authenticateJWT, upload.single('resume'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      // Validate MIME type (accept only PDFs)
+      if (req.file.mimetype !== 'application/pdf') {
+        // Remove uploaded non-pdf file
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ success: false, message: 'Only PDF resumes are allowed' });
+      }
+
+      const resumeUrl = `/uploads/${req.file.filename}`;
+      const resumeFileName = req.file.originalname;
+
+      // Update or create candidate profile with resume info
+      await prisma.candidateProfile.upsert({
+        where: { userId: req.user.id },
+        create: { userId: req.user.id, resumeUrl, resumeFileName },
+        update: { resumeUrl, resumeFileName }
+      });
+
+      return res.json({ success: true, resumeUrl, resumeFileName });
+    } catch (error) {
+      console.error('Error uploading resume:', error);
+      return res.status(500).json({ success: false, message: 'Error uploading resume' });
     }
   });
 

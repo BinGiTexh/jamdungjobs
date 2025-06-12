@@ -447,6 +447,41 @@ router.put("/company", upload.single("logo"), async (req, res) => {
     }
   });
 
+  /**
+   * Get all jobs posted by the employer's company
+   * @route GET /api/employer/jobs
+   */
+  router.get('/jobs', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+    try {
+      // Fetch employer with company relation to determine companyId
+      const employer = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { companyId: true }
+      });
+
+      if (!employer?.companyId) {
+        return res.json([]); // no company associated, return empty list
+      }
+
+      const jobs = await prisma.job.findMany({
+        where: { companyId: employer.companyId },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      return res.json(jobs);
+    } catch (error) {
+      console.error('Error fetching employer jobs:', error);
+      return res.status(500).json({ success: false, message: 'Unable to fetch jobs', code: 'INTERNAL_SERVER_ERROR' });
+    }
+  });
+
   return router;
 };
 

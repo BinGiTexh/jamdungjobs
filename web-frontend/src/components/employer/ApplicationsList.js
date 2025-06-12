@@ -88,7 +88,12 @@ const ApplicationsList = ({ jobListings }) => {
     try {
       setLoading(true);
       const response = await api.get('/api/employer/applications');
-      setApplications(response.data);
+      const appsArray = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.applications)
+          ? response.data.applications
+          : [];
+      setApplications(appsArray);
       setError(null);
     } catch (err) {
       logError('Error fetching applications:', err);
@@ -210,20 +215,20 @@ const ApplicationsList = ({ jobListings }) => {
               <Grid container spacing={2} alignItems="center">
                 <Grid item>
                   <Avatar 
-                    src={application.candidate.avatar}
-                    alt={application.candidate.name}
+                    src={application.candidate?.avatar || ''}
+                    alt={application.candidate?.name || 'Candidate'}
                     sx={{ width: 60, height: 60 }}
                   />
                 </Grid>
                 <Grid item xs>
                   <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
-                    {application.candidate.name}
+                    {application.candidate?.name || 'Unknown Candidate'}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <EmailIcon sx={{ color: 'rgba(255, 215, 0, 0.7)', fontSize: 18 }} />
                       <Typography variant="body2" sx={{ color: '#FFFFFF' }}>
-                        {application.candidate.email}
+                        {application.candidate?.email || 'N/A'}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -323,13 +328,13 @@ const ApplicationsList = ({ jobListings }) => {
                   <Grid container spacing={2}>
                     <Grid item xs={12} md={6}>
                       <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        <strong>Name:</strong> {selectedApplication.candidate.name}
+                        <strong>Name:</strong> {selectedApplication.candidate?.name || 'Unknown Candidate'}
                       </Typography>
                       <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        <strong>Email:</strong> {selectedApplication.candidate.email}
+                        <strong>Email:</strong> {selectedApplication.candidate?.email || 'N/A'}
                       </Typography>
                       <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        <strong>Phone:</strong> {selectedApplication.candidate.phone}
+                        <strong>Phone:</strong> {selectedApplication.candidate?.phone || 'N/A'}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} md={6}>

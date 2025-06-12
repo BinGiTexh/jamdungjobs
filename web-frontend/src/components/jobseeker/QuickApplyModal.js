@@ -46,42 +46,74 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
     missingFields: []
   });
 
-  // Fetch user profile data when modal opens
+  // Fetch profile data whenever the modal is opened
   useEffect(() => {
-    if (open && currentUser) {
+    if (open) {
       fetchProfileData();
-      
-      // Log modal opening in development
-      logDev('debug', 'Quick apply modal opened', { 
-        jobId: job?.id,
-        jobTitle: job?.title,
-        userId: currentUser?.id
-      });
     }
-  }, [open, currentUser, job]);
+  }, [open]);
 
   const fetchProfileData = async () => {
     setLoading(true);
     try {
-      const response = await api.get(buildApiUrl('/candidate/profile'));
-      setProfileData(response.data);
-      
+      // Fetch jobseeker profile (uniform with CandidateDashboard)
+      const response = await api.get('/api/jobseeker/profile');
+
+      // Backend may return { success, data } wrapper or raw object – normalise it
+      const userData = response.data?.data || response.data || {};
+      const candidateData = userData.candidateProfile || userData.candidate_profile || {};
+
+      // Normalise resumes – backend currently stores single resumeUrl/resumeFileName, but may use snake_case keys
+      let resumes = [];
+      if (Array.isArray(candidateData.resumes) && candidateData.resumes.length) {
+        resumes = candidateData.resumes;
+      } else {
+        // support both camelCase and snake_case single-resume fields
+        const singleResumeUrl = candidateData.resumeUrl || candidateData.resume_url;
+        const singleResumeName = candidateData.resumeFileName || candidateData.resume_file_name;
+        if (singleResumeUrl) {
+          resumes = [{
+            id: 'default',
+            name: singleResumeName || 'Resume',
+            uploadDate: candidateData.updatedAt || candidateData.updated_at || new Date().toISOString(),
+            url: singleResumeUrl
+          }];
+        }
+      }
+
+      // Merge and normalise important fields for completeness check
+      const mergedProfile = {
+        ...candidateData,
+        resumes,
+        // Normalised phone number field
+        phoneNumber: candidateData.phoneNumber || candidateData.phone_number || userData.phoneNumber || userData.phone_number || '',
+        // Normalised experience array – backend may use experience, workExperience, work_experience, experiences
+        experience: 
+          candidateData.experience || 
+          candidateData.experiences || 
+          candidateData.workExperience || 
+          candidateData.work_experience || 
+          userData.experience || 
+          userData.workExperience || 
+          userData.work_experience || []
+      };
+
+      setProfileData(mergedProfile);
+
       // Pre-fill application data from profile
       setApplicationData(prev => ({
         ...prev,
-        phoneNumber: response.data.phoneNumber || '',
-        resumeId: response.data.resumes && response.data.resumes.length > 0 
-          ? response.data.resumes[0].id 
-          : '',
+        phoneNumber: mergedProfile.phoneNumber,
+        resumeId: resumes.length > 0 ? resumes[0].id : '',
       }));
 
-      // Calculate profile completeness
-      calculateProfileCompleteness(response.data);
+      // Calculate profile completeness based on merged profile
+      calculateProfileCompleteness(mergedProfile);
       
-      // Log profile data fetched successfully
-      logDev('debug', 'Profile data fetched for quick apply', {
-        hasResume: response.data.resumes && response.data.resumes.length > 0,
-        hasPhone: !!response.data.phoneNumber,
+      // Log normalised profile data in development
+      logDev('debug', 'Jobseeker profile fetched for quick apply', {
+        resumeCount: resumes.length,
+        hasPhone: !!(candidateData.phoneNumber || candidateData.phone_number || userData.phoneNumber || userData.phone_number),
         userId: currentUser?.id
       });
     } catch (error) {
@@ -102,13 +134,18 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
     let completedFields = 0;
     let totalFields = 0;
 
-    // Check required fields
+    // Check required fields – support snake_case too
     const requiredFields = [
       { name: 'resume', value: profile.resumes && profile.resumes.length > 0 },
       { name: 'phoneNumber', value: profile.phoneNumber },
       { name: 'skills', value: profile.skills && profile.skills.length > 0 },
       { name: 'education', value: profile.education && profile.education.length > 0 },
-      { name: 'experience', value: profile.experience && profile.experience.length > 0 }
+      { 
+        name: 'experience', 
+        value: Array.isArray(profile.experience) 
+          ? profile.experience.length > 0 
+          : (typeof profile.experience === 'string' && profile.experience.trim().length > 0) 
+      }
     ];
 
     requiredFields.forEach(field => {
@@ -273,10 +310,10 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
           <Box sx={{ py: 2, textAlign: 'center' }}>
             <CheckCircleIcon sx={{ fontSize: 60, color: '#4caf50', mb: 2 }} />
             <Typography variant="h5" gutterBottom>
-              Application Submitted!
+              Thank you for applying!
             </Typography>
             <Typography variant="body1" sx={{ mb: 3 }}>
-              Your application for <strong>{job.title}</strong> has been successfully submitted.
+              Thank you for applying, your employer should be getting a notification.
             </Typography>
             <Button
               variant="contained"

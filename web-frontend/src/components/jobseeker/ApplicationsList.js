@@ -54,7 +54,7 @@ const ApplicationsList = () => {
       logDev('debug', 'Fetching applications - pre request', { 
         hasToken: !!token,
         tokenLength: token ? token.length : 0,
-        endpoint: '/applications/my' 
+        endpoint: '/api/jobseeker/applications' 
       });
       
       // If no token is available, throw an error to be handled
@@ -68,7 +68,7 @@ const ApplicationsList = () => {
       };
       
       // Make the request with explicit headers
-      const response = await axios.get(buildApiUrl('/applications/my'), { headers });
+      const response = await axios.get(buildApiUrl('/api/jobseeker/applications'), { headers });
       
       // Add more detailed response logging
       logDev('debug', 'Applications fetched successfully', { 
@@ -94,7 +94,7 @@ const ApplicationsList = () => {
       logError('Error fetching applications', err, {
         module: 'ApplicationsList',
         function: 'fetchApplications',
-        endpoint: '/applications/my',
+        endpoint: '/api/jobseeker/applications',
         errorStatus: err.response?.status,
         errorData: sanitizeForLogging(err.response?.data),
         errorMessage: err.message,
@@ -182,6 +182,8 @@ const ApplicationsList = () => {
     switch (status) {
       case 'APPLIED':
         return { bg: 'rgba(21, 101, 192, 0.2)', color: '#64b5f6' }; // Blue
+      case 'PENDING':
+        return { bg: 'rgba(21, 101, 192, 0.2)', color: '#64b5f6' }; // Blue
       case 'REVIEWING':
         return { bg: 'rgba(245, 127, 23, 0.2)', color: '#ffd54f' }; // Amber
       case 'INTERVIEW':
@@ -203,7 +205,7 @@ const ApplicationsList = () => {
 
   const filteredApplications = applications.filter(app => {
     if (tabValue === 0) return true; // All applications
-    if (tabValue === 1) return ['APPLIED', 'REVIEWING', 'INTERVIEW'].includes(app.status); // Active
+    if (tabValue === 1) return ['PENDING', 'APPLIED', 'REVIEWING', 'INTERVIEW'].includes(app.status); // Active
     if (tabValue === 2) return ['OFFERED'].includes(app.status); // Offered
     if (tabValue === 3) return ['REJECTED', 'WITHDRAWN'].includes(app.status); // Closed
     return true;
@@ -356,7 +358,7 @@ const ApplicationsList = () => {
                               <DownloadIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          {['APPLIED', 'REVIEWING'].includes(application.status) && (
+                          {['PENDING', 'APPLIED', 'REVIEWING'].includes(application.status) && (
                             <Tooltip title="Withdraw Application">
                               <IconButton 
                                 size="small" 

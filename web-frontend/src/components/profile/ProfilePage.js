@@ -13,6 +13,8 @@ const ProfilePage = () => {
     address: '',
     bio: '',
     skills: [],
+    education: '',
+    workExperience: '',
     // Employer specific fields
     companyName: '',
     companyWebsite: '',
@@ -59,6 +61,8 @@ const ProfilePage = () => {
             address: data.address || '',
             bio: data.bio || '',
             skills: data.skills || [],
+            education: data.education || '',
+            workExperience: data.workExperience || '',
             // Employer specific fields
             companyName: data.companyName || '',
             companyWebsite: data.companyWebsite || '',
@@ -161,7 +165,9 @@ const ProfilePage = () => {
             phone: formData.phone,
             address: formData.address,
             bio: formData.bio,
-            skills: formData.skills
+            skills: formData.skills,
+            education: formData.education,
+            workExperience: formData.workExperience
           };
 
       const response = await axios.put(endpoint, dataToSubmit, {
@@ -209,6 +215,8 @@ const ProfilePage = () => {
       address: profileData?.address || '',
       bio: profileData?.bio || '',
       skills: profileData?.skills || [],
+      education: profileData?.education || '',
+      workExperience: profileData?.workExperience || '',
       companyName: profileData?.companyName || '',
       companyWebsite: profileData?.companyWebsite || '',
       companyLocation: profileData?.companyLocation || '',
@@ -392,6 +400,42 @@ const ProfilePage = () => {
                 </div>
 
                 <div className="form-group">
+                  <label>Education</label>
+                  <textarea
+                    name="education"
+                    value={formData.education}
+                    onChange={handleInputChange}
+                    placeholder="Provide your education background"
+                    rows="3"
+                    style={{ 
+                      width: '100%',
+                      padding: '0.5rem',
+                      marginBottom: '1rem',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px'
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Work Experience</label>
+                  <textarea
+                    name="workExperience"
+                    value={formData.workExperience}
+                    onChange={handleInputChange}
+                    placeholder="Describe your work experience"
+                    rows="3"
+                    style={{ 
+                      width: '100%',
+                      padding: '0.5rem',
+                      marginBottom: '1rem',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px'
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
                   <label>Skills</label>
                   <SkillsAutocomplete 
                     value={formData.skills} 
@@ -539,6 +583,16 @@ const ProfilePage = () => {
                 <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
                   <h3 style={{ marginBottom: '0.5rem', color: '#006400' }}>Bio</h3>
                   <p style={{ fontSize: '1.1rem' }}>{profileData?.bio || 'Not provided'}</p>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
+                  <h3 style={{ marginBottom: '0.5rem', color: '#006400' }}>Education</h3>
+                  <p style={{ fontSize: '1.1rem' }}>{profileData?.education || 'Not provided'}</p>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
+                  <h3 style={{ marginBottom: '0.5rem', color: '#006400' }}>Work Experience</h3>
+                  <p style={{ fontSize: '1.1rem' }}>{profileData?.workExperience || 'Not provided'}</p>
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>

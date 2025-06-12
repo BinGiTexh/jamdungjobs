@@ -54,32 +54,47 @@ module.exports = (prisma) => {
           location: { contains: location, mode: 'insensitive' }
         }),
         ...(type && { type: type }),
-        ...(minSalary && {
-          salary: { gte: parseInt(minSalary) }
-        }),
-        ...(maxSalary && {
-          salary: { lte: parseInt(maxSalary) }
-        })
       };
 
-      const jobs = await prisma.job.findMany({
+      // Fetch all active jobs matching non-salary criteria, include company data
+      let jobs = await prisma.job.findMany({
         where,
         include: {
           company: true
         },
-        skip: (parseInt(page) - 1) * parseInt(limit),
-        take: parseInt(limit),
         orderBy: { updatedAt: 'desc' }
       });
 
-      const total = await prisma.job.count({ where });
+      // Apply salary range filtering in-memory since salary is stored as JSON
+      if (minSalary || maxSalary) {
+        const min = minSalary ? parseInt(minSalary, 10) : null;
+        const max = maxSalary ? parseInt(maxSalary, 10) : null;
+
+        jobs = jobs.filter((j) => {
+          const sal = j.salary || {};
+          const jobMin = typeof sal.min === 'number' ? sal.min : null;
+          const jobMax = typeof sal.max === 'number' ? sal.max : jobMin;
+
+          const minOk = min === null || (jobMin !== null && jobMin >= min);
+          const maxOk = max === null || (jobMax !== null && jobMax <= max);
+          return minOk && maxOk;
+        });
+      }
+
+      // Total after filtering
+      const total = jobs.length;
+
+      // Pagination (slice after filtering)
+      const pageInt = parseInt(page);
+      const limitInt = parseInt(limit);
+      const paginatedJobs = jobs.slice((pageInt - 1) * limitInt, pageInt * limitInt);
 
       res.json({
-        jobs,
+        jobs: paginatedJobs,
         pagination: {
           total,
-          pages: Math.ceil(total / parseInt(limit)),
-          currentPage: parseInt(page)
+          pages: Math.ceil(total / limitInt),
+          currentPage: pageInt
         }
       });
     } catch (error) {
@@ -207,7 +222,11 @@ module.exports = (prisma) => {
         where: { jobId, userId: req.user.id }
       });
       if (existing) {
-        return res.status(400).json({ message: 'Already applied' });
+        return res.status(409).json({ 
+          success: false,
+          code: 'ALREADY_APPLIED',
+          message: 'You have applied to this job already. The employer will be in touch with you soon.'
+        });
       }
 
       const application = await prisma.jobApplication.create({
@@ -221,11 +240,13 @@ module.exports = (prisma) => {
 
       // Notify candidate of successful application
       await prisma.notification.create({
-        type: 'APPLICATION_SUBMITTED',
-        title: `Application submitted for ${job.title}`,
-        message: `You applied to ${job.title} at ${job.company?.name || 'company'}`,
-        recipientId: req.user.id,
-        jobApplicationId: application.id
+        data: {
+          type: 'APPLICATION_SUBMITTED',
+          title: `Application submitted for ${job.title}`,
+          message: `You applied to ${job.title} at ${job.company?.name || 'company'}`,
+          recipientId: req.user.id,
+          jobApplicationId: application.id
+        }
       });
 
       // Notify all employer users of the company
@@ -241,7 +262,7 @@ module.exports = (prisma) => {
         if (employers.length) {
           await prisma.notification.createMany({
             data: employers.map((emp) => ({
-              type: 'APPLICATION_UPDATE',
+              type: 'NEW_APPLICATION',
               title: `New application for ${job.title}`,
               message: `${req.user.email} applied to ${job.title}`,
               recipientId: emp.id,

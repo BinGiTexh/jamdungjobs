@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { logDev, logError, sanitizeForLogging } from './utils/loggingUtils';
@@ -57,6 +58,7 @@ const RegisterPage = () => {
 // Navigation component
 const Navigation = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   // Removed unused location variable
   
   const handleLogout = () => {
@@ -65,6 +67,7 @@ const Navigation = () => {
       userId: user?.id
     });
     logout();
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -150,6 +153,9 @@ function App() {
   
   return (
     <AuthProvider>
+      <Helmet>
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+      </Helmet>
       <Router>
         <div style={{ minHeight: '100vh' }}>
           <Navigation />

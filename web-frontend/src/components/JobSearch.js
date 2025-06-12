@@ -32,6 +32,7 @@ import { SalaryDisplay } from './common/SalaryDisplay';
 import QuickApplyModal from './jobseeker/QuickApplyModal';
 import api from '../utils/api';
 import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
+import Seo from './common/Seo';
 
 // Styled components for Jamaican theme
 const StyledContainer = styled(Container)(({ theme }) => ({
@@ -539,453 +540,456 @@ const JobSearch = () => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: '#0A0A0A',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Background image with Jamaican styling */}
+    <>
+      <Seo title="Search Jobs in Jamaica" description="Browse and filter thousands of job opportunities across Jamaica on JamDung Jobs." />
       <Box
         sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundImage: 'url("/images/generated/jamaican-design-1747273968.png")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          opacity: 0.3,
-          zIndex: 1,
-        }}
-      />
-      
-      <StyledContainer maxWidth="lg" sx={{ py: 4 }}>
-        {/* Page Title */}
-        <Box sx={{ 
-          backgroundColor: 'rgba(44, 85, 48, 0.8)', 
-          padding: 2, 
-          borderRadius: 2, 
-          border: '2px solid #FFD700',
-          mb: 4,
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#0A0A0A',
           position: 'relative',
-          zIndex: 2,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-        }}>
-          <Typography 
-            variant="h4" 
-            component="h1" 
-            gutterBottom 
-            sx={{ 
-              color: '#FFD700',
-              fontWeight: 600,
-              textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-              mb: 0,
-              textAlign: 'center'
-            }}
-          >
-            JAMAICAN JOB SEARCH
-          </Typography>
-          <Typography 
-            variant="subtitle1" 
-            sx={{ 
-              color: 'white',
-              textAlign: 'center',
-              fontStyle: 'italic'
-            }}
-          >
-            Find Your Perfect Career in Jamaica
-          </Typography>
-        </Box>
-
-        {/* Search Filters */}
-        <StyledCard sx={{ mb: 4 }}>
-          <CardContent sx={{ position: 'relative', zIndex: 1 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <JobTitleInput
-                  value={filters.query}
-                  onChange={(value) => handleFilterChange('query', value)}
-                  sx={formFieldStyle}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <JamaicaLocationAutocomplete
-                  value={filters.location}
-                  onChange={(locationData) => {
-                    handleFilterChange('location', locationData);
-                    // If radius is included in the location data, update the locationRadius filter
-                    if (locationData && locationData.radius) {
-                      handleFilterChange('locationRadius', locationData.radius);
-                    }
-                  }}
-                  radius={filters.locationRadius}
-                  onRadiusChange={(radius) => handleFilterChange('locationRadius', radius)}
-                  placeholder="Location in Jamaica"
-                  sx={formFieldStyle}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel sx={{ color: '#FFD700', fontWeight: 500 }}>Job Type</InputLabel>
-                  <Select
-                    value={filters.jobType}
-                    onChange={(e) => handleFilterChange('jobType', e.target.value)}
-                    label="Job Type"
-                    sx={{
-                      color: 'white',
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 215, 0, 0.5)',
-                        borderWidth: '2px',
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 215, 0, 0.8)',
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFD700',
-                        borderWidth: '2px',
-                      },
-                      '& .MuiSelect-icon': {
-                        color: '#FFD700',
-                      }
-                    }}
-                  >
-                    <MenuItem value="">All Types</MenuItem>
-                    {jobTypes.map(type => (
-                      <MenuItem key={type} value={type}>
-                        {type.replace('_', ' ')}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12}>
-                <SkillsAutocomplete
-                  value={filters.skills}
-                  onChange={(value) => handleFilterChange('skills', value)}
-                  label="Skills"
-                  placeholder="Add skills that match your expertise"
-                  helperText="Add skills to improve job matching accuracy"
-                  sx={formFieldStyle}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Typography gutterBottom sx={{ color: '#FFD700', fontWeight: 500 }}>Salary Range</Typography>
-                <SalaryRangeInput
-                  value={{ min: filters.salaryMin, max: filters.salaryMax }}
-                  onChange={(value) => {
-                    handleFilterChange('salaryMin', value.min);
-                    handleFilterChange('salaryMax', value.max);
-                  }}
-                  sx={formFieldStyle}
-                />
-              </Grid>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                onClick={handleSearch}
-                disabled={searchState.loading}
-                fullWidth
-                sx={{
-                  py: 1.5,
-                  mt: 2,
-                  background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                  color: '#000',
-                  fontWeight: 600,
-                  fontSize: '1.1rem',
-                  '&:hover': {
-                    background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
-                  },
-                  transition: 'all 0.3s ease',
-                }}
-              >
-                {searchState.loading ? (
-                  <>
-                    <CircularProgress size={20} sx={{ mr: 1, color: 'black' }} />
-                    Searching...
-                  </>
-                ) : (
-                  'Search Jobs'
-                )}
-              </Button>
-            </Grid>
-          </CardContent>
-        </StyledCard>
-
-        {/* Results Count with Loading Indicator */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="subtitle1" sx={{ color: '#FFD700', fontWeight: 500 }}>
-            {searchState.loading ? 'Searching...' : `${searchState.resultsCount} jobs found`}
-          </Typography>
-          {searchState.loading && (
-            <CircularProgress size={24} sx={{ color: '#FFD700' }} />
-          )}
-        </Box>
+          overflow: 'hidden',
+        }}
+      >
+        {/* Background image with Jamaican styling */}
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundImage: 'url("/images/generated/jamaican-design-1747273968.png")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: 0.3,
+            zIndex: 1,
+          }}
+        />
         
-        {/* Error Message */}
-        {searchState.error && (
-          <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(244, 67, 54, 0.1)', borderRadius: 1 }}>
-            <Typography color="error">
-              {searchState.error}
+        <StyledContainer maxWidth="lg" sx={{ py: 4 }}>
+          {/* Page Title */}
+          <Box sx={{ 
+            backgroundColor: 'rgba(44, 85, 48, 0.8)', 
+            padding: 2, 
+            borderRadius: 2, 
+            border: '2px solid #FFD700',
+            mb: 4,
+            position: 'relative',
+            zIndex: 2,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+          }}>
+            <Typography 
+              variant="h4" 
+              component="h1" 
+              gutterBottom 
+              sx={{ 
+                color: '#FFD700',
+                fontWeight: 600,
+                textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                mb: 0,
+                textAlign: 'center'
+              }}
+            >
+              JAMAICAN JOB SEARCH
+            </Typography>
+            <Typography 
+              variant="subtitle1" 
+              sx={{ 
+                color: 'white',
+                textAlign: 'center',
+                fontStyle: 'italic'
+              }}
+            >
+              Find Your Perfect Career in Jamaica
             </Typography>
           </Box>
-        )}
 
-        {/* Job Listings with Loading State */}
-        <Grid container spacing={3} sx={{ position: 'relative', zIndex: 2 }}>
-          {searchState.loading ? (
-            // Loading skeleton cards
-            Array(3).fill(0).map((_, index) => (
-              <Grid item xs={12} key={`skeleton-${index}`}>
-                <StyledCard>
-                  <CardContent sx={{ position: 'relative', zIndex: 1, opacity: 0.7 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <Box sx={{ width: '70%', height: 28, backgroundColor: 'rgba(255, 215, 0, 0.2)', borderRadius: 1 }} />
-                      <Box sx={{ width: '40%', height: 20, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
-                      <Box sx={{ width: '90%', height: 60, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        {Array(3).fill(0).map((_, i) => (
-                          <Box key={i} sx={{ width: 60, height: 24, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 4 }} />
-                        ))}
+          {/* Search Filters */}
+          <StyledCard sx={{ mb: 4 }}>
+            <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={4}>
+                  <JobTitleInput
+                    value={filters.query}
+                    onChange={(value) => handleFilterChange('query', value)}
+                    sx={formFieldStyle}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <JamaicaLocationAutocomplete
+                    value={filters.location}
+                    onChange={(locationData) => {
+                      handleFilterChange('location', locationData);
+                      // If radius is included in the location data, update the locationRadius filter
+                      if (locationData && locationData.radius) {
+                        handleFilterChange('locationRadius', locationData.radius);
+                      }
+                    }}
+                    radius={filters.locationRadius}
+                    onRadiusChange={(radius) => handleFilterChange('locationRadius', radius)}
+                    placeholder="Location in Jamaica"
+                    sx={formFieldStyle}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ color: '#FFD700', fontWeight: 500 }}>Job Type</InputLabel>
+                    <Select
+                      value={filters.jobType}
+                      onChange={(e) => handleFilterChange('jobType', e.target.value)}
+                      label="Job Type"
+                      sx={{
+                        color: 'white',
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'rgba(255, 215, 0, 0.5)',
+                          borderWidth: '2px',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'rgba(255, 215, 0, 0.8)',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#FFD700',
+                          borderWidth: '2px',
+                        },
+                        '& .MuiSelect-icon': {
+                          color: '#FFD700',
+                        }
+                      }}
+                    >
+                      <MenuItem value="">All Types</MenuItem>
+                      {jobTypes.map(type => (
+                        <MenuItem key={type} value={type}>
+                          {type.replace('_', ' ')}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <SkillsAutocomplete
+                    value={filters.skills}
+                    onChange={(value) => handleFilterChange('skills', value)}
+                    label="Skills"
+                    placeholder="Add skills that match your expertise"
+                    helperText="Add skills to improve job matching accuracy"
+                    sx={formFieldStyle}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography gutterBottom sx={{ color: '#FFD700', fontWeight: 500 }}>Salary Range</Typography>
+                  <SalaryRangeInput
+                    value={{ min: filters.salaryMin, max: filters.salaryMax }}
+                    onChange={(value) => {
+                      handleFilterChange('salaryMin', value.min);
+                      handleFilterChange('salaryMax', value.max);
+                    }}
+                    sx={formFieldStyle}
+                  />
+                </Grid>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Button
+                  variant="contained"
+                  onClick={handleSearch}
+                  disabled={searchState.loading}
+                  fullWidth
+                  sx={{
+                    py: 1.5,
+                    mt: 2,
+                    background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                    color: '#000',
+                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    '&:hover': {
+                      background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  {searchState.loading ? (
+                    <>
+                      <CircularProgress size={20} sx={{ mr: 1, color: 'black' }} />
+                      Searching...
+                    </>
+                  ) : (
+                    'Search Jobs'
+                  )}
+                </Button>
+              </Grid>
+            </CardContent>
+          </StyledCard>
+
+          {/* Results Count with Loading Indicator */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="subtitle1" sx={{ color: '#FFD700', fontWeight: 500 }}>
+              {searchState.loading ? 'Searching...' : `${searchState.resultsCount} jobs found`}
+            </Typography>
+            {searchState.loading && (
+              <CircularProgress size={24} sx={{ color: '#FFD700' }} />
+            )}
+          </Box>
+          
+          {/* Error Message */}
+          {searchState.error && (
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(244, 67, 54, 0.1)', borderRadius: 1 }}>
+              <Typography color="error">
+                {searchState.error}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Job Listings with Loading State */}
+          <Grid container spacing={3} sx={{ position: 'relative', zIndex: 2 }}>
+            {searchState.loading ? (
+              // Loading skeleton cards
+              Array(3).fill(0).map((_, index) => (
+                <Grid item xs={12} key={`skeleton-${index}`}>
+                  <StyledCard>
+                    <CardContent sx={{ position: 'relative', zIndex: 1, opacity: 0.7 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box sx={{ width: '70%', height: 28, backgroundColor: 'rgba(255, 215, 0, 0.2)', borderRadius: 1 }} />
+                        <Box sx={{ width: '40%', height: 20, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
+                        <Box sx={{ width: '90%', height: 60, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          {Array(3).fill(0).map((_, i) => (
+                            <Box key={i} sx={{ width: 60, height: 24, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 4 }} />
+                          ))}
+                        </Box>
                       </Box>
-                    </Box>
+                    </CardContent>
+                  </StyledCard>
+                </Grid>
+              ))
+            ) : jobs.length > 0 ? jobs.map(job => (
+              <Grid item xs={12} key={job.id}>
+                <StyledCard>
+                  <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={8}>
+                        <Typography variant="h6" component="h2" sx={{ color: '#FFD700' }}>
+                          {job.title}
+                        </Typography>
+                        <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }} gutterBottom>
+                          {job.company.name} • {job.location}
+                        </Typography>
+                        
+                        {/* Show skill match score if available */}
+                        {job.skillMatchScore !== undefined && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 1 }}>
+                            <Typography variant="body2" sx={{ mr: 1, color: 'rgba(255, 255, 255, 0.7)' }}>Skill Match:</Typography>
+                            <Box
+                              sx={{
+                                width: '100px',
+                                height: '8px',
+                                bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                borderRadius: '4px',
+                                position: 'relative',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  left: 0,
+                                  top: 0,
+                                  height: '100%',
+                                  width: `${job.skillMatchScore}%`,
+                                  background: job.skillMatchScore > 75 
+                                    ? 'linear-gradient(90deg, #2C5530, #4caf50)' 
+                                    : job.skillMatchScore > 50 
+                                      ? 'linear-gradient(90deg, #ff9800, #FFD700)' 
+                                      : 'linear-gradient(90deg, #f44336, #ff9800)',
+                                  borderRadius: '4px'
+                                }}
+                              />
+                            </Box>
+                            <Typography variant="body2" sx={{ ml: 1, fontWeight: 'bold', color: '#FFD700' }}>
+                              {Math.round(job.skillMatchScore)}%
+                            </Typography>
+                          </Box>
+                        )}
+                        
+                        <Box sx={{ mt: 1 }}>
+                          {job.skills.map(skill => {
+                            // Check if this skill is in the user's selected skills
+                            const isMatch = filters.skills && filters.skills.some(
+                              userSkill => userSkill.toLowerCase() === skill.toLowerCase()
+                            );
+                            
+                            return (
+                              <Chip
+                                key={skill}
+                                label={skill}
+                                size="small"
+                                sx={{
+                                  mr: 0.5,
+                                  mb: 0.5,
+                                  backgroundColor: isMatch ? 'rgba(44, 85, 48, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                                  color: isMatch ? '#FFD700' : 'rgba(255, 255, 255, 0.7)',
+                                  fontWeight: isMatch ? 'bold' : undefined,
+                                  border: isMatch ? '1px solid rgba(255, 215, 0, 0.3)' : undefined,
+                                }}
+                              />
+                            );
+                          })}
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={4} sx={{ textAlign: 'right' }}>
+                        <SalaryDisplay salary={job.salary} />
+                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                          {job.type.replace('_', ' ')}
+                        </Typography>
+                        <ButtonGroup
+                          orientation="vertical"
+                          fullWidth
+                          sx={{ mt: 1 }}
+                        >
+                          <Button
+                            variant="contained"
+                            sx={{ 
+                              background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                              color: '#000',
+                              fontWeight: 600,
+                              '&:hover': {
+                                background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                                transform: 'translateY(-2px)',
+                                boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
+                              },
+                              transition: 'all 0.3s ease',
+                            }}
+                            onClick={() => navigate(`/jobs/${job.id}`)}
+                          >
+                            View Job
+                          </Button>
+                          
+                          <Tooltip title={!isAuthenticated ? "Login to apply" : "Apply with your profile"}>
+                            <span>
+                              <Button
+                                variant="outlined"
+                                startIcon={<FlashOnIcon />}
+                                onClick={() => handleQuickApply(job)}
+                                disabled={!isAuthenticated || (currentUser && currentUser.role === 'EMPLOYER')}
+                                sx={{ 
+                                  mt: 1,
+                                  borderColor: '#FFD700',
+                                  color: '#FFD700',
+                                  '&:hover': {
+                                    borderColor: '#2C5530',
+                                    color: '#2C5530',
+                                    backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                                  },
+                                }}
+                              >
+                                Quick Apply
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </ButtonGroup>
+                      </Grid>
+                    </Grid>
                   </CardContent>
                 </StyledCard>
               </Grid>
-            ))
-          ) : jobs.length > 0 ? jobs.map(job => (
-            <Grid item xs={12} key={job.id}>
-              <StyledCard>
-                <CardContent sx={{ position: 'relative', zIndex: 1 }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={8}>
-                      <Typography variant="h6" component="h2" sx={{ color: '#FFD700' }}>
-                        {job.title}
-                      </Typography>
-                      <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }} gutterBottom>
-                        {job.company.name} • {job.location}
-                      </Typography>
-                      
-                      {/* Show skill match score if available */}
-                      {job.skillMatchScore !== undefined && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 1 }}>
-                          <Typography variant="body2" sx={{ mr: 1, color: 'rgba(255, 255, 255, 0.7)' }}>Skill Match:</Typography>
-                          <Box
-                            sx={{
-                              width: '100px',
-                              height: '8px',
-                              bgcolor: 'rgba(255, 255, 255, 0.2)',
-                              borderRadius: '4px',
-                              position: 'relative',
-                              overflow: 'hidden'
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                left: 0,
-                                top: 0,
-                                height: '100%',
-                                width: `${job.skillMatchScore}%`,
-                                background: job.skillMatchScore > 75 
-                                  ? 'linear-gradient(90deg, #2C5530, #4caf50)' 
-                                  : job.skillMatchScore > 50 
-                                    ? 'linear-gradient(90deg, #ff9800, #FFD700)' 
-                                    : 'linear-gradient(90deg, #f44336, #ff9800)',
-                                borderRadius: '4px'
-                              }}
-                            />
-                          </Box>
-                          <Typography variant="body2" sx={{ ml: 1, fontWeight: 'bold', color: '#FFD700' }}>
-                            {Math.round(job.skillMatchScore)}%
-                          </Typography>
-                        </Box>
-                      )}
-                      
-                      <Box sx={{ mt: 1 }}>
-                        {job.skills.map(skill => {
-                          // Check if this skill is in the user's selected skills
-                          const isMatch = filters.skills && filters.skills.some(
-                            userSkill => userSkill.toLowerCase() === skill.toLowerCase()
-                          );
-                          
-                          return (
-                            <Chip
-                              key={skill}
-                              label={skill}
-                              size="small"
-                              sx={{
-                                mr: 0.5,
-                                mb: 0.5,
-                                backgroundColor: isMatch ? 'rgba(44, 85, 48, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                                color: isMatch ? '#FFD700' : 'rgba(255, 255, 255, 0.7)',
-                                fontWeight: isMatch ? 'bold' : undefined,
-                                border: isMatch ? '1px solid rgba(255, 215, 0, 0.3)' : undefined,
-                              }}
-                            />
-                          );
-                        })}
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} md={4} sx={{ textAlign: 'right' }}>
-                      <SalaryDisplay salary={job.salary} />
-                      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                        {job.type.replace('_', ' ')}
-                      </Typography>
-                      <ButtonGroup
-                        orientation="vertical"
-                        fullWidth
-                        sx={{ mt: 1 }}
-                      >
-                        <Button
-                          variant="contained"
-                          sx={{ 
-                            background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                            color: '#000',
-                            fontWeight: 600,
-                            '&:hover': {
-                              background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                              transform: 'translateY(-2px)',
-                              boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
-                            },
-                            transition: 'all 0.3s ease',
-                          }}
-                          onClick={() => navigate(`/jobs/${job.id}`)}
-                        >
-                          View Job
-                        </Button>
-                        
-                        <Tooltip title={!isAuthenticated ? "Login to apply" : "Apply with your profile"}>
-                          <span>
-                            <Button
-                              variant="outlined"
-                              startIcon={<FlashOnIcon />}
-                              onClick={() => handleQuickApply(job)}
-                              disabled={!isAuthenticated || (currentUser && currentUser.role === 'EMPLOYER')}
-                              sx={{ 
-                                mt: 1,
-                                borderColor: '#FFD700',
-                                color: '#FFD700',
-                                '&:hover': {
-                                  borderColor: '#2C5530',
-                                  color: '#2C5530',
-                                  backgroundColor: 'rgba(255, 215, 0, 0.1)'
-                                },
-                              }}
-                            >
-                              Quick Apply
-                            </Button>
-                          </span>
-                        </Tooltip>
-                      </ButtonGroup>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </StyledCard>
-            </Grid>
-          )) : (
-            // No results state
-            <Grid item xs={12}>
-              <Box sx={{ 
-                textAlign: 'center', 
-                py: 5, 
-                backgroundColor: 'rgba(20, 20, 20, 0.85)',
-                border: '1px solid rgba(255, 215, 0, 0.3)',
-                borderRadius: 2
-              }}>
-                <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
-                  No jobs found matching your criteria
-                </Typography>
-                <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                  Try adjusting your search filters or using different keywords
-                </Typography>
-              </Box>
-            </Grid>
-          )}
-        </Grid>
-      </StyledContainer>
-      
-      {/* Quick Apply Modal */}
-      {quickApplyJob && (
-        <QuickApplyModal
-          open={Boolean(quickApplyJob)}
-          onClose={() => setQuickApplyJob(null)}
-          job={quickApplyJob}
-          onSuccess={handleApplicationSuccess}
-        />
-      )}
-      
-      {/* Loading Modal */}
-      <Dialog
-        open={searchState.loading && searchState.showLoadingModal}
-        disableEscapeKeyDown
-        disableBackdropClick={searchState.loading}
-        keepMounted
-        onClose={(event, reason) => {
-          // Prevent closing when loading
-          if (searchState.loading) {
-            return;
-          }
-          // Allow closing only when not loading
-          if (reason !== 'backdropClick') {
-            setSearchState(prev => ({
-              ...prev,
-              showLoadingModal: false
-            }));
-          }
-        }}
-        PaperProps={{
-          style: {
-            backgroundColor: 'rgba(20, 20, 20, 0.95)',
-            border: '2px solid #FFD700',
-            borderRadius: '8px',
-            padding: '20px',
-            maxWidth: '400px',
-            width: '100%'
-          }
-        }}
-      >
-        <DialogContent sx={{ textAlign: 'center', py: 4 }}>
-          <CircularProgress size={60} sx={{ color: '#FFD700', mb: 3 }} />
-          <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
-            Searching Jobs
-          </Typography>
-          <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-            Finding the perfect opportunities for you in Jamaica...
-          </Typography>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Snackbar for notifications */}
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={6000} 
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
-          sx={{ width: '100%' }}
+            )) : (
+              // No results state
+              <Grid item xs={12}>
+                <Box sx={{ 
+                  textAlign: 'center', 
+                  py: 5, 
+                  backgroundColor: 'rgba(20, 20, 20, 0.85)',
+                  border: '1px solid rgba(255, 215, 0, 0.3)',
+                  borderRadius: 2
+                }}>
+                  <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
+                    No jobs found matching your criteria
+                  </Typography>
+                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                    Try adjusting your search filters or using different keywords
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </StyledContainer>
+        
+        {/* Quick Apply Modal */}
+        {quickApplyJob && (
+          <QuickApplyModal
+            open={Boolean(quickApplyJob)}
+            onClose={() => setQuickApplyJob(null)}
+            job={quickApplyJob}
+            onSuccess={handleApplicationSuccess}
+          />
+        )}
+        
+        {/* Loading Modal */}
+        <Dialog
+          open={searchState.loading && searchState.showLoadingModal}
+          disableEscapeKeyDown
+          disableBackdropClick={searchState.loading}
+          keepMounted
+          onClose={(event, reason) => {
+            // Prevent closing when loading
+            if (searchState.loading) {
+              return;
+            }
+            // Allow closing only when not loading
+            if (reason !== 'backdropClick') {
+              setSearchState(prev => ({
+                ...prev,
+                showLoadingModal: false
+              }));
+            }
+          }}
+          PaperProps={{
+            style: {
+              backgroundColor: 'rgba(20, 20, 20, 0.95)',
+              border: '2px solid #FFD700',
+              borderRadius: '8px',
+              padding: '20px',
+              maxWidth: '400px',
+              width: '100%'
+            }
+          }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+          <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+            <CircularProgress size={60} sx={{ color: '#FFD700', mb: 3 }} />
+            <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
+              Searching Jobs
+            </Typography>
+            <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+              Finding the perfect opportunities for you in Jamaica...
+            </Typography>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Snackbar for notifications */}
+        <Snackbar 
+          open={snackbar.open} 
+          autoHideDuration={6000} 
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={handleCloseSnackbar} 
+            severity={snackbar.severity} 
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Box>
+    </>
   );
 };
 

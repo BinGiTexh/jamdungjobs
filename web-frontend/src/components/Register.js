@@ -67,15 +67,38 @@ const Register = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
       setLoading(false);
       return;
     }
 
     try {
-      // Remove confirmPassword before sending to API
-      const { confirmPassword, ...registrationData } = formData;
+      // Remove confirmPassword before sending to API and map field names to backend expectations
+      const {
+        confirmPassword,
+        firstName,
+        lastName,
+        companyName,
+        companyWebsite,
+        companyLocation,
+        companyDescription,
+        ...rest
+      } = formData;
+
+      const registrationData = {
+        ...rest,
+        first_name: firstName,
+        last_name: lastName,
+        // Only include company fields for employers to avoid sending undefined
+        ...(formData.role === 'EMPLOYER' && {
+          company_name: companyName,
+          company_website: companyWebsite,
+          company_location: companyLocation,
+          company_description: companyDescription
+        })
+      };
+
       await register(registrationData);
       
       // If we came from the employer job posting flow, redirect back there
@@ -289,7 +312,7 @@ const Register = () => {
                       autoComplete="new-password"
                       value={formData.password}
                       onChange={handleChange}
-                      helperText="Password must be at least 6 characters long"
+                      helperText="Password must be at least 8 characters long"
                       InputProps={{
                         sx: {
                           color: 'white',

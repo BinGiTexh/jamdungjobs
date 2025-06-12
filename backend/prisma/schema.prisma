@@ -51,6 +51,7 @@ model CandidateProfile {
   location        String?
   skills          Json?     // Array of skills
   education       Json?     // Array of education objects
+  experience      Json?     // Array of work experience objects
   photoUrl        String?   @map("photo_url") // Base64 encoded photo
   resumeUrl       String?   @map("resume_url") // Base64 encoded resume
   resumeFileName  String?   @map("resume_file_name")
@@ -306,4 +307,3 @@ model ScheduledReminder {
   
   @@map("scheduled_reminders")
 }
-

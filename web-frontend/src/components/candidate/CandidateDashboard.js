@@ -33,7 +33,6 @@ import ApplicationsList from '../jobseeker/ApplicationsList';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 import NotificationsMenu from './NotificationsMenu';
 
-
 // Import icons
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -42,6 +41,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import AddIcon from '@mui/icons-material/Add';
 import Avatar from '@mui/material/Avatar';
 
 // Styled components for Jamaican theme - matching login page styling
@@ -413,6 +413,7 @@ const CandidateDashboard = () => {
         location: editedProfile.location,
         skills: editedProfile.skills,
         education: editedProfile.education,
+        experience: editedProfile.experience,
         locationData: editedProfile.locationData || null
       };
       
@@ -1083,6 +1084,200 @@ const CandidateDashboard = () => {
               {profile.location || 'No location provided.'}
             </Typography>
           )}
+
+          {/* ===================== Education Section ===================== */}
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: '#FFD700' }}>
+            Education
+          </Typography>
+
+          {editMode ? (
+            <>
+              {(editedProfile.education || []).length > 0 ? (
+                editedProfile.education.map((edu, idx) => (
+                  <Box key={`edu-${idx}`} sx={{ mb: 2, border: '1px solid rgba(255,215,0,0.2)', p: 2, borderRadius: 2, position: 'relative' }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <StyledTextField
+                          label="School / Institution"
+                          value={edu.school || ''}
+                          onChange={(e) => handleEducationChange(idx, 'school', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <StyledTextField
+                          label="Degree / Certification"
+                          value={edu.degree || ''}
+                          onChange={(e) => handleEducationChange(idx, 'degree', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <StyledTextField
+                          label="Field of Study"
+                          value={edu.fieldOfStudy || ''}
+                          onChange={(e) => handleEducationChange(idx, 'fieldOfStudy', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <StyledTextField
+                          label="Start Year"
+                          value={edu.startDate || ''}
+                          onChange={(e) => handleEducationChange(idx, 'startDate', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <StyledTextField
+                          label="End Year"
+                          value={edu.endDate || ''}
+                          onChange={(e) => handleEducationChange(idx, 'endDate', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                    </Grid>
+                    <IconButton
+                      size="small"
+                      onClick={() => removeEducationEntry(idx)}
+                      sx={{ position: 'absolute', top: 8, right: 8, color: '#ff6b6b' }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body2" color="rgba(255, 255, 255, 0.7)" sx={{ mb: 2 }}>
+                  No education entries added yet.
+                </Typography>
+              )}
+              <StyledButton
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={addEducationEntry}
+                sx={{ mb: 3 }}
+              >
+                Add Education
+              </StyledButton>
+            </>
+          ) : (
+            <Box sx={{ mb: 3 }}>
+              {(profile.education || []).length > 0 ? (
+                profile.education.map((edu, idx) => (
+                  <Typography key={`edu-view-${idx}`} variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
+                    {edu.degree ? `${edu.degree}, ` : ''}{edu.school} {(edu.startDate || edu.endDate) ? `(${edu.startDate || ''}${edu.endDate ? ` - ${edu.endDate}` : ''})` : ''}
+                  </Typography>
+                ))
+              ) : (
+                <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">
+                  No education information provided.
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {/* ===================== Experience Section ===================== */}
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: '#FFD700' }}>
+            Work Experience
+          </Typography>
+
+          {editMode ? (
+            <>
+              {(editedProfile.experience || []).length > 0 ? (
+                editedProfile.experience.map((exp, idx) => (
+                  <Box key={`exp-${idx}`} sx={{ mb: 2, border: '1px solid rgba(255,215,0,0.2)', p: 2, borderRadius: 2, position: 'relative' }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <StyledTextField
+                          label="Company"
+                          value={exp.company || ''}
+                          onChange={(e) => handleExperienceChange(idx, 'company', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <StyledTextField
+                          label="Job Title"
+                          value={exp.title || ''}
+                          onChange={(e) => handleExperienceChange(idx, 'title', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <StyledTextField
+                          label="Start Date"
+                          value={exp.startDate || ''}
+                          onChange={(e) => handleExperienceChange(idx, 'startDate', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <StyledTextField
+                          label="End Date"
+                          value={exp.endDate || ''}
+                          onChange={(e) => handleExperienceChange(idx, 'endDate', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <StyledTextField
+                          label="Description"
+                          value={exp.description || ''}
+                          onChange={(e) => handleExperienceChange(idx, 'description', e.target.value)}
+                          fullWidth
+                          margin="dense"
+                          multiline
+                          rows={3}
+                        />
+                      </Grid>
+                    </Grid>
+                    <IconButton
+                      size="small"
+                      onClick={() => removeExperienceEntry(idx)}
+                      sx={{ position: 'absolute', top: 8, right: 8, color: '#ff6b6b' }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body2" color="rgba(255, 255, 255, 0.7)" sx={{ mb: 2 }}>
+                  No experience entries added yet.
+                </Typography>
+              )}
+              <StyledButton
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={addExperienceEntry}
+                sx={{ mb: 3 }}
+              >
+                Add Experience
+              </StyledButton>
+            </>
+          ) : (
+            <Box sx={{ mb: 3 }}>
+              {(profile.experience || []).length > 0 ? (
+                profile.experience.map((exp, idx) => (
+                  <Typography key={`exp-view-${idx}`} variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
+                    {exp.title} at {exp.company} {(exp.startDate || exp.endDate) ? `(${exp.startDate || ''}${exp.endDate ? ` - ${exp.endDate}` : ''})` : ''}
+                  </Typography>
+                ))
+              ) : (
+                <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">
+                  No work experience provided.
+                </Typography>
+              )}
+            </Box>
+          )}
           
           {editMode && (
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4, gap: 2 }}>
@@ -1105,6 +1300,74 @@ const CandidateDashboard = () => {
       </Grid>
     </Grid>
   );
+};
+
+// Helper function for education CRUD
+const handleEducationChange = (index, field, value) => {
+  setEditedProfile(prev => {
+    const newEducation = Array.isArray(prev.education) ? [...prev.education] : [];
+    // Ensure the entry exists
+    newEducation[index] = {
+      ...(newEducation[index] || {}),
+      [field]: value
+    };
+    return { ...prev, education: newEducation };
+  });
+};
+
+const addEducationEntry = () => {
+  setEditedProfile(prev => ({
+    ...prev,
+    education: [...(prev.education || []), {
+      school: '',
+      degree: '',
+      fieldOfStudy: '',
+      startDate: '',
+      endDate: '',
+      description: ''
+    }]
+  }));
+};
+
+const removeEducationEntry = (index) => {
+  setEditedProfile(prev => {
+    const newEducation = [...(prev.education || [])];
+    newEducation.splice(index, 1);
+    return { ...prev, education: newEducation };
+  });
+};
+
+// Helper function for experience CRUD
+const handleExperienceChange = (index, field, value) => {
+  setEditedProfile(prev => {
+    const newExperience = Array.isArray(prev.experience) ? [...prev.experience] : [];
+    newExperience[index] = {
+      ...(newExperience[index] || {}),
+      [field]: value
+    };
+    return { ...prev, experience: newExperience };
+  });
+};
+
+const addExperienceEntry = () => {
+  setEditedProfile(prev => ({
+    ...prev,
+    experience: [...(prev.experience || []), {
+      company: '',
+      title: '',
+      startDate: '',
+      endDate: '',
+      description: ''
+    }]
+  }));
+};
+
+const removeExperienceEntry = (index) => {
+  setEditedProfile(prev => {
+    const newExperience = [...(prev.experience || [])];
+    newExperience.splice(index, 1);
+    return { ...prev, experience: newExperience };
+  });
 };
 
 return (

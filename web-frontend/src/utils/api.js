@@ -10,18 +10,33 @@ const api = axios.create({
   }
 });
 
-// Add request interceptor for auth token
+// Consistent token key used across the app (matches AuthContext and axiosConfig)
+const TOKEN_KEY = 'jamdung_auth_token';
+
+// Request interceptor – inject JWT token and migrate legacy key if found
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    let token = localStorage.getItem(TOKEN_KEY);
+
+    // Fallback to legacy 'token' key if new key not present
+    if (!token) {
+      const legacyToken = localStorage.getItem('token');
+      if (legacyToken) {
+        token = legacyToken;
+        // Migrate to new key for consistency
+        localStorage.setItem(TOKEN_KEY, legacyToken);
+      }
     }
+
+    if (token) {
+      token = token.trim();
+      const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      config.headers.Authorization = bearerToken;
+    }
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Add response interceptor for error handling

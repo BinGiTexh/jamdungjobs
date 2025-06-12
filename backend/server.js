@@ -179,9 +179,6 @@ try {
   // Public job routes
   app.use("/api/jobs", createJobsRouter(prisma));
 
-  // Application management routes (jobseeker/employer applications)
-  app.use("/api", applicationManagementRouter);
-
   // Protected routes with role-based access
   app.use("/api/jobseeker", 
     authenticateJWT, 
@@ -223,6 +220,9 @@ try {
   );
 
   app.use("/api/skills", skillsRouter);
+
+  // Applications listing & management routes
+  app.use('/api', applicationManagementRouter);
 
   console.log("All routes mounted successfully");
 } catch (error) {

@@ -151,24 +151,29 @@ export const SkillsAutocomplete = ({ value = [], onChange, label = 'Skills', pla
         />
       )}
       renderTags={(tagValue, getTagProps) =>
-        tagValue.map((option, index) => (
-          <Chip
-            label={option}
-            {...getTagProps({ index })}
-            sx={{
-              backgroundColor: 'rgba(44, 85, 48, 0.8)',
-              color: '#FFD700',
-              fontWeight: 500,
-              border: '1px solid rgba(255, 215, 0, 0.5)',
-              '& .MuiChip-deleteIcon': {
+        tagValue.map((option, index) => {
+          const tagProps = getTagProps({ index });
+          const { key, ...chipProps } = tagProps; // Extract key to pass separately
+          return (
+            <Chip
+              key={key}
+              label={option}
+              {...chipProps}
+              sx={{
+                backgroundColor: 'rgba(44, 85, 48, 0.8)',
                 color: '#FFD700',
-                '&:hover': {
-                  color: '#FFFFFF',
+                fontWeight: 500,
+                border: '1px solid rgba(255, 215, 0, 0.5)',
+                '& .MuiChip-deleteIcon': {
+                  color: '#FFD700',
+                  '&:hover': {
+                    color: '#FFFFFF',
+                  },
                 },
-              },
-            }}
-          />
-        ))
+              }}
+            />
+          );
+        })
       }
       renderOption={(props, option) => (
         <li {...props}>
