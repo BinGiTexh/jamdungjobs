@@ -17,6 +17,8 @@ RUN echo "optional=false" >> .npmrc \
 
 # Copy package files
 COPY backend/package*.json ./
+# Copy Prisma schema before install so postinstall generate works
+COPY backend/prisma ./prisma
 
 # Install dependencies efficiently
 RUN npm ci --production --no-optional \
