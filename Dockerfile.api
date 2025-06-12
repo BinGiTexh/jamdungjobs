@@ -21,7 +21,7 @@ COPY backend/package*.json ./
 COPY backend/prisma ./prisma
 
 # Install dependencies efficiently
-RUN npm ci --production --no-optional \
+RUN npm ci --no-optional \
     && npm cache clean --force \
     && chown -R node:node /app
 
