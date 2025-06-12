@@ -56,7 +56,6 @@ services:
       - UPLOAD_PATH=/app/uploads
     volumes:
       - ../backend:/app:delegated
-      - /app/node_modules
       - uploads:/app/uploads
     command: ["npm", "run", "dev"]
     depends_on:
