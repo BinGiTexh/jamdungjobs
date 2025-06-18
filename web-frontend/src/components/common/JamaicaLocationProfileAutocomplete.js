@@ -88,8 +88,8 @@ export const JamaicaLocationProfileAutocomplete = ({
       logDev('debug', 'Jamaica location search results:', results);
       setOptions(results);
     } else {
-      // Show popular locations when input is empty or too short
-      const popularLocations = [
+      // Build initial popular locations list and then deduplicate
+      const initialPopular = [
         { name: 'Kingston', parish: 'Kingston' },
         { name: 'Montego Bay', parish: 'St. James' },
         { name: 'Ocho Rios', parish: 'St. Ann' },
@@ -105,8 +105,19 @@ export const JamaicaLocationProfileAutocomplete = ({
         type: loc.name === loc.parish ? 'parish' : 'popular',
         formattedAddress: loc.name === loc.parish ? `${loc.name}, Jamaica` : `${loc.name}, ${loc.parish}, Jamaica`
       }));
-      
-      setOptions(popularLocations);
+
+      // Deduplicate by mainText + secondaryText similar to search results
+      const seenPopular = new Set();
+      const uniquePopular = [];
+      for (const opt of initialPopular) {
+        const dedupKey = `${opt.mainText}|${opt.secondaryText}`;
+        if (!seenPopular.has(dedupKey)) {
+          seenPopular.add(dedupKey);
+          uniquePopular.push(opt);
+        }
+      }
+
+      setOptions(uniquePopular);
     }
   }, [inputValue]);
 

@@ -45,7 +45,18 @@ const commonSkills = [
   'Tropical Agriculture', 'Caribbean Healthcare', 'Jamaican Education System'
 ];
 
-export const SkillsAutocomplete = ({ value = [], onChange, label = 'Skills', placeholder = 'Add skills', multiple = true, freeSolo = true, required = false, helperText = '', error = false }) => {
+export const SkillsAutocomplete = ({
+  value = [],
+  onChange,
+  label = 'Skills',
+  placeholder = 'Select skills',
+  multiple = true,
+  freeSolo = false,
+  required = false,
+  helperText = '',
+  error = false,
+  openOnFocus = true
+}) => {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -56,7 +67,8 @@ export const SkillsAutocomplete = ({ value = [], onChange, label = 'Skills', pla
       try {
         setLoading(true);
         // Try to fetch from API first
-        const response = await axios.get(buildApiUrl('/skills'));
+        // Use correct API prefix to avoid 404
+        const response = await axios.get(buildApiUrl('/api/skills'));
         if (response.data && Array.isArray(response.data)) {
           setOptions(response.data.map(skill => typeof skill === 'string' ? skill : skill.name));
         }
@@ -101,6 +113,8 @@ export const SkillsAutocomplete = ({ value = [], onChange, label = 'Skills', pla
     <Autocomplete
       multiple={multiple}
       freeSolo={freeSolo}
+      openOnFocus={openOnFocus}
+      autoHighlight
       options={getFilteredOptions()}
       value={value}
       onChange={(event, newValue) => {

@@ -1,0 +1,6 @@
+# Example values for RDS configuration
+vpc_id = "vpc-xxxxxxxx"
+private_subnet_1 = "subnet-xxxxxxxx"
+private_subnet_2 = "subnet-yyyyyyyy"
+app_security_group_id = "sg-xxxxxxxx"
+db_password = "your-secure-password-here"

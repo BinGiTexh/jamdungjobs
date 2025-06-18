@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import { buildApiUrl, buildAssetUrl } from '../../config';
-import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
+import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import api from '../../utils/axiosConfig';
 import axios from 'axios';
@@ -1073,7 +1073,7 @@ const CandidateDashboard = () => {
           </Typography>
           
           {editMode ? (
-            <JamaicaLocationProfileAutocomplete
+            <JamaicaLocationAutocomplete
               value={editedProfile.location || ''}
               onChange={handleLocationSelect}
               placeholder="Enter your location in Jamaica"

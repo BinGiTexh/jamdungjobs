@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -16,8 +16,14 @@ import {
   styled
 } from '@mui/material';
 import PropTypes from 'prop-types';
-import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
-import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
+import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
+import api from '../../utils/axiosConfig';
+import JOB_TEMPLATES from '../../constants/jobTemplates';
+
+// minimal fallback skills list if API returns none
+const DEFAULT_SKILLS = [
+  'JavaScript','Python','React','Node.js','Project Management','Customer Service','Sales','Marketing','Accounting','AWS','SQL','Communication','Leadership','Teamwork','Problem Solving'
+];
 
 const StyledButton = styled(Button)(({ theme }) => ({
   backgroundColor: '#FFD700',
@@ -85,6 +91,7 @@ const getLocationDisplay = (location) => {
 };
 
 const DialogCreateJobListing = ({ open, onClose, onSave }) => {
+  const [skillsOptions, setSkillsOptions] = useState([]);
   const [jobData, setJobData] = useState({
     title: '',
     location: null,
@@ -101,6 +108,19 @@ const DialogCreateJobListing = ({ open, onClose, onSave }) => {
 
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Handler to apply a selected template
+  const applyTemplate = (sector) => {
+    const template = JOB_TEMPLATES[sector];
+    if (template) {
+      setJobData(prev => ({
+        ...prev,
+        description: template.description,
+        requirements: template.requirements,
+        responsibilities: template.responsibilities,
+      }));
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -166,14 +186,18 @@ const DialogCreateJobListing = ({ open, onClose, onSave }) => {
     setIsSubmitting(true);
     try {
       const formattedJobData = {
-        ...jobData,
+        title: jobData.title,
+        description: jobData.description,
         location: getLocationDisplay(jobData.location),
-        locationData: jobData.location,
-        skills: jobData.skills.map(skill => skill.name || skill),
-        salaryMin: parseFloat(jobData.salaryMin),
-        salaryMax: parseFloat(jobData.salaryMax),
-        applicationDeadline: jobData.applicationDeadline 
-          ? new Date(jobData.applicationDeadline).toISOString() 
+        type: jobData.employmentType,
+        skills: jobData.skills.map(skill => (typeof skill === 'string' ? skill : skill.name || '')),
+        salary: {
+          min: parseFloat(jobData.salaryMin),
+          max: parseFloat(jobData.salaryMax)
+        },
+        experience: jobData.experienceLevel,
+        applicationDeadline: jobData.applicationDeadline
+          ? new Date(jobData.applicationDeadline).toISOString()
           : null
       };
       
@@ -185,6 +209,25 @@ const DialogCreateJobListing = ({ open, onClose, onSave }) => {
       setIsSubmitting(false);
     }
   };
+
+  // Fetch skills list on mount for dropdown
+  useEffect(() => {
+    const fetchSkills = async () => {
+      try {
+        const res = await api.get('/api/skills');
+        const data = res.data;
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.skills)
+            ? data.skills
+            : [];
+        setSkillsOptions(list.length ? list : DEFAULT_SKILLS);
+      } catch (err) {
+        console.error('Failed to fetch skills list', err);
+      }
+    };
+    fetchSkills();
+  }, []);
 
   return (
     <StyledDialog
@@ -209,12 +252,31 @@ const DialogCreateJobListing = ({ open, onClose, onSave }) => {
           </Grid>
           
           <Grid item xs={12}>
-            <JamaicaLocationProfileAutocomplete
+            <JamaicaLocationAutocomplete
               value={jobData.location}
               onChange={handleLocationChange}
               error={!!formErrors.location}
               helperText={formErrors.location}
             />
+          </Grid>
+
+          {/* Template selector to auto-fill key fields */}
+          <Grid item xs={12}>
+            <StyledFormControl fullWidth>
+              <InputLabel>Select Job Template</InputLabel>
+              <Select
+                value=""
+                label="Select Job Template"
+                onChange={(e) => applyTemplate(e.target.value)}
+              >
+                {Object.keys(JOB_TEMPLATES).map((sector) => (
+                  <MenuItem key={sector} value={sector}>{sector}</MenuItem>
+                ))}
+              </Select>
+            </StyledFormControl>
+            <Typography variant="caption" sx={{ color: '#FFD700' }}>
+              Choosing a template will pre-fill the description, requirements, and responsibilities. You can edit them afterwards.
+            </Typography>
           </Grid>
 
           <Grid item xs={12}>
@@ -291,12 +353,53 @@ const DialogCreateJobListing = ({ open, onClose, onSave }) => {
           </Grid>
 
           <Grid item xs={12}>
-            <SkillsAutocomplete
-              value={jobData.skills}
-              onChange={handleSkillsChange}
-              error={!!formErrors.skills}
-              helperText={formErrors.skills}
-            />
+            <StyledFormControl fullWidth>
+              <InputLabel>Skills (select multiple)</InputLabel>
+              <Select
+                multiple
+                name="skills"
+                value={jobData.skills}
+                onChange={(e) => handleSkillsChange(e.target.value)}
+                renderValue={(selected) => selected.join(', ')}
+                label="Skills"
+                error={!!formErrors.skills}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: '#1a1a1a',
+                      color: '#FFFFFF',
+                      border: '1px solid rgba(255, 215, 0, 0.4)',
+                      maxHeight: 300,
+                    },
+                  },
+                  MenuListProps: {
+                    sx: {
+                      '& .MuiMenuItem-root': {
+                        color: '#FFFFFF',
+                        '&.Mui-selected': {
+                          bgcolor: 'rgba(255, 215, 0, 0.15)',
+                        },
+                        '&.Mui-selected:hover': {
+                          bgcolor: 'rgba(255, 215, 0, 0.25)',
+                        },
+                      },
+                    },
+                  },
+                  disablePortal: true,
+                }}
+              >
+                {(Array.isArray(skillsOptions) ? skillsOptions : []).map((skill) => (
+                  <MenuItem key={skill} value={skill} sx={{ color: '#FFFFFF' }}>
+                    {skill}
+                  </MenuItem>
+                ))}
+              </Select>
+            </StyledFormControl>
+            {formErrors.skills && (
+              <Typography variant="caption" color="error">
+                {formErrors.skills}
+              </Typography>
+            )}
           </Grid>
 
           <Grid item xs={12}>
@@ -366,4 +469,3 @@ DialogCreateJobListing.propTypes = {
 };
 
 export default DialogCreateJobListing;
-

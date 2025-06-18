@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Cloudflare Tunnel
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    volumes:
+      - /home/ubuntu/cloudflared/credentials.json:/etc/cloudflared/credentials.json
+      - /home/ubuntu/cloudflared/config.yml:/etc/cloudflared/config.yml
+    networks:
+      - jamdung-network
+    depends_on:
+      - frontend
+      - api
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: jamdungjobs-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=jobboard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - jamdung-network
+
+  # Redis
+  redis:
+    image: redis:7
+    container_name: jamdungjobs-redis
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - jamdung-network
+
+  # API Service
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile.api
+    container_name: jamdungjobs-api
+    environment:
+      - PORT=5000
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/jobboard
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ../backend:/app:delegated
+      - uploads:/app/uploads
+    restart: unless-stopped
+    networks:
+      - jamdung-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile.frontend
+    container_name: jamdungjobs-frontend
+    environment:
+      - REACT_APP_API_URL=/api
+      - NODE_ENV=production
+    volumes:
+      - ../web-frontend:/app:delegated
+      - ../web-frontend/public:/app/public
+    restart: unless-stopped
+    networks:
+      - jamdung-network
+    depends_on:
+      - api
+
+networks:
+  jamdung-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  uploads:
+    name: jamdung_uploads
+  redis_data:

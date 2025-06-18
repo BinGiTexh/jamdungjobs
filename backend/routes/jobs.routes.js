@@ -4,6 +4,9 @@
  */
 
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { authenticateJWT, checkRole } = require('../middleware/auth');
 const router = express.Router();
 
@@ -12,6 +15,26 @@ const router = express.Router();
  * @param {PrismaClient} prisma - Prisma client instance
  */
 module.exports = (prisma) => {
+  // Configure multer storage (reuse uploads directory)
+  const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      const dir = path.join(__dirname, '..', 'uploads');
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+      const uniqueName = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
+      cb(null, uniqueName);
+    }
+  });
+
+  const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  });
+
   /**
    * @route GET /api/jobs
    * @description Get all jobs with filtering
@@ -139,14 +162,22 @@ module.exports = (prisma) => {
       // Resolve company for employer
       let companyId = req.user.companyId;
       if (!companyId) {
-        const company = await prisma.company.findFirst({
-          where: { employees: { some: { id: req.user.id } } },
-          select: { id: true }
+        // Create a minimal company and associate the employer with it
+        const company = await prisma.company.create({
+          data: {
+            name: req.user.companyName || 'My Company',
+            employees: {
+              connect: { id: req.user.id }
+            }
+          }
         });
-        if (!company) {
-          return res.status(400).json({ message: 'Employer has no company profile' });
-        }
         companyId = company.id;
+
+        // Persist the link on the user record so future requests carry companyId
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: { companyId }
+        });
       }
 
       const job = await prisma.job.create({
@@ -173,6 +204,89 @@ module.exports = (prisma) => {
     } catch (error) {
       console.error('Error creating job:', error);
       res.status(500).json({ message: 'Error creating job' });
+    }
+  });
+
+  /**
+   * @route PUT /api/jobs/:id
+   * @description Update an existing job (employer only)
+   * @access Private (Employer only)
+   */
+  router.put('/:id', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const {
+        title,
+        description,
+        location,
+        type,
+        salary,
+        experience,
+        education,
+        requirements,
+        benefits,
+        responsibilities,
+        status
+      } = req.body;
+
+      // Fetch job and validate ownership
+      const job = await prisma.job.findUnique({
+        where: { id: jobId },
+        include: { company: true }
+      });
+
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+
+      // Authorization checks for employers (admin bypasses)
+      if (req.user.role !== 'ADMIN') {
+        const sameCompany = req.user.companyId && req.user.companyId === job.companyId;
+        const creator = job.createdById && job.createdById === req.user.id;
+        let employeeOfCompany = false;
+        if (job.companyId) {
+          const count = await prisma.company.count({
+            where: { id: job.companyId, employees: { some: { id: req.user.id } } }
+          });
+          employeeOfCompany = count > 0;
+        }
+        if (!sameCompany && !creator && !employeeOfCompany) {
+          return res.status(403).json({ message: 'Not authorized to update this job' });
+        }
+      }
+
+      // Normalize salary if a string range was supplied
+      let normalizedSalary = salary;
+      if (salary && typeof salary === 'string') {
+        const match = salary.replace(/[$,\s]/g, '').split('-');
+        if (match.length === 2) {
+          const [minStr, maxStr] = match;
+          const min = parseInt(minStr, 10);
+          const max = parseInt(maxStr, 10);
+          if (!Number.isNaN(min) && !Number.isNaN(max)) {
+            normalizedSalary = { min, max };
+          }
+        }
+      }
+
+      const updated = await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          ...(title !== undefined && { title }),
+          ...(description !== undefined && { description }),
+          ...(location !== undefined && { location }),
+          ...(type !== undefined && { type }),
+          ...(normalizedSalary !== undefined && { salary: normalizedSalary }),
+          ...(experience !== undefined && { experience }),
+          ...(education !== undefined && { education }),
+          ...(status !== undefined && { status })
+        }
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating job:', error);
+      res.status(500).json({ message: 'Error updating job' });
     }
   });
 
@@ -206,10 +320,20 @@ module.exports = (prisma) => {
    * @desc  Jobseeker applies to a job
    * @access Private/Jobseeker
    */
-  router.post('/:id/apply', authenticateJWT, checkRole('JOBSEEKER'), async (req, res) => {
+  router.post('/:id/apply', authenticateJWT, checkRole('JOBSEEKER'), upload.single('coverLetterFile'), async (req, res) => {
     try {
-      const { coverLetter } = req.body;
+      let { coverLetter } = req.body;
       const jobId = req.params.id;
+
+      // If a PDF file is uploaded, validate and use its URL instead of text cover letter
+      if (req.file) {
+        if (req.file.mimetype !== 'application/pdf') {
+          // Remove invalid file
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({ message: 'Only PDF cover letters are allowed' });
+        }
+        coverLetter = `/uploads/${req.file.filename}`;
+      }
 
       // Ensure job exists
       const job = await prisma.job.findUnique({ where: { id: jobId }, include: { company: true } });
@@ -241,7 +365,7 @@ module.exports = (prisma) => {
       // Notify candidate of successful application
       await prisma.notification.create({
         data: {
-          type: 'APPLICATION_SUBMITTED',
+          type: 'APPLICATION_UPDATE',
           title: `Application submitted for ${job.title}`,
           message: `You applied to ${job.title} at ${job.company?.name || 'company'}`,
           recipientId: req.user.id,
@@ -262,7 +386,7 @@ module.exports = (prisma) => {
         if (employers.length) {
           await prisma.notification.createMany({
             data: employers.map((emp) => ({
-              type: 'NEW_APPLICATION',
+              type: 'APPLICATION_UPDATE',
               title: `New application for ${job.title}`,
               message: `${req.user.email} applied to ${job.title}`,
               recipientId: emp.id,

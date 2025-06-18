@@ -7,6 +7,8 @@
 
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 
 // Initialize Prisma client
 const prisma = new PrismaClient();
@@ -92,6 +94,25 @@ async function resetTestAccounts() {
       TEST_ACCOUNTS.employer.role
     );
     
+    // Save test account credentials to a file
+    const credentialsData = {
+      jobSeeker: {
+        email: TEST_ACCOUNTS.jobSeeker.email,
+        password: TEST_ACCOUNTS.jobSeeker.password
+      },
+      employer: {
+        email: TEST_ACCOUNTS.employer.email,
+        password: TEST_ACCOUNTS.employer.password
+      },
+      apiUrl: 'http://localhost:5000/api'
+    };
+    
+    fs.writeFileSync(
+      path.join(__dirname, 'test_credentials.json'),
+      JSON.stringify(credentialsData, null, 2)
+    );
+    
+    console.log('✅ Test credentials saved to test_credentials.json');
     console.log('🎉 Test account reset complete!');
   } catch (error) {
     console.error('❌ Reset failed:', error);

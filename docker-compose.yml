@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-      target: builder # Use builder stage for development
+
     ports:
       - "5000:3000"
     environment:

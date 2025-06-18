@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
 
 // Base URL for API requests
-const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const AuthContext = createContext(undefined);
 

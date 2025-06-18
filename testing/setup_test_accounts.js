@@ -13,8 +13,8 @@ const path = require('path');
 const API_URL = 'http://localhost:5000/api';
 const TEST_ACCOUNTS = {
   jobSeeker: {
-    firstName: 'Test',
-    lastName: 'JobSeeker',
+    first_name: 'Test',
+    last_name: 'JobSeeker',
     email: 'testjobseeker@jamdungjobs.com',
     password: 'Test@123',
     role: 'JOBSEEKER',
@@ -22,15 +22,15 @@ const TEST_ACCOUNTS = {
     bio: 'I am a test job seeker account used for testing the JamDung Jobs platform.'
   },
   employer: {
-    firstName: 'Test',
-    lastName: 'Employer',
+    first_name: 'Test',
+    last_name: 'Employer',
     email: 'testemployer@jamdungjobs.com',
     password: 'Test@123',
     role: 'EMPLOYER',
-    companyName: 'Test Company Ltd.',
-    companyWebsite: 'https://testcompany.com',
-    companyLocation: 'Kingston, Jamaica',
-    companyDescription: 'A test company account used for testing the JamDung Jobs platform.'
+    company_name: 'Test Company Ltd.',
+    company_website: 'https://testcompany.com',
+    company_location: 'Kingston, Jamaica',
+    company_description: 'A test company account used for testing the JamDung Jobs platform.'
   }
 };
 

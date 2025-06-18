@@ -216,13 +216,13 @@ const ApplicationsList = ({ jobListings }) => {
                 <Grid item>
                   <Avatar 
                     src={application.candidate?.avatar || ''}
-                    alt={application.candidate?.name || 'Candidate'}
+                    alt={(application.user ? `${application.user.firstName || ''} ${application.user.lastName || ''}`.trim() : application.candidate?.name) || 'Candidate'}
                     sx={{ width: 60, height: 60 }}
                   />
                 </Grid>
                 <Grid item xs>
                   <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
-                    {application.candidate?.name || 'Unknown Candidate'}
+                    {(application.user ? `${application.user.firstName || ''} ${application.user.lastName || ''}`.trim() : application.candidate?.name) || 'Unknown Candidate'}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -240,7 +240,7 @@ const ApplicationsList = ({ jobListings }) => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <CalendarTodayIcon sx={{ color: 'rgba(255, 215, 0, 0.7)', fontSize: 18 }} />
                       <Typography variant="body2" sx={{ color: '#FFFFFF' }}>
-                        Applied {new Date(application.appliedDate).toLocaleDateString()}
+                        {(() => { const d = application.appliedDate || application.createdAt || application.applied_at; return d ? `Applied ${new Date(d).toLocaleDateString()}` : 'Applied –'; })()}
                       </Typography>
                     </Box>
                   </Box>
@@ -328,13 +328,13 @@ const ApplicationsList = ({ jobListings }) => {
                   <Grid container spacing={2}>
                     <Grid item xs={12} md={6}>
                       <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        <strong>Name:</strong> {selectedApplication.candidate?.name || 'Unknown Candidate'}
+                        <strong>Name:</strong> {(selectedApplication.user ? `${selectedApplication.user.firstName || ''} ${selectedApplication.user.lastName || ''}`.trim() : selectedApplication.candidate?.name) || 'Unknown Candidate'}
                       </Typography>
                       <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        <strong>Email:</strong> {selectedApplication.candidate?.email || 'N/A'}
+                        <strong>Email:</strong> {selectedApplication.user?.email || selectedApplication.candidate?.email || 'N/A'}
                       </Typography>
                       <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        <strong>Phone:</strong> {selectedApplication.candidate?.phone || 'N/A'}
+                        <strong>Phone:</strong> {selectedApplication.user?.phoneNumber || selectedApplication.candidate?.phone || 'N/A'}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -342,7 +342,7 @@ const ApplicationsList = ({ jobListings }) => {
                         <strong>Status:</strong> {selectedApplication.status}
                       </Typography>
                       <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        <strong>Applied Date:</strong> {new Date(selectedApplication.appliedDate).toLocaleDateString()}
+                        {(() => { const d = selectedApplication.appliedDate || selectedApplication.createdAt || selectedApplication.applied_at; return <><strong>Applied Date:</strong> {d ? new Date(d).toLocaleDateString() : '—'}</>; })()}
                       </Typography>
                     </Grid>
                   </Grid>

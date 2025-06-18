@@ -19,11 +19,14 @@ import {
   Snackbar,
   Alert,
   Dialog,
-  DialogContent
+  DialogTitle,
+  DialogContent,
+  Slide
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { JobTitleInput } from './common/JobTitleInput';
 import { JamaicaLocationAutocomplete } from './common/JamaicaLocationAutocomplete';
 import { SkillsAutocomplete } from './common/SkillsAutocomplete';
@@ -101,7 +104,7 @@ const JobSearch = () => {
     jobType: '',
     skills: [],
     salaryMin: 0,
-    salaryMax: 300000,
+    salaryMax: 0,
     remote: false
   });
   const [searchState, setSearchState] = useState({
@@ -111,11 +114,17 @@ const JobSearch = () => {
     resultsCount: 0
   });
   const [quickApplyJob, setQuickApplyJob] = useState(null);
+  // Track applied jobs and metadata (date, status)
+  const [appliedJobs, setAppliedJobs] = useState(new Map());
+  // Normalize IDs to strings to avoid type mismatches (backend may return number or string)
+  const appliedJobIds = new Set(Array.from(appliedJobs.keys()).map((id) => String(id)));
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
+  // Success dialog state
+  const [applicationDialogOpen, setApplicationDialogOpen] = useState(false);
 
   const jobTypes = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY'];
 
@@ -173,6 +182,8 @@ const JobSearch = () => {
   };
 
   // Validate and format search parameters
+  const DEFAULT_MAX_SALARY = 300000;
+
   const formatSearchParams = () => {
     const params = {};
     
@@ -227,7 +238,7 @@ const JobSearch = () => {
         params.minSalary = minSalary;
       }
       
-      if (!isNaN(maxSalary) && maxSalary >= 0) {
+      if (!isNaN(maxSalary) && maxSalary > 0 && maxSalary !== DEFAULT_MAX_SALARY) {
         params.maxSalary = maxSalary;
       }
       
@@ -493,23 +504,44 @@ const JobSearch = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);  // Empty dependency array to only run on mount
 
+  // Fetch existing applications once for jobseeker
+  useEffect(() => {
+    const fetchApplied = async () => {
+      if (!isAuthenticated || !(currentUser && currentUser.role === 'JOBSEEKER')) return;
+      try {
+        // Use correct prefixed path so we actually retrieve existing applications
+        const res = await api.get('/api/jobseeker/applications?limit=1000');
+        const rows = res.data?.data || res.data || [];
+        const jobMap = new Map();
+        rows.forEach((row) => {
+          jobMap.set(String(row.jobId), {
+            appliedAt: row.createdAt || row.appliedAt || row.updatedAt,
+            status: row.status || 'APPLIED'
+          });
+        });
+        setAppliedJobs(jobMap);
+      } catch (err) {
+        logError('Failed to fetch applied jobs', err, { module: 'JobSearch', function: 'fetchApplied' });
+      }
+    };
+    fetchApplied();
+  }, [isAuthenticated, currentUser]);
+
   const handleQuickApply = (job) => {
+    // If the user has already applied, simply exit early (the button is already disabled and labelled)
+    if (appliedJobIds.has(String(job.id))) {
+      // No need to show an additional snackbar; the UI already reflects applied status
+      logDev('info', 'Quick apply attempted on already applied job', { jobId: job.id, userId: currentUser?.id });
+      return;
+    }
+
     if (!isAuthenticated) {
-      // Redirect to login with return URL
-      navigate('/login', { state: { from: `/jobs/${job.id}/apply` } });
+      // Redirect unauthenticated users to login
+      navigate('/login', { state: { from: `/jobs/${job.id}` } });
       return;
     }
-    
-    if (currentUser && currentUser.role === 'EMPLOYER') {
-      setSnackbar({
-        open: true,
-        message: 'Employers cannot apply for jobs. Please login as a job seeker.',
-        severity: 'warning'
-      });
-      return;
-    }
-    
-    // Open quick apply modal
+
+    // Open the quick-apply modal as usual
     setQuickApplyJob(job);
     
     logDev('debug', 'Quick apply initiated', {
@@ -533,6 +565,23 @@ const JobSearch = () => {
       message: 'Your application was submitted successfully!',
       severity: 'success'
     });
+
+    // Mark this job as applied in local state so UI updates immediately
+    if (applicationData?.jobId) {
+      setAppliedJobs((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(String(applicationData.jobId), {
+          appliedAt: applicationData.createdAt || new Date().toISOString(),
+          status: applicationData.status || 'APPLIED'
+        });
+        return newMap;
+      });
+    }
+    
+    // Show celebratory dialog for clearer UX
+    setApplicationDialogOpen(true);
+    // Auto-dismiss after 2 seconds
+    setTimeout(() => setApplicationDialogOpen(false), 2000);
   };
   
   const handleCloseSnackbar = () => {
@@ -854,46 +903,49 @@ const JobSearch = () => {
                           fullWidth
                           sx={{ mt: 1 }}
                         >
-                          <Button
-                            variant="contained"
-                            sx={{ 
-                              background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                              color: '#000',
-                              fontWeight: 600,
-                              '&:hover': {
-                                background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                                transform: 'translateY(-2px)',
-                                boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
-                              },
-                              transition: 'all 0.3s ease',
-                            }}
-                            onClick={() => navigate(`/jobs/${job.id}`)}
-                          >
-                            View Job
-                          </Button>
-                          
-                          <Tooltip title={!isAuthenticated ? "Login to apply" : "Apply with your profile"}>
-                            <span>
-                              <Button
-                                variant="outlined"
-                                startIcon={<FlashOnIcon />}
-                                onClick={() => handleQuickApply(job)}
-                                disabled={!isAuthenticated || (currentUser && currentUser.role === 'EMPLOYER')}
-                                sx={{ 
-                                  mt: 1,
-                                  borderColor: '#FFD700',
-                                  color: '#FFD700',
-                                  '&:hover': {
-                                    borderColor: '#2C5530',
-                                    color: '#2C5530',
-                                    backgroundColor: 'rgba(255, 215, 0, 0.1)'
-                                  },
-                                }}
-                              >
-                                Quick Apply
-                              </Button>
-                            </span>
-                          </Tooltip>
+                          {appliedJobIds.has(String(job.id)) ? (
+                            <Tooltip title={`Applied on ${new Date(appliedJobs.get(String(job.id))?.appliedAt).toLocaleDateString()}`}
+                                      placement="top">
+                              <span>
+                                <Button
+                                  variant="contained"
+                                  startIcon={<CheckCircleIcon />}
+                                  disabled
+                                  sx={{
+                                    mt: 1,
+                                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                                    color: '#4caf50',
+                                    '&:hover': { backgroundColor: 'rgba(76, 175, 80, 0.2)' }
+                                  }}
+                                >
+                                  Applied
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip title={!isAuthenticated ? 'Login to apply' : 'Quick Apply'}>
+                              <span>
+                                <Button
+                                  variant="outlined"
+                                  startIcon={<FlashOnIcon />}
+                                  onClick={() => handleQuickApply(job)}
+                                  disabled={!isAuthenticated || (currentUser && currentUser.role === 'EMPLOYER')}
+                                  sx={{ 
+                                    mt: 1,
+                                    borderColor: '#FFD700',
+                                    color: '#FFD700',
+                                    '&:hover': {
+                                      borderColor: '#2C5530',
+                                      color: '#2C5530',
+                                      backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                                    },
+                                  }}
+                                >
+                                  Quick Apply
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          )}
                         </ButtonGroup>
                       </Grid>
                     </Grid>
@@ -970,6 +1022,26 @@ const JobSearch = () => {
             <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
               Finding the perfect opportunities for you in Jamaica...
             </Typography>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Application Success Dialog */}
+        <Dialog
+          open={applicationDialogOpen}
+          TransitionComponent={Slide}
+          TransitionProps={{ direction: 'down' }}
+          keepMounted
+          onClose={() => setApplicationDialogOpen(false)}
+          aria-describedby="application-success-description"
+          PaperProps={{
+            sx: { backgroundColor: 'rgba(76,175,80,0.95)', textAlign: 'center', p: 3 }
+          }}
+        >
+          <DialogTitle sx={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircleIcon sx={{ fontSize: 40, mr: 1 }} /> Application Submitted!
+          </DialogTitle>
+          <DialogContent id="application-success-description" sx={{ color: '#fff' }}>
+            You have successfully applied for this job.
           </DialogContent>
         </Dialog>
         

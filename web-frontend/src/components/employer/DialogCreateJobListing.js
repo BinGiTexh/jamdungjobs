@@ -15,7 +15,7 @@ import {
   Typography,
   styled
 } from '@mui/material';
-import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
+import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 
 const StyledButton = styled(Button)(({ theme }) => ({
@@ -208,7 +208,7 @@ const DialogCreateJobListing = ({ open, onClose, onSave }) => {
           </Grid>
           
           <Grid item xs={12}>
-            <JamaicaLocationProfileAutocomplete
+            <JamaicaLocationAutocomplete
               value={jobData.location}
               onChange={handleLocationChange}
               error={!!formErrors.location}

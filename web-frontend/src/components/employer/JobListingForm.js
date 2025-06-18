@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import JobDescriptionBuilder from './JobDescriptionBuilder';
 import {
   Box,
   TextField,
@@ -13,9 +14,11 @@ import {
   Typography,
   Paper,
   styled,
-  Fade
+  Fade,
+  Alert,
+  FormLabel
 } from '@mui/material';
-import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
+import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -44,6 +47,9 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
   },
   '& .MuiInputLabel-root': {
     color: 'rgba(255, 215, 0, 0.7)',
+    '& .MuiInputLabel-asterisk': {
+      color: '#FF5252',
+    },
   },
 }));
 
@@ -63,8 +69,13 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
   },
   '& .MuiInputLabel-root': {
     color: 'rgba(255, 215, 0, 0.7)',
+    '& .MuiInputLabel-asterisk': {
+      color: '#FF5252',
+    },
   },
 }));
+
+const salaryOptions = Array.from({ length: 20 }, (_, i) => (i + 2) * 10000); // 20k to 200k
 
 const StyledChip = styled(Chip)(({ theme }) => ({
   margin: theme.spacing(0.5),
@@ -77,26 +88,53 @@ const StyledChip = styled(Chip)(({ theme }) => ({
 }));
 
 const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
+  const [builderOpen, setBuilderOpen] = useState(false);
+  // preprocess salary if object
+  const processedInitial = useMemo(() => {
+    if (initialData && typeof initialData.salary === 'object' && initialData.salary !== null) {
+      const { min, max } = initialData.salary;
+      return {
+        ...initialData,
+        salary: `${min ?? ''}-${max ?? ''}`
+      };
+    }
+    return initialData;
+  }, [initialData]);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     location: null,
-    locationDisplay: '',
+    // Pre-fill display string for edit mode so validation passes
+    locationDisplay: processedInitial?.locationDisplay || (processedInitial?.location?.formattedAddress || (typeof processedInitial?.location === 'string' ? processedInitial.location : '')) || '',
     type: 'FULL_TIME',
-    salary: '',
+    salaryMin: '',
+    salaryMax: '',
     requirements: [],
     benefits: [],
     applicationDeadline: '',
+    responsibilities: [],
     experienceLevel: 'ENTRY',
     department: '',
-    ...initialData
+    ...processedInitial
   });
 
-  const [newRequirement, setNewRequirement] = useState('');
-  const [newBenefit, setNewBenefit] = useState('');
+  // Keep form in sync if parent passes in a new job (e.g., when switching edits)
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({
+        ...prev,
+        ...processedInitial,
+        locationDisplay: processedInitial?.locationDisplay || (processedInitial?.location?.formattedAddress || (typeof processedInitial?.location === 'string' ? processedInitial.location : '')) || ''
+      }));
+    }
+  }, [processedInitial, initialData]);
+
   const [errors, setErrors] = useState({});
+  const [formErrorSummary, setFormErrorSummary] = useState('');
 
   const handleChange = (e) => {
+    if (builderOpen) return; // prevent edits while builder active
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -120,23 +158,33 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
   };
 
   const handleAddRequirement = () => {
-    if (newRequirement.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        requirements: [...prev.requirements, newRequirement.trim()]
-      }));
-      setNewRequirement('');
-    }
+    setFormData(prev => ({
+      ...prev,
+      requirements: [...prev.requirements, '']
+    }));
   };
 
   const handleAddBenefit = () => {
-    if (newBenefit.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        benefits: [...prev.benefits, newBenefit.trim()]
-      }));
-      setNewBenefit('');
-    }
+    setFormData(prev => ({
+      ...prev,
+      benefits: [...prev.benefits, '']
+    }));
+  };
+
+  const handleRequirementFieldChange = (index, value) => {
+    setFormData(prev => {
+      const arr = [...prev.requirements];
+      arr[index] = value;
+      return { ...prev, requirements: arr };
+    });
+  };
+
+  const handleBenefitFieldChange = (index, value) => {
+    setFormData(prev => {
+      const arr = [...prev.benefits];
+      arr[index] = value;
+      return { ...prev, benefits: arr };
+    });
   };
 
   const handleRemoveRequirement = (index) => {
@@ -154,13 +202,21 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
   };
 
   const validateForm = () => {
+    if (builderOpen) {
+      setErrors({});
+      return false;
+    }
     const newErrors = {};
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.location || !formData.locationDisplay) newErrors.location = 'Location is required';
-    if (!formData.salary.trim()) newErrors.salary = 'Salary is required';
+    if (!formData.salaryMin || !formData.salaryMax) newErrors.salary = 'Salary range is required';
     if (formData.requirements.length === 0) newErrors.requirements = 'At least one requirement is needed';
-    
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrorSummary('Please fill in all required fields');
+    } else {
+      setFormErrorSummary('');
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -171,14 +227,52 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
       // Create a copy of formData with locationDisplay for API submission
       const submissionData = {
         ...formData,
-        location: formData.locationDisplay // Use the formatted address for submission
+        location: formData.locationDisplay,
+        salary: `${formData.salaryMin}-${formData.salaryMax}`
       };
       onSubmit(submissionData);
     }
   };
 
+  const handleOpenBuilder = () => {
+    setBuilderOpen(true);
+  };
+
+  const handleBuilderSave = (builderData) => {
+    // builderData contains description, responsibilities, requirements, benefits
+    if (!builderData) {
+      setBuilderOpen(false);
+      return;
+    }
+    const {
+      description = '',
+      responsibilities = [],
+      requirements = [],
+      benefits = [],
+    } = builderData;
+    setFormData(prev => ({
+      ...prev,
+      description,
+      responsibilities,
+      requirements,
+      benefits,
+    }));
+    setBuilderOpen(false);
+  };
+
+  const handleCloseBuilder = (description) => {
+    setBuilderOpen(false);
+    setFormData(prev => ({ ...prev, description }));
+  };
+
   return (
-    <Fade in={true} timeout={500}>
+    <>
+      {formErrorSummary && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {formErrorSummary}
+        </Alert>
+      )}
+      <Fade in={true} timeout={500}>
       <StyledPaper>
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={3}>
@@ -208,10 +302,24 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
                 helperText={errors.description}
                 required
               />
+              <Button variant="outlined" sx={{ mt: 1 }} onClick={handleOpenBuilder}>
+                Use Template
+              </Button>
+              {builderOpen && (
+                <JobDescriptionBuilder
+                  onSave={handleBuilderSave}
+                  initialData={{
+            description: formData.description,
+            responsibilities: formData.responsibilities,
+            requirements: formData.requirements,
+            benefits: formData.benefits,
+          }}
+                />
+              )}
             </Grid>
 
             <Grid item xs={12} sm={6}>
-              <JamaicaLocationProfileAutocomplete
+              <JamaicaLocationAutocomplete
                 value={formData.location}
                 onChange={handleLocationChange}
                 error={!!errors.location}
@@ -238,17 +346,37 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
             </Grid>
 
             <Grid item xs={12} sm={6}>
-              <StyledTextField
-                fullWidth
-                label="Salary Range"
-                name="salary"
-                value={formData.salary}
-                onChange={handleChange}
-                error={!!errors.salary}
-                helperText={errors.salary}
-                placeholder="e.g. $50,000 - $70,000 per year"
-                required
-              />
+              <StyledFormControl fullWidth>
+                <InputLabel>Min Salary (JMD)</InputLabel>
+                <Select
+                  name="salaryMin"
+                  value={formData.salaryMin}
+                  label="Min Salary (JMD)"
+                  onChange={handleChange}
+                  required
+                >
+                  {salaryOptions.map((v) => (
+                    <MenuItem key={v} value={v}>{`$${v.toLocaleString()}`}</MenuItem>
+                  ))}
+                </Select>
+              </StyledFormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <StyledFormControl fullWidth>
+                <InputLabel>Max Salary (JMD)</InputLabel>
+                <Select
+                  name="salaryMax"
+                  value={formData.salaryMax}
+                  label="Max Salary (JMD)"
+                  onChange={handleChange}
+                  required
+                >
+                  {salaryOptions.map((v) => (
+                    <MenuItem key={v} value={v}>{`$${v.toLocaleString()}`}</MenuItem>
+                  ))}
+                </Select>
+              </StyledFormControl>
             </Grid>
 
             <Grid item xs={12} sm={6}>
@@ -268,63 +396,51 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
             </Grid>
 
             <Grid item xs={12}>
-              <Typography variant="subtitle1" sx={{ color: '#FFD700', mb: 1 }}>
-                Requirements
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <StyledTextField
-                  fullWidth
-                  value={newRequirement}
-                  onChange={(e) => setNewRequirement(e.target.value)}
-                  placeholder="Add a requirement"
-                  error={!!errors.requirements}
-                  helperText={errors.requirements}
-                />
-                <IconButton 
-                  onClick={handleAddRequirement}
-                  sx={{ color: '#FFD700' }}
-                >
-                  <AddIcon />
-                </IconButton>
-              </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {formData.requirements.map((req, index) => (
-                  <StyledChip
-                    key={index}
-                    label={req}
-                    onDelete={() => handleRemoveRequirement(index)}
-                  />
-                ))}
-              </Box>
+              <FormControl required fullWidth sx={{ mb: 2 }}>
+                <FormLabel sx={{ color: '#FFD700', mb: 1 }} required>Requirements</FormLabel>
+                <Box>
+                  {formData.requirements.map((req, index) => (
+                    <Box key={index} sx={{ display:'flex', gap:1, mb:1 }}>
+                      <StyledTextField
+                        fullWidth
+                        value={req}
+                        onChange={(e)=>handleRequirementFieldChange(index, e.target.value)}
+                        placeholder="Requirement"
+                      />
+                      <IconButton onClick={()=>handleRemoveRequirement(index)} sx={{color:'#FFD700'}}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  ))}
+                  <Button startIcon={<AddIcon />} variant="outlined" sx={{color:'#FFD700', borderColor:'rgba(255,215,0,0.4)'}} onClick={handleAddRequirement}>
+                    Add Requirement
+                  </Button>
+                </Box>
+              </FormControl>
             </Grid>
 
             <Grid item xs={12}>
-              <Typography variant="subtitle1" sx={{ color: '#FFD700', mb: 1 }}>
-                Benefits
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <StyledTextField
-                  fullWidth
-                  value={newBenefit}
-                  onChange={(e) => setNewBenefit(e.target.value)}
-                  placeholder="Add a benefit"
-                />
-                <IconButton 
-                  onClick={handleAddBenefit}
-                  sx={{ color: '#FFD700' }}
-                >
-                  <AddIcon />
-                </IconButton>
-              </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {formData.benefits.map((benefit, index) => (
-                  <StyledChip
-                    key={index}
-                    label={benefit}
-                    onDelete={() => handleRemoveBenefit(index)}
-                  />
-                ))}
-              </Box>
+              <FormControl required fullWidth sx={{ mb: 2 }}>
+                <FormLabel sx={{ color: '#FFD700', mb: 1 }} required>Benefits</FormLabel>
+                <Box>
+                  {formData.benefits.map((b, index) => (
+                    <Box key={index} sx={{ display:'flex', gap:1, mb:1 }}>
+                      <StyledTextField
+                        fullWidth
+                        value={b}
+                        onChange={(e)=>handleBenefitFieldChange(index, e.target.value)}
+                        placeholder="Benefit"
+                      />
+                      <IconButton onClick={()=>handleRemoveBenefit(index)} sx={{color:'#FFD700'}}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  ))}
+                  <Button startIcon={<AddIcon />} variant="outlined" sx={{color:'#FFD700', borderColor:'rgba(255,215,0,0.4)'}} onClick={handleAddBenefit}>
+                    Add Benefit
+                  </Button>
+                </Box>
+              </FormControl>
             </Grid>
 
             <Grid item xs={12}>
@@ -357,8 +473,8 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
         </Box>
       </StyledPaper>
     </Fade>
+    </>
   );
 };
 
 export default JobListingForm;
-

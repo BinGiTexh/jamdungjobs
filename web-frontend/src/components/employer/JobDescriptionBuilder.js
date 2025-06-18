@@ -212,10 +212,10 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
   const handleSave = () => {
     const formattedData = {
       description,
-      responsibilities: JSON.stringify(responsibilities),
-      requirements: JSON.stringify(requirements),
-      benefits: JSON.stringify(benefits),
-      formattedDescription: preview
+      responsibilities,
+      requirements,
+      benefits,
+      preview
     };
     
     if (onSave && typeof onSave === 'function') {

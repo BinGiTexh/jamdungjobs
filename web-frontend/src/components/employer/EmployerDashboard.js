@@ -11,7 +11,6 @@ import {
 import { keyframes } from '@mui/material/styles';
 import { useAuth } from '../../context/AuthContext';
 import { buildApiUrl, buildAssetUrl } from '../../config';
-import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
 import api from '../../utils/axiosConfig';
 import axios from 'axios';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
@@ -477,10 +476,13 @@ const EmployerDashboard = () => {
     }
   };
 
-  const handleNotificationsClick = async (event) => {
-    // Refresh notifications every time the user opens the dropdown
-    await fetchNotifications();
+  const handleNotificationsClick = (event) => {
+    // Open menu immediately for better UX
     setAnchorEl(event.currentTarget);
+    // Fire and forget refresh
+    fetchNotifications().catch(err => {
+      console.error('Failed to refresh notifications', err);
+    });
   };
 
   const handleNotificationsClose = () => {
@@ -838,12 +840,23 @@ const EmployerDashboard = () => {
                             <Typography variant="h6" gutterBottom>
                               {job.title}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                              {job.location?.formattedAddress || job.location} • {job.employmentType}
-                            </Typography>
-                            <Typography variant="body1" paragraph>
-                              {job.shortDescription || job.description.substring(0, 200)}...
-                            </Typography>
+                            {(() => {
+                              const locationText = job.location?.formattedAddress || job.location || '—';
+                              const employmentText = job.employmentType || job.type || '—';
+                              const descSnippet = job.shortDescription || (job.description ? job.description.substring(0, 200) : '');
+                              return (
+                                <>
+                                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                                    {locationText} • {employmentText}
+                                  </Typography>
+                                  {descSnippet && (
+                                    <Typography variant="body1" paragraph>
+                                      {descSnippet}...
+                                    </Typography>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </Grid>
                           <Grid item xs={12} sm={4} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                             <Button

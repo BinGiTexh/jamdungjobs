@@ -18,6 +18,7 @@ import {
   Divider,
   Fade
 } from '@mui/material';
+import { JamaicaLocationAutocomplete } from './common/JamaicaLocationAutocomplete';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -53,6 +54,24 @@ const Register = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleWebsiteBlur = () => {
+    if (formData.companyWebsite && !/^https?:\/\//i.test(formData.companyWebsite)) {
+      setFormData(prev => ({
+        ...prev,
+        companyWebsite: `https://${prev.companyWebsite}`
+      }));
+    }
+  };
+
+  const handleLocationSelect = (locationObj) => {
+    if (!locationObj) {
+      setFormData(prev => ({ ...prev, companyLocation: '' }));
+      return;
+    }
+    const locationString = `${locationObj.name || locationObj.mainText}, ${locationObj.parish}, Jamaica`;
+    setFormData(prev => ({ ...prev, companyLocation: locationString }));
   };
 
   const handleSubmit = async (e) => {
@@ -453,6 +472,7 @@ const Register = () => {
                           type="url"
                           value={formData.companyWebsite}
                           onChange={handleChange}
+                          onBlur={handleWebsiteBlur}
                           placeholder="https://example.com"
                           InputProps={{
                             sx: {
@@ -475,31 +495,11 @@ const Register = () => {
                       </Grid>
                       
                       <Grid item xs={12}>
-                        <TextField
-                          required
-                          fullWidth
-                          id="companyLocation"
-                          label="Company Location"
-                          name="companyLocation"
-                          value={formData.companyLocation}
-                          onChange={handleChange}
-                          InputProps={{
-                            sx: {
-                              color: 'white',
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 215, 0, 0.3)',
-                              },
-                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 215, 0, 0.6)',
-                              },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#FFD700',
-                              },
-                            },
-                          }}
-                          InputLabelProps={{
-                            sx: { color: 'rgba(255, 255, 255, 0.7)' },
-                          }}
+                        <JamaicaLocationAutocomplete
+                          value={null}
+                          onChange={handleLocationSelect}
+                          placeholder="Company Location (Jamaica)"
+                          sx={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
                         />
                       </Grid>
                       

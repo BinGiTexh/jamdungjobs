@@ -1,3 +1,0 @@
-# This command will directly edit the server.js file in the Docker container
-# It replaces all instances of "users: {" with "employees: {" in the relationship queries
-

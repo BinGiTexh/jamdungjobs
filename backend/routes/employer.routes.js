@@ -54,6 +54,23 @@ const upload = multer({
   }
 });
 
+// Helper: allow-list fields that can be persisted to company table
+const sanitizeCompanyPayload = (payload = {}) => {
+  // Clone to avoid mutating caller data
+  const clone = { ...payload };
+
+  // Explicitly remove any accidental Prisma / SQL reserved words or unknown keys we have
+  // occasionally seen in malformed requests (e.g. `new` coming from some libraries).
+  delete clone.new; // remove if present – this is what triggered the `column \`new\`` error
+
+  const allowed = ['name', 'industry', 'location', 'website', 'description', 'logoUrl'];
+
+  // Build a clean object with only allowed keys
+  return Object.fromEntries(
+    Object.entries(clone).filter(([key, val]) => allowed.includes(key) && val !== undefined)
+  );
+};
+
 // Get employer profile
 router.get("/profile", authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
   try {
@@ -197,14 +214,8 @@ router.put('/profile', authenticateJWT, checkRole('EMPLOYER'), upload.single('lo
 
       let updatedCompany = employer.company;
       if (Object.keys(companyPayload).length) {
-        const updateData = {
-          name: companyPayload.name ?? undefined,
-          industry: companyPayload.industry ?? undefined,
-          location: companyPayload.location ?? undefined,
-          website: companyPayload.website ?? undefined,
-          description: companyPayload.description ?? undefined,
-          logoUrl: companyPayload.logoUrl ?? undefined
-        };
+        // Filter payload strictly to avoid prisma errors (e.g. column `new`)
+        const updateData = sanitizeCompanyPayload(companyPayload);
 
         // Handle logo upload from multipart
         if (req.file) {
@@ -291,18 +302,18 @@ router.put("/company", upload.single("logo"), async (req, res) => {
     }
 
     // Prepare the update data
-    const updateData = {
-      name: name.trim(),
+    const updateData = sanitizeCompanyPayload({
+      name: name?.trim(),
       industry: industry?.trim(),
       location: location?.trim(),
       website: website?.trim(),
-      description: description?.trim()
-    };
+      description: description?.trim(),
+      logoUrl: undefined // will be set below if file present
+    });
 
     // Handle logo upload
     if (req.file) {
-      const logoUrl = `/uploads/profile-photos/${req.file.filename}`;
-      updateData.logoUrl = logoUrl;
+      updateData.logoUrl = `/uploads/profile-photos/${req.file.filename}`;
 
       // Delete old logo if it exists
       if (employer.company?.logoUrl) {
@@ -318,18 +329,24 @@ router.put("/company", upload.single("logo"), async (req, res) => {
     }
 
     // Update or create company
-    const company = await prisma.company.upsert({
-      where: {
-        id: employer.company?.id || "new"
-      },
-      update: updateData,
-      create: {
-        ...updateData,
-        employees: {
-          connect: { id: employer.id }
+    let company;
+    if (employer.company) {
+      // Update existing company
+      company = await prisma.company.update({
+        where: { id: employer.company.id },
+        data: updateData
+      });
+    } else {
+      // Create new company
+      company = await prisma.company.create({
+        data: {
+          ...updateData,
+          employees: {
+            connect: { id: employer.id }
+          }
         }
-      }
-    });
+      });
+    }
 
     res.json({
       success: true,
@@ -419,15 +436,15 @@ router.put("/company", upload.single("logo"), async (req, res) => {
       }
 
       const company = await prisma.company.create({
-        data: {
+        data: sanitizeCompanyPayload({
           name,
           industry,
           location,
           website,
-          description,
-          employees: {
-            connect: { id: req.user.id }
-          }
+          description
+        }),
+        include: {
+          employees: true
         }
       });
 

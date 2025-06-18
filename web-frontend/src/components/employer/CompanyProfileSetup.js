@@ -15,13 +15,15 @@ import {
   CircularProgress,
   Alert,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  MenuItem
 } from '@mui/material';
-import { JamaicaLocationProfileAutocomplete } from '../common/JamaicaLocationProfileAutocomplete';
+import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../../utils/axiosConfig';
 import { logError } from '../../utils/loggingUtils';
+import CompanyDescriptionBuilder from './CompanyDescriptionBuilder';
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
   marginBottom: theme.spacing(2),
@@ -113,13 +115,13 @@ const formatLocationValue = (location) => {
 };
 
 const CompanyProfileSetup = ({
-  open, 
-  onClose, 
-  initialData, 
+  open,
+  onClose,
+  initialData = null,
   onSave,
-  loading: externalLoading,
-  error: externalError,
-  success: externalSuccess 
+  loading: externalLoading = false,
+  error: externalError = null,
+  success: externalSuccess = false,
 }) => {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
@@ -143,6 +145,30 @@ const CompanyProfileSetup = ({
   const [imageLoading, setImageLoading] = useState({
     logo: false
   });
+
+  // Predefined list of industries for dropdown
+  const INDUSTRY_OPTIONS = [
+    'Technology',
+    'Manufacturing',
+    'Construction',
+    'Healthcare',
+    'Finance',
+    'Education',
+    'Hospitality',
+    'Retail',
+    'Transportation',
+    'Agriculture',
+    'Telecommunications',
+    'Energy',
+    'Media',
+    'Real Estate',
+    'Government',
+    'Legal',
+    'Non-Profit',
+    'Entertainment',
+    'Sports',
+    'Other'
+  ];
 
   // Clear validation errors when dialog closes
   useEffect(() => {
@@ -613,6 +639,7 @@ const CompanyProfileSetup = ({
 
             <Grid item xs={12} sm={6}>
               <StyledTextField
+                select
                 fullWidth
                 label="Industry"
                 name="industry"
@@ -624,7 +651,13 @@ const CompanyProfileSetup = ({
                 InputLabelProps={{
                   shrink: true,
                 }}
-              />
+              >
+                {INDUSTRY_OPTIONS.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </StyledTextField>
             </Grid>
 
             <Grid item xs={12} sm={6}>
@@ -644,7 +677,7 @@ const CompanyProfileSetup = ({
             </Grid>
 
             <Grid item xs={12}>
-              <JamaicaLocationProfileAutocomplete
+              <JamaicaLocationAutocomplete
                 value={formData.location ? formatLocationValue(formData.location) : null}
                 onChange={handleLocationChange}
                 error={!!validationErrors.location}
@@ -655,20 +688,14 @@ const CompanyProfileSetup = ({
             </Grid>
 
             <Grid item xs={12}>
-              <StyledTextField
-                fullWidth
-                multiline
-                rows={4}
-                label="Company Description"
-                name="description"
+              <Typography variant="subtitle2" sx={{ mb: 1, color: '#FFD700' }}>
+                Company Description
+              </Typography>
+              <CompanyDescriptionBuilder
                 value={formData.description}
-                onChange={handleChange}
-                required
-                error={!!validationErrors.description}
-                helperText={validationErrors.description}
-                InputLabelProps={{
-                  shrink: true,
-                }}
+                onChange={(md) =>
+                  setFormData((prev) => ({ ...prev, description: md }))
+                }
               />
             </Grid>
           </Grid>
@@ -729,11 +756,6 @@ CompanyProfileSetup.propTypes = {
   success: PropTypes.bool
 };
 
-CompanyProfileSetup.defaultProps = {
-  initialData: null,
-  loading: false,
-  error: null,
-  success: false
-};
+
 
 export default CompanyProfileSetup;

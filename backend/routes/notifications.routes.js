@@ -197,6 +197,22 @@ module.exports = (prisma) => {
   );
 
   /**
+   * @route PATCH /api/notifications/:id/mark-read
+   * @description Alias endpoint to mark a notification as read (backward compatibility)
+   * @access Private
+   */
+  router.patch('/:id/mark-read',
+    authenticateJWT,
+    notificationsRateLimit,
+    validateNotificationId,
+    async (req, res, next) => {
+      // Delegate to the existing handler logic by rewriting the URL and calling next route
+      req.url = `/${req.params.id}`; // Express will match the next PATCH /:id route
+      next();
+    }
+  );
+
+  /**
    * @route PATCH /api/notifications/:id
    * @description Mark a notification as read
    * @access Private
@@ -346,4 +362,3 @@ module.exports = (prisma) => {
 
   return router;
 };
-

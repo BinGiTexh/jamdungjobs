@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
+import InfoIcon from '@mui/icons-material/Info';
 import api from '../../utils/api';
 import { buildApiUrl } from '../../config';
 import { useAuth } from '../../context/AuthContext';
@@ -32,6 +33,7 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [applicationData, setApplicationData] = useState({
     coverLetter: '',
@@ -50,6 +52,15 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
   useEffect(() => {
     if (open) {
       fetchProfileData();
+    }
+  }, [open]);
+
+  // Reset transient UI states whenever the modal is reopened
+  useEffect(() => {
+    if (open) {
+      setError(null);
+      setSuccess(false);
+      setAlreadyApplied(false);
     }
   }, [open]);
 
@@ -247,7 +258,9 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
       if (err.response?.status === 400) {
         errorMessage = err.response.data?.message || 'Missing required information for application.';
       } else if (err.response?.status === 409) {
-        errorMessage = 'You have already applied for this job.';
+        // User has already applied – show informational dialog instead of error
+        setAlreadyApplied(true);
+        return; // Skip setting generic error/UI flow
       } else if (err.response?.status === 403) {
         errorMessage = 'You do not have permission to apply for this job.';
       }
@@ -324,6 +337,46 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
                 '&:hover': {
                   background: 'linear-gradient(90deg, #FFD700, #2C5530)',
                 }
+              }}
+            >
+              Close
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show dedicated message if the user has already applied for this job
+  if (alreadyApplied) {
+    return (
+      <Dialog
+        open={open}
+        onClose={() => {
+          logDev('debug', 'Already-applied dialog closed');
+          onClose();
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <Box sx={{ py: 2, textAlign: 'center' }}>
+            <InfoIcon sx={{ fontSize: 60, color: '#2196f3', mb: 2 }} />
+            <Typography variant="h5" gutterBottom>
+              You have already applied!
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 3 }}>
+              Our records show you already submitted an application for this position. The employer has been notified.
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={() => onClose()}
+              sx={{
+                background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                color: '#000',
+                '&:hover': {
+                  background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                },
               }}
             >
               Close
