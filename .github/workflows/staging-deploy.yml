@@ -1,0 +1,193 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ main, staging ]
+    paths-ignore:
+      - 'terraform/**'
+      - 'docs/**'
+      - '*.md'
+  workflow_dispatch:
+
+env:
+  EC2_HOST: ${{ vars.STAGING_EC2_HOST }}
+  EC2_USER: ${{ vars.STAGING_EC2_USER || 'ubuntu' }}
+  DEPLOY_PATH: ${{ vars.STAGING_DEPLOY_PATH || '/home/ubuntu/jamdungjobs' }}
+  SITE_URL: ${{ vars.STAGING_SITE_URL || 'https://staging-jobs.bingitech.io' }}
+  DOCKER_COMPOSE_FILE: ${{ vars.DOCKER_COMPOSE_FILE || 'docker-compose.prod.yml' }}
+
+jobs:
+  deploy:
+    name: Deploy to Staging Server
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup SSH Agent
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+    - name: Add SSH Host to Known Hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Test SSH Connection
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "echo 'SSH connection successful'"
+
+    - name: Stop Running Services
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down --timeout 30"
+
+    - name: Backup Current Deployment
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd $(dirname ${{ env.DEPLOY_PATH }}) && \
+           BACKUP_DIR=$(basename ${{ env.DEPLOY_PATH }})_backup && \
+           if [ -d \$BACKUP_DIR ]; then rm -rf \$BACKUP_DIR; fi && \
+           cp -r $(basename ${{ env.DEPLOY_PATH }}) \$BACKUP_DIR"
+
+    - name: Update Repository
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           git fetch origin && \
+           git reset --hard origin/${{ github.ref_name }} && \
+           git clean -fd"
+
+    - name: Copy Environment Configuration
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           BACKUP_DIR=$(dirname ${{ env.DEPLOY_PATH }})/$(basename ${{ env.DEPLOY_PATH }})_backup && \
+           if [ -f \$BACKUP_DIR/.env ]; then \
+             cp \$BACKUP_DIR/.env .env; \
+             echo 'Environment configuration restored from backup'; \
+           else \
+             echo 'Warning: No .env backup found, using current .env'; \
+           fi"
+
+    - name: Build Docker Images
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build --no-cache"
+
+    - name: Start Services
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} up -d"
+
+    - name: Wait for Services to Start
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           echo 'Waiting for services to start...' && \
+           for i in {1..30}; do \
+             echo 'Checking service status (attempt \$i/30)...'; \
+             if docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps | grep -q 'Up'; then \
+               echo 'Services are running'; \
+               break; \
+             else \
+               echo 'Services not ready yet, waiting...'; \
+               sleep 10; \
+             fi; \
+           done"
+
+    - name: Run Database Migrations
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma migrate deploy || \
+           docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma db push"
+
+    - name: Health Check
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           echo '=== Service Status ===' && \
+           docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps && \
+           echo '=== API Health Check ===' && \
+           timeout 30 docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api curl -f http://localhost:5000/health && \
+           echo '=== Frontend Health Check ===' && \
+           timeout 30 docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T frontend curl -f http://localhost:80"
+
+    - name: Test New Features
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           echo '=== Testing New Features ===' && \
+           echo '🔗 Testing Job Sharing components...' && \
+           timeout 10 curl -f -s ${{ env.SITE_URL }}/feature-demo | grep -q 'Job Sharing' && \
+           echo '✅ Job Sharing demo page accessible' && \
+           echo '👁️ Testing Recently Viewed components...' && \
+           timeout 10 curl -f -s ${{ env.SITE_URL }}/feature-demo | grep -q 'Recently Viewed' && \
+           echo '✅ Recently Viewed demo page accessible' && \
+           echo '⏰ Testing Deadline Warning components...' && \
+           timeout 10 curl -f -s ${{ env.SITE_URL }}/feature-demo | grep -q 'Deadline Warning' && \
+           echo '✅ Deadline Warning demo page accessible' && \
+           echo '🎉 All new features demo page tests passed!'"
+
+    - name: API Feature Endpoints Test
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           echo '=== Testing API Endpoints ===' && \
+           echo 'Testing jobs endpoint...' && \
+           timeout 10 curl -f -s http://localhost:5000/api/jobs | jq '.jobs | length' && \
+           echo 'Testing health endpoint...' && \
+           timeout 10 curl -f -s http://localhost:5000/api/health | jq '.status' && \
+           echo 'Testing notification endpoints...' && \
+           timeout 10 curl -f -s -o /dev/null -w '%{http_code}' http://localhost:5000/api/notifications && \
+           echo '\n✅ Core API endpoints responding correctly'"
+
+    - name: Frontend Components Test
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           echo '=== Testing Frontend Components ===' && \
+           echo 'Testing main site access...' && \
+           timeout 10 curl -f -s ${{ env.SITE_URL }} | grep -q 'JamDung Jobs' && \
+           echo '✅ Main site accessible' && \
+           echo 'Testing job search page...' && \
+           timeout 10 curl -f -s ${{ env.SITE_URL }}/jobs | grep -q 'Search Jobs' && \
+           echo '✅ Job search page accessible' && \
+           echo 'Testing feature demo page...' && \
+           timeout 10 curl -f -s ${{ env.SITE_URL }}/feature-demo | grep -q 'New Features Demo' && \
+           echo '✅ Feature demo page accessible'"
+
+    - name: Cleanup Old Images
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "docker image prune -f && docker system prune -f"
+
+    - name: Deployment Success Notification
+      if: success()
+      run: |
+        echo "✅ Deployment to staging successful!"
+        echo "🌐 Site: ${{ env.SITE_URL }}"
+        echo "📊 Commit: ${{ github.sha }}"
+
+    - name: Rollback on Failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed, attempting rollback..."
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "cd ${{ env.DEPLOY_PATH }} && \
+           docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down --timeout 30 && \
+           BACKUP_DIR=$(dirname ${{ env.DEPLOY_PATH }})/$(basename ${{ env.DEPLOY_PATH }})_backup && \
+           if [ -d \$BACKUP_DIR ]; then \
+             cd $(dirname ${{ env.DEPLOY_PATH }}) && \
+             rm -rf $(basename ${{ env.DEPLOY_PATH }}) && \
+             mv $(basename ${{ env.DEPLOY_PATH }})_backup $(basename ${{ env.DEPLOY_PATH }}) && \
+             cd ${{ env.DEPLOY_PATH }} && \
+             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} up -d; \
+           else \
+             echo 'No backup available for rollback'; \
+           fi"

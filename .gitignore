@@ -48,6 +48,13 @@ build/
 .cache/
 .next/
 .nuxt/
+
+# Testing artifacts
+qa-report-*.json
+test-files/
+*.test.log
+coverage/
+.nyc_output/
 .temp/
 .tmp/
 .docz/

@@ -1,0 +1,204 @@
+name: Manual Deploy to Staging
+
+# MANUAL ONLY - No automatic triggers
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
+        type: string
+      force_rebuild:
+        description: 'Force rebuild Docker images'
+        required: false
+        default: false
+        type: boolean
+      run_tests:
+        description: 'Run post-deployment tests'
+        required: false
+        default: true
+        type: boolean
+      deployment_message:
+        description: 'Deployment message/reason'
+        required: false
+        default: 'Manual deployment'
+        type: string
+
+env:
+  EC2_HOST: ${{ vars.STAGING_EC2_HOST }}
+  EC2_USER: ${{ vars.STAGING_EC2_USER || 'ubuntu' }}
+  DEPLOY_PATH: ${{ vars.STAGING_DEPLOY_PATH || '/home/ubuntu/jamdungjobs' }}
+  SITE_URL: ${{ vars.STAGING_SITE_URL }}
+
+jobs:
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+    - name: Deployment Info
+      run: |
+        echo "## 🚀 Manual Deployment Started" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ inputs.branch }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Reason:** ${{ inputs.deployment_message }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Force rebuild:** ${{ inputs.force_rebuild }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Run tests:** ${{ inputs.run_tests }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch }}
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" > ~/.ssh/staging_key
+        chmod 600 ~/.ssh/staging_key
+        ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Pre-deployment Status Check
+      run: |
+        echo "🔍 Checking current deployment status..."
+        ssh -i ~/.ssh/staging_key ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && 
+          echo '=== Current Git Status ===' &&
+          git log --oneline -3 &&
+          echo '=== Current Services ===' &&
+          docker-compose -f docker-compose.prod.yml ps &&
+          echo '=== API Health ===' &&
+          curl -f http://localhost:5000/api/health || echo 'API not responding'
+        "
+
+    - name: Deploy Application
+      run: |
+        echo "🚀 Deploying JamDung Jobs to staging..."
+        ssh -i ~/.ssh/staging_key ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          
+          # Create backup with timestamp
+          echo '📦 Creating backup...' &&
+          backup_name=\"backup-\$(date +%Y%m%d-%H%M%S)-\$(git rev-parse --short HEAD)\" &&
+          sudo cp docker-compose.prod.yml \"docker-compose.prod.yml.\$backup_name\" &&
+          echo \"Backup created: docker-compose.prod.yml.\$backup_name\" &&
+          
+          # Update to specified branch
+          echo '📥 Updating to branch: ${{ inputs.branch }}...' &&
+          git fetch origin &&
+          git checkout ${{ inputs.branch }} &&
+          git reset --hard origin/${{ inputs.branch }} &&
+          
+          # Show what we're deploying
+          echo '📋 Deploying commit:' &&
+          git log --oneline -1 &&
+          
+          # Handle force rebuild
+          if [ '${{ inputs.force_rebuild }}' = 'true' ]; then
+            echo '🔨 Force rebuilding images...'
+            docker-compose -f docker-compose.prod.yml build --no-cache
+          fi &&
+          
+          # Deploy with zero-downtime strategy
+          echo '🔄 Deploying services...' &&
+          docker-compose -f docker-compose.prod.yml pull &&
+          docker-compose -f docker-compose.prod.yml up -d --build &&
+          
+          # Wait for services to be ready
+          echo '⏳ Waiting for services to start...' &&
+          sleep 30 &&
+          
+          # Health checks with retries
+          echo '🏥 Running health checks...' &&
+          for i in {1..12}; do
+            if curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
+              echo '✅ API is healthy'
+              break
+            fi
+            echo \"Attempt \$i/12: API not ready, waiting 10s...\"
+            sleep 10
+          done &&
+          
+          # Final health check
+          if ! curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
+            echo '❌ API health check failed after deployment'
+            exit 1
+          fi &&
+          
+          # Cleanup old images
+          echo '🧹 Cleaning up old images...' &&
+          docker image prune -f
+        "
+
+    - name: Post-deployment Verification
+      run: |
+        echo "🔍 Verifying deployment..."
+        ssh -i ~/.ssh/staging_key ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo '=== Final Status ===' &&
+          docker-compose -f docker-compose.prod.yml ps &&
+          echo '=== API Health Check ===' &&
+          curl -f http://localhost:5000/api/health &&
+          echo '=== Current Deployment ===' &&
+          git log --oneline -1
+        "
+
+    - name: External Access Test
+      run: |
+        echo "🌐 Testing external access..."
+        for i in {1..6}; do
+          if curl -f -s "${{ env.SITE_URL }}" > /dev/null; then
+            echo "✅ Site is accessible at ${{ env.SITE_URL }}"
+            break
+          fi
+          echo "Attempt $i/6: Site not ready, waiting 15s..."
+          sleep 15
+        done
+
+    - name: Run Post-deployment Tests
+      if: ${{ inputs.run_tests == true }}
+      run: |
+        echo "🧪 Running post-deployment tests..."
+        # Basic API endpoint tests
+        api_tests=(
+          "/api/health"
+          "/api/jobs"
+        )
+        
+        for endpoint in "${api_tests[@]}"; do
+          echo "Testing ${{ env.SITE_URL }}$endpoint"
+          if curl -f -s "${{ env.SITE_URL }}$endpoint" > /dev/null; then
+            echo "✅ $endpoint - OK"
+          else
+            echo "❌ $endpoint - FAILED"
+          fi
+        done
+
+    - name: Deployment Summary
+      run: |
+        echo "## 🎉 Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** Staging" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch Deployed:** ${{ inputs.branch }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Site URL:** ${{ env.SITE_URL }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Deployment Message:** ${{ inputs.deployment_message }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Completed:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔗 Quick Links" >> $GITHUB_STEP_SUMMARY
+        echo "- [Visit Site](${{ env.SITE_URL }})" >> $GITHUB_STEP_SUMMARY
+        echo "- [API Health](${{ env.SITE_URL }}/api/health)" >> $GITHUB_STEP_SUMMARY
+
+    - name: Notify on Failure
+      if: failure()
+      run: |
+        echo "## ❌ Deployment Failed!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ inputs.branch }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Failed at:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Check the logs above for details. The previous deployment should still be running."

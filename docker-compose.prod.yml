@@ -49,7 +49,7 @@ services:
   # API Service
   api:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile.api
     container_name: jamdungjobs-api
     environment:
@@ -59,9 +59,10 @@ services:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
     volumes:
-      - ../backend:/app:delegated
       - uploads:/app/uploads
     restart: unless-stopped
+    ports:
+      - "5000:5000"
     networks:
       - jamdung-network
     depends_on:
@@ -73,15 +74,14 @@ services:
   # Frontend Service
   frontend:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile.frontend
     container_name: jamdungjobs-frontend
     environment:
-      - REACT_APP_API_URL=/api
+      - REACT_APP_API_URL=/
       - NODE_ENV=production
-    volumes:
-      - ../web-frontend:/app:delegated
-      - ../web-frontend/public:/app/public
+    ports:
+      - "80:80"
     restart: unless-stopped
     networks:
       - jamdung-network

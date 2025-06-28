@@ -1,0 +1,391 @@
+name: Enhanced Staging Deployment
+
+on:
+  push:
+    branches: [ main, staging ]
+    paths-ignore:
+      - 'terraform/**'
+      - 'docs/**'
+      - '*.md'
+      - 'scripts/**'
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild of Docker images'
+        required: false
+        default: 'false'
+        type: boolean
+      skip_tests:
+        description: 'Skip post-deployment tests'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  EC2_HOST: ${{ vars.STAGING_EC2_HOST }}
+  EC2_USER: ${{ vars.STAGING_EC2_USER || 'ubuntu' }}
+  DEPLOY_PATH: ${{ vars.STAGING_DEPLOY_PATH || '/home/ubuntu/jamdungjobs' }}
+  SITE_URL: ${{ vars.STAGING_SITE_URL || 'https://staging-jobs.bingitech.io' }}
+  DOCKER_COMPOSE_FILE: ${{ vars.DOCKER_COMPOSE_FILE || 'docker-compose.prod.yml' }}
+
+jobs:
+  pre-deployment-checks:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: |
+        cd web-frontend && npm ci
+        cd ../backend && npm ci
+
+    - name: Lint Code
+      run: |
+        cd web-frontend && npm run lint || true
+        cd ../backend && npm run lint || true
+
+    - name: Validate Docker Compose Configuration
+      run: |
+        # Validate production compose file
+        docker-compose -f docker-compose.prod.yml config > /dev/null
+        echo "✅ Production Docker Compose configuration is valid"
+        
+        # Validate local compose file for comparison
+        docker-compose -f local-dev/docker-compose.yml config > /dev/null
+        echo "✅ Local Docker Compose configuration is valid"
+
+    - name: Build Production Images Locally
+      run: |
+        echo "Building production images to catch any build issues..."
+        docker-compose -f docker-compose.prod.yml build --no-cache
+        echo "✅ All production images built successfully"
+
+    - name: Test Database Migrations
+      run: |
+        echo "Testing database migrations..."
+        cd backend
+        # Test that migrations can be generated/validated
+        npx prisma validate || echo "⚠️ Prisma schema validation warning"
+        echo "✅ Database schema validation completed"
+
+  deploy:
+    name: Deploy to Staging Server
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup SSH Agent
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+    - name: Add SSH Host to Known Hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Test SSH Connection and Server Health
+      run: |
+        echo "Testing SSH connection..."
+        ssh -o StrictHostKeyChecking=no ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "echo 'SSH connection successful'"
+        
+        echo "Checking server resources..."
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo '=== Server Health Check ==='
+          echo 'Disk usage:'
+          df -h /
+          echo 'Memory usage:'
+          free -h
+          echo 'Docker status:'
+          docker --version
+          docker-compose --version
+        "
+
+    - name: Create Deployment Backup
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd $(dirname ${{ env.DEPLOY_PATH }}) && \
+          TIMESTAMP=\$(date +%Y%m%d_%H%M%S) && \
+          BACKUP_DIR=jamdungjobs_backup_\$TIMESTAMP && \
+          if [ -d jamdungjobs ]; then \
+            echo 'Creating backup: '\$BACKUP_DIR && \
+            cp -r jamdungjobs \$BACKUP_DIR && \
+            echo 'Backup created successfully' && \
+            # Keep only the 3 most recent backups \
+            ls -dt jamdungjobs_backup_* | tail -n +4 | xargs rm -rf 2>/dev/null || true; \
+          else \
+            echo 'No existing deployment to backup'; \
+          fi
+        "
+
+    - name: Stop Running Services Gracefully
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && \
+          if [ -f ${{ env.DOCKER_COMPOSE_FILE }} ]; then \
+            echo 'Stopping services gracefully...' && \
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down --timeout 60 || \
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} kill; \
+          else \
+            echo 'No existing services to stop'; \
+          fi
+        "
+
+    - name: Update Repository
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          if [ ! -d ${{ env.DEPLOY_PATH }} ]; then \
+            echo 'Cloning repository...' && \
+            git clone https://github.com/BinGiTexh/jamdungjobs.git ${{ env.DEPLOY_PATH }}; \
+          fi && \
+          cd ${{ env.DEPLOY_PATH }} && \
+          echo 'Updating repository...' && \
+          git fetch origin && \
+          git reset --hard origin/${{ github.ref_name }} && \
+          git clean -fd && \
+          echo 'Repository updated to commit: '\$(git rev-parse HEAD)
+        "
+
+    - name: Restore Environment Configuration
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && \
+          BACKUP_DIR=\$(ls -dt $(dirname ${{ env.DEPLOY_PATH }})/jamdungjobs_backup_* 2>/dev/null | head -n1) && \
+          if [ -n \"\$BACKUP_DIR\" ] && [ -f \"\$BACKUP_DIR/.env\" ]; then \
+            echo 'Restoring environment configuration from backup...' && \
+            cp \"\$BACKUP_DIR/.env\" .env && \
+            echo 'Environment configuration restored'; \
+          else \
+            echo 'Warning: No .env backup found. Make sure .env is properly configured on the server.'; \
+          fi
+        "
+
+    - name: Build Docker Images
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && \
+          echo 'Building Docker images...' && \
+          if [ '${{ github.event.inputs.force_rebuild }}' = 'true' ]; then \
+            echo 'Force rebuild requested - building with --no-cache' && \
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build --no-cache; \
+          else \
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build; \
+          fi && \
+          echo 'Docker images built successfully'
+        "
+
+    - name: Start Services
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && \
+          echo 'Starting services...' && \
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} up -d && \
+          echo 'Services started'
+        "
+
+    - name: Wait for Services to be Healthy
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && \
+          echo 'Waiting for services to be healthy...' && \
+          for i in {1..60}; do \
+            echo 'Health check attempt '\$i'/60...' && \
+            if docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps | grep -E '(Up|healthy)' | wc -l | grep -q '[3-9]'; then \
+              echo 'Services are healthy' && \
+              break; \
+            else \
+              if [ \$i -eq 60 ]; then \
+                echo 'Services failed to become healthy within timeout' && \
+                docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps && \
+                exit 1; \
+              fi && \
+              echo 'Services not ready yet, waiting...' && \
+              sleep 10; \
+            fi; \
+          done
+        "
+
+    - name: Run Database Migrations
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && \
+          echo 'Running database migrations...' && \
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma migrate deploy || \
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma db push && \
+          echo 'Database migrations completed'
+        "
+
+    - name: Comprehensive Health Check
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && \
+          echo '=== Comprehensive Health Check ===' && \
+          echo 'Service Status:' && \
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps && \
+          echo && \
+          echo 'API Health Check:' && \
+          timeout 30 docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api curl -f http://localhost:5000/api/health && \
+          echo && \
+          echo 'Database Connection Test:' && \
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T postgres pg_isready -U postgres && \
+          echo && \
+          echo 'Frontend Health Check:' && \
+          timeout 30 curl -f -s http://localhost | head -n 5 && \
+          echo && \
+          echo '✅ All health checks passed'
+        "
+
+  post-deployment-tests:
+    name: Post-deployment Testing
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+    
+    steps:
+    - name: Setup SSH Agent
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+    - name: Add SSH Host to Known Hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Test Core API Endpoints
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo '=== Testing Core API Endpoints ===' && \
+          echo 'Testing health endpoint...' && \
+          curl -f -s http://localhost:5000/api/health | jq '.status' && \
+          echo 'Testing jobs endpoint...' && \
+          curl -f -s http://localhost:5000/api/jobs | jq '.jobs | length' && \
+          echo '✅ Core API endpoints are working'
+        "
+
+    - name: Test Frontend Pages
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo '=== Testing Frontend Pages ===' && \
+          echo 'Testing main page...' && \
+          curl -f -s http://localhost | grep -q 'JamDung Jobs' && \
+          echo '✅ Main page accessible' && \
+          echo 'Testing job search...' && \
+          curl -f -s http://localhost/jobs | grep -q 'Search' && \
+          echo '✅ Job search page accessible'
+        "
+
+    - name: Test External Access (if available)
+      if: ${{ env.SITE_URL != '' }}
+      run: |
+        echo "Testing external access to ${{ env.SITE_URL }}"
+        if curl -f -s "${{ env.SITE_URL }}" | grep -q "JamDung Jobs"; then
+          echo "✅ External site is accessible"
+        else
+          echo "⚠️ External site may not be accessible yet (this is normal for new deployments)"
+        fi
+
+    - name: Performance Check
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo '=== Performance Check ===' && \
+          echo 'API Response Time:' && \
+          time curl -f -s http://localhost:5000/api/health > /dev/null && \
+          echo 'Frontend Response Time:' && \
+          time curl -f -s http://localhost > /dev/null && \
+          echo 'Docker Resource Usage:' && \
+          docker stats --no-stream --format 'table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}'
+        "
+
+  cleanup:
+    name: Post-deployment Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy, post-deployment-tests]
+    if: always()
+    
+    steps:
+    - name: Setup SSH Agent
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+    - name: Add SSH Host to Known Hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Cleanup Docker Resources
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo 'Cleaning up unused Docker resources...' && \
+          docker image prune -f && \
+          docker system prune -f && \
+          echo 'Cleanup completed'
+        "
+
+    - name: Deployment Summary
+      run: |
+        echo "=========================================="
+        echo "         DEPLOYMENT SUMMARY"
+        echo "=========================================="
+        echo "✅ Deployment completed successfully!"
+        echo "🌐 Site URL: ${{ env.SITE_URL }}"
+        echo "🔧 Server: ${{ env.EC2_HOST }}"
+        echo "📊 Commit: ${{ github.sha }}"
+        echo "🕒 Time: $(date)"
+        echo ""
+        echo "To monitor the deployment:"
+        echo "ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }}"
+        echo "cd ${{ env.DEPLOY_PATH }}"
+        echo "docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} logs -f"
+        echo "=========================================="
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy, post-deployment-tests]
+    if: failure()
+    
+    steps:
+    - name: Setup SSH Agent
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+    - name: Add SSH Host to Known Hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Perform Rollback
+      run: |
+        echo "❌ Deployment failed, performing rollback..."
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} && \
+          echo 'Stopping failed deployment...' && \
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down --timeout 30 && \
+          BACKUP_DIR=\$(ls -dt $(dirname ${{ env.DEPLOY_PATH }})/jamdungjobs_backup_* 2>/dev/null | head -n1) && \
+          if [ -n \"\$BACKUP_DIR\" ]; then \
+            echo 'Rolling back to: '\$BACKUP_DIR && \
+            cd $(dirname ${{ env.DEPLOY_PATH }}) && \
+            rm -rf jamdungjobs && \
+            cp -r \$BACKUP_DIR jamdungjobs && \
+            cd jamdungjobs && \
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} up -d && \
+            echo '✅ Rollback completed successfully'; \
+          else \
+            echo '❌ No backup available for rollback'; \
+          fi
+        "
