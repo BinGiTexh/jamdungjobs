@@ -75,7 +75,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: Dockerfile.frontend.static
     container_name: jamdungjobs-frontend
     environment:
       - REACT_APP_API_URL=/
