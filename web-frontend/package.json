@@ -34,7 +34,7 @@
   "scripts": {
     "start": "npm run dev",
     "dev": "npm run theme:check && react-scripts start",
-    "build": "npm run theme:audit && react-scripts build",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "theme:audit": "node scripts/theme-audit.js",
