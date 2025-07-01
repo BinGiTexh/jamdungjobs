@@ -1,6 +1,6 @@
 {
   "name": "jobs-api",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Job board API server",
   "main": "server.js",
   "type": "commonjs",

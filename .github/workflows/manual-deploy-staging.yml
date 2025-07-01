@@ -95,10 +95,17 @@ jobs:
           echo '📋 Deploying commit:' &&
           git log --oneline -1 &&
           
+          # Extract version from package.json for image tagging
+          VERSION=$(grep '"version"' backend/package.json | sed 's/.*"version": "\(.*\)".*/\1/') &&
+          echo "📦 Deploying version: $VERSION" &&
+          
           # Handle force rebuild
           if [ '${{ inputs.force_rebuild }}' = 'true' ]; then
             echo '🔨 Force rebuilding images...'
             docker-compose -f docker-compose.prod.yml build --no-cache
+            # Tag the newly built images with version
+            docker tag jamdungjobs-api:1.1.0 jamdungjobs-api:$VERSION || true
+            docker tag jamdungjobs-frontend:1.1.0 jamdungjobs-frontend:$VERSION || true
           fi &&
           
           # Deploy with zero-downtime strategy

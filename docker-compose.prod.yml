@@ -48,6 +48,7 @@ services:
 
   # API Service
   api:
+    image: jamdungjobs-api:1.1.0
     build:
       context: .
       dockerfile: Dockerfile.api
@@ -73,6 +74,7 @@ services:
 
   # Frontend Service
   frontend:
+    image: jamdungjobs-frontend:1.1.0
     build:
       context: .
       dockerfile: Dockerfile.frontend.static

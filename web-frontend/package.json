@@ -1,6 +1,6 @@
 {
   "name": "jobs-frontend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Job board frontend application",
   "private": true,
   "dependencies": {
@@ -32,10 +32,18 @@
     "resolve-url-loader": "^5.0.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "npm run dev",
+    "dev": "npm run theme:check && react-scripts start",
+    "build": "npm run theme:audit && react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "theme:audit": "node scripts/theme-audit.js",
+    "theme:check": "node scripts/theme-audit.js --warn-only",
+    "theme:fix": "node scripts/theme-fix.js",
+    "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
+    "quality:check": "npm run lint && npm run theme:check",
+    "docker:dev": "react-scripts start"
   },
   "eslintConfig": {
     "extends": [
