@@ -233,7 +233,7 @@ const createJobseekerRouter = (prisma) => {
 
   /**
    * @route   POST /api/jobseeker/profile/resume
-   * @desc    Upload / replace resume PDF (max 5 MB)
+   * @desc    Upload / replace resume (PDF, DOC, DOCX - max 5 MB)
    * @access  Private – Jobseeker
    * Front-end expects fields: resumeUrl, resumeFileName
    */
@@ -243,11 +243,17 @@ const createJobseekerRouter = (prisma) => {
         return res.status(400).json({ success: false, message: 'No file uploaded' });
       }
 
-      // Validate MIME type (accept only PDFs)
-      if (req.file.mimetype !== 'application/pdf') {
-        // Remove uploaded non-pdf file
+      // Validate MIME type (accept PDF, DOC, DOCX)
+      const allowedMimeTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+      
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        // Remove uploaded invalid file
         fs.unlinkSync(req.file.path);
-        return res.status(400).json({ success: false, message: 'Only PDF resumes are allowed' });
+        return res.status(400).json({ success: false, message: 'Only PDF, DOC, and DOCX files are allowed' });
       }
 
       const resumeUrl = `/uploads/${req.file.filename}`;
@@ -264,6 +270,172 @@ const createJobseekerRouter = (prisma) => {
     } catch (error) {
       console.error('Error uploading resume:', error);
       return res.status(500).json({ success: false, message: 'Error uploading resume' });
+    }
+  });
+
+  /**
+   * @route   GET /api/jobseeker/saved-jobs
+   * @desc    Get user's saved jobs
+   * @access  Private
+   */
+  router.get('/saved-jobs', authenticateJWT, async (req, res) => {
+    try {
+      const savedJobs = await prisma.savedJob.findMany({
+        where: {
+          userId: req.user.id
+        },
+        include: {
+          job: {
+            include: {
+              company: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.json({
+        success: true,
+        savedJobs: savedJobs.map(saved => saved.job)
+      });
+    } catch (error) {
+      console.error('Error fetching saved jobs:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching saved jobs',
+        code: 'SERVER_ERROR'
+      });
+    }
+  });
+
+  /**
+   * @route   POST /api/jobseeker/saved-jobs
+   * @desc    Save a job
+   * @access  Private
+   */
+  router.post('/saved-jobs', authenticateJWT, async (req, res) => {
+    try {
+      const { jobId } = req.body;
+
+      if (!jobId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Job ID is required',
+          code: 'MISSING_JOB_ID'
+        });
+      }
+
+      // Check if job exists
+      const job = await prisma.job.findUnique({
+        where: { id: jobId }
+      });
+
+      if (!job) {
+        return res.status(404).json({
+          success: false,
+          message: 'Job not found',
+          code: 'JOB_NOT_FOUND'
+        });
+      }
+
+      // Check if already saved
+      const existingSave = await prisma.savedJob.findUnique({
+        where: {
+          jobId_userId: {
+            jobId: jobId,
+            userId: req.user.id
+          }
+        }
+      });
+
+      if (existingSave) {
+        return res.status(409).json({
+          success: false,
+          message: 'Job already saved',
+          code: 'ALREADY_SAVED'
+        });
+      }
+
+      // Save the job
+      const savedJob = await prisma.savedJob.create({
+        data: {
+          jobId: jobId,
+          userId: req.user.id
+        },
+        include: {
+          job: {
+            include: {
+              company: true
+            }
+          }
+        }
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Job saved successfully',
+        savedJob: savedJob.job
+      });
+    } catch (error) {
+      console.error('Error saving job:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error saving job',
+        code: 'SERVER_ERROR'
+      });
+    }
+  });
+
+  /**
+   * @route   DELETE /api/jobseeker/saved-jobs/:jobId
+   * @desc    Remove a saved job
+   * @access  Private
+   */
+  router.delete('/saved-jobs/:jobId', authenticateJWT, async (req, res) => {
+    try {
+      const { jobId } = req.params;
+
+      // Check if the saved job exists
+      const savedJob = await prisma.savedJob.findUnique({
+        where: {
+          jobId_userId: {
+            jobId: jobId,
+            userId: req.user.id
+          }
+        }
+      });
+
+      if (!savedJob) {
+        return res.status(404).json({
+          success: false,
+          message: 'Saved job not found',
+          code: 'SAVED_JOB_NOT_FOUND'
+        });
+      }
+
+      // Remove the saved job
+      await prisma.savedJob.delete({
+        where: {
+          jobId_userId: {
+            jobId: jobId,
+            userId: req.user.id
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Job removed from saved jobs'
+      });
+    } catch (error) {
+      console.error('Error removing saved job:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error removing saved job',
+        code: 'SERVER_ERROR'
+      });
     }
   });
 
