@@ -377,15 +377,18 @@ jobs:
         ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
           echo '🧹 Cleaning up old resources...' &&
           
-          # Clean up old Docker images
-          docker image prune -f &&
+          # Clean up old Docker images (ignore errors)
+          docker image prune -f || echo 'Docker cleanup completed with warnings' &&
           
-          # Clean up old backups (keep last 5)
+          # Clean up old backups (keep last 5) with error handling
           cd $(dirname ${{ env.DEPLOY_PATH }}) &&
           BACKUP_COUNT=\$(ls -t $(basename ${{ env.DEPLOY_PATH }})_backup* 2>/dev/null | wc -l) &&
           if [ \$BACKUP_COUNT -gt 5 ]; then
             echo \"Found \$BACKUP_COUNT backups, removing old ones...\" &&
-            ls -t $(basename ${{ env.DEPLOY_PATH }})_backup* 2>/dev/null | tail -n +6 | xargs rm -rf
+            ls -t $(basename ${{ env.DEPLOY_PATH }})_backup* 2>/dev/null | tail -n +6 | while read backup; do
+              echo \"Attempting to remove: \$backup\" &&
+              rm -rf \"\$backup\" 2>/dev/null || echo \"Could not remove \$backup (may be in use)\"
+            done
           fi &&
           
           echo '✅ Cleanup completed'
