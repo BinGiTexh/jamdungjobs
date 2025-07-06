@@ -8,6 +8,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { authenticateJWT, checkRole } = require('../middleware/auth');
+const jobViewService = require('../services/jobViewService');
 const router = express.Router();
 
 /**
@@ -308,6 +309,22 @@ module.exports = (prisma) => {
         return res.status(404).json({ message: 'Job not found' });
       }
 
+      // Track job view (async, don't wait for it)
+      const userId = req.user?.id || null;
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('User-Agent');
+      const referrer = req.get('Referer');
+      
+      jobViewService.trackJobView({
+        jobId: job.id,
+        userId,
+        ipAddress,
+        userAgent,
+        referrer
+      }).catch(error => {
+        console.error('Error tracking job view:', error);
+      });
+
       res.json(job);
     } catch (error) {
       console.error('Error fetching job:', error);
@@ -400,6 +417,71 @@ module.exports = (prisma) => {
     } catch (error) {
       console.error('Error applying to job:', error);
       res.status(500).json({ message: 'Error applying to job' });
+    }
+  });
+
+  /**
+   * @route POST /api/jobs/:id/track-view
+   * @desc Track job view explicitly (for SPA navigation)
+   * @access Public
+   */
+  router.post('/:id/track-view', async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const userId = req.user?.id || null;
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('User-Agent');
+      const referrer = req.get('Referer');
+      
+      const jobView = await jobViewService.trackJobView({
+        jobId,
+        userId,
+        ipAddress,
+        userAgent,
+        referrer
+      });
+
+      res.json({ success: true, viewId: jobView.id });
+    } catch (error) {
+      console.error('Error tracking job view:', error);
+      res.status(500).json({ message: 'Error tracking job view' });
+    }
+  });
+
+  /**
+   * @route GET /api/jobs/:id/stats
+   * @desc Get job view statistics
+   * @access Private (Employer only)
+   */
+  router.get('/:id/stats', authenticateJWT, checkRole('EMPLOYER'), async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      
+      // Verify job ownership
+      const job = await prisma.job.findUnique({
+        where: { id: jobId },
+        include: { company: true }
+      });
+
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+
+      // Check if user has access to this job
+      if (req.user.role !== 'ADMIN') {
+        const hasAccess = req.user.companyId === job.companyId ||
+                         (job.company && job.company.employees?.some(emp => emp.id === req.user.id));
+        
+        if (!hasAccess) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
+
+      const stats = await jobViewService.getJobViewStats(jobId);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching job stats:', error);
+      res.status(500).json({ message: 'Error fetching job stats' });
     }
   });
 

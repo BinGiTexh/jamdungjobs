@@ -1,156 +1,235 @@
-// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model User {
-  id                String            @id @default(uuid())
-  email             String            @unique
-  passwordHash      String            @map("password_hash")
-  firstName         String            @map("first_name")
-  lastName          String            @map("last_name")
-  role              Role              @default(JOBSEEKER)
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
+  id                    String                     @id @default(uuid())
+  email                 String                     @unique
+  passwordHash          String                     @map("password_hash")
+  firstName             String                     @map("first_name")
+  lastName              String                     @map("last_name")
+  createdAt             DateTime                   @default(now()) @map("created_at")
+  updatedAt             DateTime                   @updatedAt @map("updated_at")
+  bio                   String?
+  companyId             String?                    @map("company_id")
+  location              String?
+  phoneNumber           String?                    @map("phone_number")
+  title                 String?
+  role                  Role                       @default(JOBSEEKER)
+  candidateProfile      CandidateProfile?
+  applications          JobApplication[]
+  jobRecommendations    JobRecommendation[]
+  threadParticipations  MessageThreadParticipant[]
+  sentMessages          Message[]
+  receivedNotifications Notification[]             @relation("UserNotifications")
+  profileViewsReceived  ProfileView[]              @relation("ViewedUserRelation")
+  profileViewsInitiated ProfileView[]              @relation("ViewerRelation")
+  savedJobs             SavedJob[]
+  scheduledReminders    ScheduledReminder[]
+  jobViews              JobView[]
+  company               Company?                   @relation("CompanyEmployees", fields: [companyId], references: [id])
   
-  // Profile information
-  title             String?
-  bio               String?
-  location          String?
-  phoneNumber       String?           @map("phone_number")
-  
-  // Relations
-  company           Company?          @relation("CompanyEmployees", fields: [companyId], references: [id])
-  companyId         String?           @map("company_id")
-  applications      JobApplication[]
-  savedJobs         SavedJob[]
-  candidateProfile  CandidateProfile?
-  receivedNotifications Notification[] @relation("UserNotifications")
-  
-  // New relations for notification system
-  sentMessages                Message[]
-  threadParticipations        MessageThreadParticipant[]
-  profileViewsInitiated       ProfileView[]          @relation("ViewerRelation")
-  profileViewsReceived        ProfileView[]          @relation("ViewedUserRelation")
-  jobRecommendations          JobRecommendation[]
-  scheduledReminders          ScheduledReminder[]
-  
+  // Payment relationships
+  payments              Payment[]
+  subscriptions         Subscription[]
+  invoices              Invoice[]
+  paymentMethods        PaymentMethod[]
+
   @@map("users")
 }
 
 model CandidateProfile {
-  id              String    @id @default(uuid())
-  userId          String    @unique @map("user_id")
-  title           String?
-  bio             String?
-  location        String?
-  skills          Json?     // Array of skills
-  education       Json?     // Array of education objects
-  experience      Json?     // Array of work experience objects
-  photoUrl        String?   @map("photo_url") // Base64 encoded photo
-  resumeUrl       String?   @map("resume_url") // Base64 encoded resume
-  resumeFileName  String?   @map("resume_file_name")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  
-  // Relations
-  user            User      @relation(fields: [userId], references: [id])
-  
+  id             String   @id @default(uuid())
+  userId         String   @unique @map("user_id")
+  title          String?
+  bio            String?
+  location       String?
+  skills         Json?
+  education      Json?
+  experience     Json?
+  photoUrl       String?  @map("photo_url")
+  resumeUrl      String?  @map("resume_url")
+  resumeFileName String?  @map("resume_file_name")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id])
+
   @@map("candidate_profiles")
 }
 
 model Company {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
-  industry    String?
   location    String?
   website     String?
-  logoUrl     String?   // URL to logo image
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  // Relations
-  employees   User[]    @relation("CompanyEmployees")
+  createdAt   DateTime @default(now())
+  industry    String?
+  logoUrl     String?
+  updatedAt   DateTime @updatedAt
   jobs        Job[]
-  
+  employees   User[]   @relation("CompanyEmployees")
+
   @@map("companies")
 }
 
 model Job {
-  id          String    @id @default(uuid())
-  title       String
-  description String
-  location    String
-  type        JobType
-  status      JobStatus @default(ACTIVE)
-  salary      Json?     // For salary range: { min: number, max: number, currency: string }
-  featured    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  // Relations
-  company     Company   @relation(fields: [companyId], references: [id])
-  companyId   String    @map("company_id")
-  applications JobApplication[]
-  savedBy     SavedJob[]
-  
-  // Skills and requirements
-  skills      String[]
-  experience  String?
-  education   String?
-  
-  // New relations for notification system
+  id              String              @id @default(uuid())
+  companyId       String              @map("company_id")
+  title           String
+  description     String
+  location        String
+  createdAt       DateTime            @default(now())
+  education       String?
+  experience      String?
+  featured        Boolean             @default(false)
+  salary          Json?
+  skills          String[]
+  type            JobType
+  updatedAt       DateTime            @updatedAt
+  status          JobStatus           @default(ACTIVE)
+  applications    JobApplication[]
   recommendations JobRecommendation[]
+  company         Company             @relation(fields: [companyId], references: [id])
+  savedBy         SavedJob[]
+  views           JobView[]
   
+  // Payment relationship for job posting fees
+  payments        Payment[]
+
   @@map("jobs")
 }
 
 model JobApplication {
-  id            String    @id @default(uuid())
-  status        ApplicationStatus @default(PENDING)
-  resumeUrl     String?
-  coverLetter   String?
-  phoneNumber   String?
-  availability  String?
-  salary        String?
+  id             String            @id @default(uuid())
   additionalInfo String?
-  appliedVia    String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  job         Job       @relation(fields: [jobId], references: [id])
-  jobId       String
-  user        User      @relation(fields: [userId], references: [id])
-  userId      String
-  notifications Notification[]
-  
+  appliedVia     String?
+  availability   String?
+  coverLetter    String?
+  createdAt      DateTime          @default(now())
+  jobId          String
+  phoneNumber    String?
+  resumeUrl      String?
+  salary         String?
+  updatedAt      DateTime          @updatedAt
+  userId         String
+  status         ApplicationStatus @default(PENDING)
+  job            Job               @relation(fields: [jobId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
+  notifications  Notification[]
+
   @@map("job_applications")
 }
 
 model SavedJob {
-  id        String    @id @default(uuid())
-  createdAt DateTime  @default(now())
-  
-  // Relations
-  job       Job       @relation(fields: [jobId], references: [id])
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
   jobId     String
-  user      User      @relation(fields: [userId], references: [id])
   userId    String
-  
+  job       Job      @relation(fields: [jobId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
   @@unique([jobId, userId])
   @@index([userId])
   @@index([jobId])
   @@map("saved_jobs")
 }
 
-// Updated notification system models
+model Notification {
+  id               String             @id @default(uuid())
+  type             NotificationType
+  status           NotificationStatus @default(UNREAD)
+  title            String             @default("Notification")
+  message          String
+  relatedEntityIds Json?              @map("related_entity_ids")
+  metadata         Json?
+  dismissed        Boolean            @default(false)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  recipientId      String             @map("recipient_id")
+  jobApplicationId String?            @map("job_application_id")
+  jobApplication   JobApplication?    @relation(fields: [jobApplicationId], references: [id])
+  recipient        User               @relation("UserNotifications", fields: [recipientId], references: [id])
+
+  @@map("notifications")
+}
+
+model MessageThread {
+  id           String                     @id @default(uuid())
+  title        String?
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  participants MessageThreadParticipant[]
+  messages     Message[]
+
+  @@map("message_threads")
+}
+
+model MessageThreadParticipant {
+  threadId String
+  userId   String
+  thread   MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([threadId, userId])
+  @@map("message_thread_participants")
+}
+
+model Message {
+  id        String        @id @default(uuid())
+  threadId  String        @map("thread_id")
+  senderId  String        @map("sender_id")
+  content   String
+  createdAt DateTime      @default(now()) @map("created_at")
+  readAt    DateTime?     @map("read_at")
+  sender    User          @relation(fields: [senderId], references: [id])
+  thread    MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model ProfileView {
+  id           String   @id @default(uuid())
+  viewerId     String   @map("viewer_id")
+  viewedUserId String   @map("viewed_user_id")
+  viewedAt     DateTime @default(now()) @map("viewed_at")
+  viewedUser   User     @relation("ViewedUserRelation", fields: [viewedUserId], references: [id])
+  viewer       User     @relation("ViewerRelation", fields: [viewerId], references: [id])
+
+  @@map("profile_views")
+}
+
+model JobRecommendation {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  jobId     String   @map("job_id")
+  score     Float
+  reason    String?
+  viewed    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  job       Job      @relation(fields: [jobId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("job_recommendations")
+}
+
+model ScheduledReminder {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  type         String
+  scheduledFor DateTime @map("scheduled_for")
+  content      Json
+  processed    Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@map("scheduled_reminders")
+}
 
 enum Role {
   ADMIN
@@ -181,15 +260,14 @@ enum ApplicationStatus {
   ACCEPTED
 }
 
-// Updated NotificationType enum with all the required types
 enum NotificationType {
-  APPLICATION_UPDATE    // For application status changes
-  MESSAGE               // For messages from employers/recruiters
-  JOB_RECOMMENDATION    // For job recommendations
-  SAVED_JOB_UPDATE      // For saved job updates (expiration/removal)
-  PROFILE_VIEW          // For when employers view profiles
-  REMINDER              // For reminders (interviews, profile completion)
-  SYSTEM                // For system notifications
+  APPLICATION_UPDATE
+  MESSAGE
+  JOB_RECOMMENDATION
+  SAVED_JOB_UPDATE
+  PROFILE_VIEW
+  REMINDER
+  SYSTEM
 }
 
 enum NotificationStatus {
@@ -197,113 +275,253 @@ enum NotificationStatus {
   UNREAD
 }
 
-// Updated Notification model with new fields
-model Notification {
-  id                String            @id @default(uuid())
-  type              NotificationType
-  status            NotificationStatus @default(UNREAD)
-  title             String            @default("Notification")
-  message           String
-  relatedEntityIds  Json?             @map("related_entity_ids")
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+}
+
+enum PaymentType {
+  JOB_POSTING
+  FEATURED_LISTING
+  PREMIUM_LISTING
+  SUBSCRIPTION
+  HEART_PARTNERSHIP
+}
+
+enum Currency {
+  USD
+  JMD
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PREMIUM
+}
+
+// Payment Processing Models
+model Payment {
+  id                String        @id @default(uuid())
+  stripePaymentId   String        @unique @map("stripe_payment_id")
+  userId            String        @map("user_id")
+  amount            Int           // Amount in cents
+  currency          Currency      @default(USD)
+  status            PaymentStatus @default(PENDING)
+  paymentType       PaymentType   @map("payment_type")
+  description       String?
   metadata          Json?
-  dismissed         Boolean           @default(false)
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
   
-  // Relations
-  recipient         User              @relation("UserNotifications", fields: [recipientId], references: [id])
-  recipientId       String            @map("recipient_id")
-  jobApplication    JobApplication?   @relation(fields: [jobApplicationId], references: [id])
-  jobApplicationId  String?           @map("job_application_id")
+  // Related entities
+  jobId             String?       @map("job_id")
+  subscriptionId    String?       @map("subscription_id")
+  invoiceId         String?       @map("invoice_id")
   
-  @@map("notifications")
+  // Stripe-specific fields
+  stripeClientSecret String?      @map("stripe_client_secret")
+  stripeReceiptUrl   String?      @map("stripe_receipt_url")
+  
+  // HEART partnership revenue sharing
+  heartShareAmount   Int?         @map("heart_share_amount") // 20% for HEART
+  heartSharePaid     Boolean      @default(false) @map("heart_share_paid")
+  
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  processedAt       DateTime?     @map("processed_at")
+  
+  user              User          @relation(fields: [userId], references: [id])
+  job               Job?          @relation(fields: [jobId], references: [id])
+  subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
+  invoice           Invoice?      @relation(fields: [invoiceId], references: [id])
+  refunds           Refund[]
+  
+  @@map("payments")
 }
 
-// Message thread models for employer/job seeker messaging
-model MessageThread {
-  id            String                     @id @default(uuid())
-  title         String?
-  createdAt     DateTime                   @default(now())
-  updatedAt     DateTime                   @updatedAt
+model Subscription {
+  id                    String             @id @default(uuid())
+  stripeSubscriptionId  String             @unique @map("stripe_subscription_id")
+  userId                String             @map("user_id")
+  plan                  SubscriptionPlan
+  status                SubscriptionStatus @default(ACTIVE)
   
-  // Relations
-  participants  MessageThreadParticipant[]
-  messages      Message[]
+  // Pricing
+  amount                Int                // Monthly amount in cents
+  currency              Currency           @default(USD)
   
-  @@map("message_threads")
+  // Billing cycle
+  currentPeriodStart    DateTime           @map("current_period_start")
+  currentPeriodEnd      DateTime           @map("current_period_end")
+  
+  // Trial period
+  trialStart            DateTime?          @map("trial_start")
+  trialEnd              DateTime?          @map("trial_end")
+  
+  // Cancellation
+  cancelAtPeriodEnd     Boolean            @default(false) @map("cancel_at_period_end")
+  canceledAt            DateTime?          @map("canceled_at")
+  
+  // Features based on plan
+  jobPostingLimit       Int                @default(10) @map("job_posting_limit")
+  featuredListings      Int                @default(0) @map("featured_listings")
+  premiumSupport        Boolean            @default(false) @map("premium_support")
+  analyticsAccess       Boolean            @default(false) @map("analytics_access")
+  
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  
+  user                  User               @relation(fields: [userId], references: [id])
+  payments              Payment[]
+  invoices              Invoice[]
+  
+  @@map("subscriptions")
 }
 
-model MessageThreadParticipant {
-  // Note: Using UUID for thread_id to match message_threads table
-  threadId      String
-  userId        String
+model Invoice {
+  id                String        @id @default(uuid())
+  stripeInvoiceId   String        @unique @map("stripe_invoice_id")
+  userId            String        @map("user_id")
+  subscriptionId    String?       @map("subscription_id")
   
-  // Relations
-  thread        MessageThread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Invoice details
+  invoiceNumber     String        @unique @map("invoice_number")
+  amount            Int           // Total amount in cents
+  currency          Currency      @default(USD)
+  status            String        // draft, open, paid, void, uncollectible
   
-  @@id([threadId, userId])
-  @@map("message_thread_participants")
+  // Tax information for Jamaica
+  taxAmount         Int?          @map("tax_amount")
+  taxRate           Float?        @map("tax_rate")
+  
+  // Dates
+  issueDate         DateTime      @map("issue_date")
+  dueDate           DateTime      @map("due_date")
+  paidAt            DateTime?     @map("paid_at")
+  
+  // URLs
+  hostedInvoiceUrl  String?       @map("hosted_invoice_url")
+  invoicePdf        String?       @map("invoice_pdf")
+  
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  
+  user              User          @relation(fields: [userId], references: [id])
+  subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
+  payments          Payment[]
+  
+  @@map("invoices")
 }
 
-model Message {
-  id            String         @id @default(uuid())
-  threadId      String         @map("thread_id")
-  senderId      String         @map("sender_id")
-  content       String
-  createdAt     DateTime       @default(now()) @map("created_at")
-  readAt        DateTime?      @map("read_at")
+model Refund {
+  id              String        @id @default(uuid())
+  stripeRefundId  String        @unique @map("stripe_refund_id")
+  paymentId       String        @map("payment_id")
   
-  // Relations
-  thread        MessageThread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender        User           @relation(fields: [senderId], references: [id])
+  amount          Int           // Refund amount in cents
+  currency        Currency      @default(USD)
+  reason          String?       // duplicate, fraudulent, requested_by_customer
+  status          String        // pending, succeeded, failed, canceled
   
-  @@map("messages")
+  // Admin details
+  processedBy     String?       @map("processed_by")
+  adminNotes      String?       @map("admin_notes")
+  
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  
+  payment         Payment       @relation(fields: [paymentId], references: [id])
+  
+  @@map("refunds")
 }
 
-// Profile view tracking
-model ProfileView {
-  id            String      @id @default(uuid())
-  viewerId      String      @map("viewer_id")
-  viewedUserId  String      @map("viewed_user_id")
-  viewedAt      DateTime    @default(now()) @map("viewed_at")
+model PaymentMethod {
+  id                String   @id @default(uuid())
+  stripePaymentMethodId String @unique @map("stripe_payment_method_id")
+  userId            String   @map("user_id")
   
-  // Relations
-  viewer        User        @relation("ViewerRelation", fields: [viewerId], references: [id])
-  viewedUser    User        @relation("ViewedUserRelation", fields: [viewedUserId], references: [id])
+  // Card details (last 4 digits, brand, etc.)
+  type              String   // card, bank_account, etc.
+  cardBrand         String?  @map("card_brand")
+  cardLast4         String?  @map("card_last4")
+  cardExpMonth      Int?     @map("card_exp_month")
+  cardExpYear       Int?     @map("card_exp_year")
   
-  @@map("profile_views")
+  isDefault         Boolean  @default(false) @map("is_default")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  user              User     @relation(fields: [userId], references: [id])
+  
+  @@map("payment_methods")
 }
 
-// Job recommendations
-model JobRecommendation {
-  id            String      @id @default(uuid())
-  userId        String      @map("user_id")
-  jobId         String      @map("job_id")
-  score         Float
-  reason        String?
-  viewed        Boolean     @default(false)
-  createdAt     DateTime    @default(now()) @map("created_at")
+// HEART Partnership Revenue Sharing
+model HeartRevenueShare {
+  id              String   @id @default(uuid())
+  paymentId       String   @map("payment_id")
   
-  // Relations
-  user          User        @relation(fields: [userId], references: [id])
-  job           Job         @relation(fields: [jobId], references: [id])
+  totalAmount     Int      @map("total_amount")     // Original payment amount
+  heartShare      Int      @map("heart_share")      // 20% share for HEART
+  platformShare   Int      @map("platform_share")   // 80% for JamDung Jobs
   
-  @@map("job_recommendations")
+  // Transfer details
+  transferStatus  String   @default("PENDING") @map("transfer_status") // PENDING, COMPLETED, FAILED
+  transferId      String?  @map("transfer_id")      // Stripe transfer ID
+  transferDate    DateTime? @map("transfer_date")
+  
+  // Reporting
+  reportingMonth  String   @map("reporting_month")   // YYYY-MM format
+  reportingSent   Boolean  @default(false) @map("reporting_sent")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  @@map("heart_revenue_shares")
 }
 
-// Scheduled reminders for interviews and profile completion
-model ScheduledReminder {
-  id            String      @id @default(uuid())
-  userId        String      @map("user_id")
-  type          String
-  scheduledFor  DateTime    @map("scheduled_for")
-  content       Json
-  processed     Boolean     @default(false)
-  createdAt     DateTime    @default(now()) @map("created_at")
+// Webhook event logging for audit trail
+model WebhookEvent {
+  id              String   @id @default(uuid())
+  stripeEventId   String   @unique @map("stripe_event_id")
+  eventType       String   @map("event_type")
+  processed       Boolean  @default(false)
+  processingError String?  @map("processing_error")
+  eventData       Json     @map("event_data")
   
-  // Relations
-  user          User        @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now()) @map("created_at")
+  processedAt     DateTime? @map("processed_at")
   
-  @@map("scheduled_reminders")
+  @@map("webhook_events")
+}
+
+// Job view tracking for analytics
+model JobView {
+  id          String   @id @default(uuid())
+  jobId       String   @map("job_id")
+  userId      String?  @map("user_id")  // null for anonymous views
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  referrer    String?  // where they came from
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([jobId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("job_views")
 }
