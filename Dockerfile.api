@@ -38,5 +38,5 @@ HEALTHCHECK --interval=30s --timeout=3s \
 # Expose port
 EXPOSE 5000
 
-# Start development server
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run dev"]
+# Start development server with migration support
+CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push --accept-data-loss && npx prisma generate && npm run dev"]

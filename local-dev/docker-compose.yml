@@ -54,6 +54,10 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - UPLOAD_PATH=/app/uploads
+      # Stripe Configuration (use test keys for development)
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_your_stripe_secret_key_here}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-pk_test_your_stripe_publishable_key_here}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_your_webhook_secret_here}
     volumes:
       - ../backend:/app:delegated
       - api_node_modules:/app/node_modules
@@ -73,6 +77,10 @@ services:
     environment:
       - REACT_APP_API_URL=http://localhost:5000
       - REACT_APP_ENV=development
+      - REACT_APP_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
+      - REACT_APP_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      # Stripe Configuration
+      - REACT_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-pk_test_your_stripe_publishable_key_here}
       - WDS_SOCKET_PORT=0
       - CHOKIDAR_USEPOLLING=true
       - NODE_ENV=development
@@ -83,7 +91,8 @@ services:
     command: >
       sh -c "cd /app && 
              npm install && 
-             npm start"
+             chmod +x scripts/docker-start.sh && 
+             ./scripts/docker-start.sh"
     depends_on:
       - api
 

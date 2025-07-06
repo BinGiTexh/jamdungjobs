@@ -276,14 +276,23 @@ jobs:
             fi
           done &&
           
-          # Apply migrations
-          echo 'Running Prisma migrations...' &&
-          if docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma db push --accept-data-loss; then
-            echo '✅ Database schema updated successfully'
+          # Apply migrations using migration deploy first, fallback to db push
+          echo 'Running Prisma migration deploy...' &&
+          if docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma migrate deploy; then
+            echo '✅ Database migrations applied successfully'
           else
-            echo '⚠️ Database schema update failed, trying migration deploy...' &&
-            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma migrate deploy
-          fi
+            echo '⚠️ Migration deploy failed, using db push as fallback...' &&
+            if docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma db push --accept-data-loss; then
+              echo '✅ Database schema updated via db push'
+            else
+              echo '❌ Both migration strategies failed' &&
+              exit 1
+            fi
+          fi &&
+          
+          # Generate Prisma client after successful migration
+          echo 'Generating Prisma client...' &&
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma generate
         "
 
     - name: Verify v1.2 Features
