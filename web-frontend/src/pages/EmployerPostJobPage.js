@@ -1,17 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Box, 
   Container, 
   Typography, 
   Paper, 
   Button, 
-  Alert,
-  CircularProgress,
   styled
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
 
 // Styled components for Jamaican theme
 const StyledContainer = styled(Container)(({ theme }) => ({
@@ -19,8 +15,8 @@ const StyledContainer = styled(Container)(({ theme }) => ({
   zIndex: 2,
   padding: theme.spacing(4),
   [theme.breakpoints.up('md')]: {
-    maxWidth: '1100px',
-  },
+    maxWidth: '1100px'
+  }
 }));
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -40,23 +36,20 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
     bottom: 0,
     background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%)',
     opacity: 0.2,
-    zIndex: 0,
-  },
+    zIndex: 0
+  }
 }));
 
 // This component has been replaced with EmployerPostJobPageNew
 const EmployerPostJobPage = () => {
-  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   return (
     <Box sx={{ 
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #121212 0%, #2C2C2C 100%)',
       py: 6,
-      position: 'relative',
+      position: 'relative'
     }}>
       <StyledContainer>
         <StyledPaper>

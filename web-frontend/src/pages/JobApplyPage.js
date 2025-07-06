@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Container, Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
+import { Container, Box, CircularProgress, Alert, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import JobApplicationForm from '../components/jobseeker/JobApplicationForm';
 import axios from 'axios';
+import JobApplicationForm from '../components/jobseeker/JobApplicationForm';
 import { buildApiUrl } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
@@ -97,7 +97,7 @@ const JobApplyPage = () => {
     }, 3000);
   };
 
-  const handleCancel = () => {
+  const _handleCancel = () => {
     logDev('debug', 'Job application cancelled', {
       jobId,
       userId: sanitizeForLogging(currentUser?.id)

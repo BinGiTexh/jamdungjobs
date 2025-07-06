@@ -26,6 +26,7 @@ import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
 import { formatDate } from '../utils/dateUtils';
+import QuickApplyModal from '../components/jobseeker/QuickApplyModal';
 
 const JobDetailsPage = () => {
   const { jobId } = useParams();
@@ -36,6 +37,7 @@ const JobDetailsPage = () => {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [quickApplyModalOpen, setQuickApplyModalOpen] = useState(false);
 
   useEffect(() => {
     // Log page access
@@ -83,7 +85,7 @@ const JobDetailsPage = () => {
   const handleApply = () => {
     if (!isAuthenticated) {
       // Redirect to login with return URL
-      navigate('/login', { state: { from: `/jobs/${jobId}/apply` } });
+      navigate('/login', { state: { from: `/jobs/${jobId}` } });
       return;
     }
     
@@ -94,8 +96,24 @@ const JobDetailsPage = () => {
       return;
     }
     
-    // Navigate to the application page
-    navigate(`/jobs/${jobId}/apply`);
+    // Open quick apply modal instead of routing to separate page
+    setQuickApplyModalOpen(true);
+  };
+
+  const handleQuickApplySuccess = (applicationData) => {
+    // Close modal and show success - the modal handles the thank you message
+    setQuickApplyModalOpen(false);
+    
+    // Log successful application
+    logDev('info', 'Application submitted from job details page', {
+      jobId,
+      applicationId: applicationData?.id,
+      userId: currentUser?.id
+    });
+  };
+
+  const handleQuickApplyClose = () => {
+    setQuickApplyModalOpen(false);
   };
 
   const handleBackToJobs = () => {
@@ -140,7 +158,7 @@ const JobDetailsPage = () => {
         flexDirection: 'column',
         backgroundColor: '#0A0A0A',
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'hidden'
       }}
     >
       {/* Background image with Jamaican styling */}
@@ -155,7 +173,7 @@ const JobDetailsPage = () => {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           opacity: 0.3,
-          zIndex: 1,
+          zIndex: 1
         }}
       />
       
@@ -170,7 +188,7 @@ const JobDetailsPage = () => {
             border: '1px solid',
             '&:hover': {
               backgroundColor: 'rgba(255, 215, 0, 0.1)',
-              borderColor: '#FFD700',
+              borderColor: '#FFD700'
             }
           }}
         >
@@ -188,7 +206,7 @@ const JobDetailsPage = () => {
               backdropFilter: 'blur(10px)',
               position: 'relative',
               overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
             }}
           >
             {/* Card background gradient */}
@@ -201,7 +219,7 @@ const JobDetailsPage = () => {
                 bottom: 0,
                 background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%)',
                 opacity: 0.3,
-                zIndex: 0,
+                zIndex: 0
               }}
             />
             
@@ -225,7 +243,7 @@ const JobDetailsPage = () => {
                     sx={{
                       backgroundColor: 'rgba(44, 85, 48, 0.6)',
                       color: '#FFD700',
-                      fontWeight: 'bold',
+                      fontWeight: 'bold'
                     }}
                   />
                 </Box>
@@ -289,7 +307,7 @@ const JobDetailsPage = () => {
                           mr: 1,
                           mb: 1,
                           backgroundColor: 'rgba(44, 85, 48, 0.6)',
-                          color: '#FFD700',
+                          color: '#FFD700'
                         }}
                       />
                     ))}
@@ -338,7 +356,7 @@ const JobDetailsPage = () => {
                               transform: 'translateY(-2px)',
                               boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
                             },
-                            transition: 'all 0.3s ease',
+                            transition: 'all 0.3s ease'
                           }}
                         >
                           {isAuthenticated 
@@ -351,7 +369,7 @@ const JobDetailsPage = () => {
                   
                   <Card sx={{ 
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    border: '1px solid rgba(255, 215, 0, 0.3)',
+                    border: '1px solid rgba(255, 215, 0, 0.3)'
                   }}>
                     <CardContent>
                       <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
@@ -375,7 +393,7 @@ const JobDetailsPage = () => {
                             color: '#FFD700',
                             '&:hover': {
                               backgroundColor: 'rgba(255, 215, 0, 0.1)',
-                              borderColor: '#FFD700',
+                              borderColor: '#FFD700'
                             }
                           }}
                         >
@@ -390,6 +408,14 @@ const JobDetailsPage = () => {
           </Paper>
         )}
       </Container>
+
+      {/* Quick Apply Modal */}
+      <QuickApplyModal
+        open={quickApplyModalOpen}
+        onClose={handleQuickApplyClose}
+        job={job}
+        onSuccess={handleQuickApplySuccess}
+      />
     </Box>
   );
 };

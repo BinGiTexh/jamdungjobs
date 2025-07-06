@@ -12,7 +12,7 @@ import {
   useTheme,
   Avatar,
   Typography,
-  Collapse,
+  Collapse
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -141,7 +141,7 @@ const MobileNavigation = () => {
           bgcolor: 'background.paper',
           borderBottom: 1,
           borderColor: 'divider',
-          zIndex: theme.zIndex.appBar,
+          zIndex: theme.zIndex.appBar
         }}
       >
         <Box
@@ -150,7 +150,7 @@ const MobileNavigation = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             px: 2,
-            py: 1,
+            py: 1
           }}
         >
           <IconButton
@@ -170,7 +170,7 @@ const MobileNavigation = () => {
               fontWeight: 600,
               background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
               WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              WebkitTextFillColor: 'transparent'
             }}
           >
             JamDung Jobs
@@ -207,7 +207,7 @@ const MobileNavigation = () => {
           sx: {
             width: '80%',
             maxWidth: 300,
-            background: `linear-gradient(to bottom, ${theme.palette.background.paper}, ${theme.palette.primary.light})`,
+            background: `linear-gradient(to bottom, ${theme.palette.background.paper}, ${theme.palette.primary.light})`
           }
         }}
       >
@@ -273,7 +273,7 @@ const MobileNavigation = () => {
                 sx={{
                   color: theme.palette.error.main,
                   '& .MuiListItemIcon-root': {
-                    color: theme.palette.error.main,
+                    color: theme.palette.error.main
                   }
                 }}
               >

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Box, Typography, Paper, Fade } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { Navigate } from 'react-router-dom';
 import ApplicationsList from '../components/jobseeker/ApplicationsList';
 import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
 
 // Background component for Jamaican theme
 const BackgroundImage = styled('div')`
@@ -63,7 +63,7 @@ const ApplicationsPage = () => {
                 backdropFilter: 'blur(10px)',
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
               }}
             >
               {/* Card background gradient */}
@@ -75,7 +75,7 @@ const ApplicationsPage = () => {
                   right: 0,
                   bottom: 0,
                   background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%)',
-                  opacity: 0.3,
+                  opacity: 0.3
                 }}
               />
               
@@ -84,7 +84,7 @@ const ApplicationsPage = () => {
                   mb: 4, 
                   color: '#FFD700',
                   fontWeight: 600,
-                  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)'
                 }}>
                   My Applications
                 </Typography>

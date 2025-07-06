@@ -1,9 +1,8 @@
 import React, { createContext, useState, useContext, useCallback, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
-
-// Base URL for API requests
-const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import api from '../utils/api';
+import { config } from '../config';
 
 const AuthContext = createContext(undefined);
 
@@ -45,31 +44,60 @@ export function AuthProvider({ children }) {
   // Initialize authentication state on mount
   useEffect(() => {
     const validateToken = async () => {
+      console.log('🔄 AuthContext: Starting token validation');
       const token = storage.getToken();
+      const storedUser = storage.getUser();
+      
+      console.log('🔐 AuthContext: Token check:', {
+        hasToken: !!token,
+        hasStoredUser: !!storedUser,
+        storedUserRole: storedUser?.role
+      });
+      
       if (!token) {
+        console.log('🚫 AuthContext: No token found, user not authenticated');
         logDev('debug', 'No token found during initialization, user is not authenticated');
+        setUser(null);
+        setError(null);
         setLoading(false);
         return;
       }
       
+      console.log('🔍 AuthContext: Validating token with API');
       logDev('debug', 'Validating existing auth token');
 
       try {
-        const response = await fetch(`${baseUrl}/api/auth/validate`, {
+        // Add timeout to prevent infinite loading
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 10000); // 10 second timeout
+
+        const response = await fetch(`${config.apiUrl}/api/auth/validate`, {
           headers: {
             'Authorization': `Bearer ${token}`
-          }
+          },
+          signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          throw new Error('Token validation failed');
+          throw new Error(`Token validation failed: ${response.status}`);
         }
 
         const userData = await response.json();
+        console.log('✅ AuthContext: Token validation successful', {
+          userId: userData.id,
+          userRole: userData.role,
+          userEmail: userData.email
+        });
         logDev('debug', 'Token validation successful');
         setUser(userData);
         storage.setUser(userData);
+        setError(null);
       } catch (err) {
+        console.error('❌ AuthContext: Token validation failed:', err.message);
         logError('Token validation failed', err, {
           module: 'AuthContext',
           function: 'validateToken',
@@ -77,12 +105,16 @@ export function AuthProvider({ children }) {
         });
         
         // Determine specific error type for better user feedback
-        const errorType = err.message?.includes('expired') ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID';
+        const errorType = err.name === 'AbortError' ? 'TIMEOUT' : 
+                         err.message?.includes('expired') ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID';
+        console.log('⚠️ AuthContext: Error type:', errorType);
         logDev('warn', `Auth token error: ${errorType}`);
         
         storage.clearAll();
         setUser(null);
+        setError(errorType === 'TIMEOUT' ? 'Connection timeout. Please try again.' : null);
       } finally {
+        console.log('🏁 AuthContext: Token validation complete, setting loading to false');
         setLoading(false);
       }
     };
@@ -92,24 +124,18 @@ export function AuthProvider({ children }) {
 
   // Login handler
   const login = useCallback(async (email, password) => {
+    console.log('🔑 AuthContext: Starting login process');
     setLoading(true);
     setError(null);
     
     logDev('debug', 'Login attempt', { email: email ? `${email.substring(0, 3)}...` : 'none' });
 
     try {
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
+      const response = await api.post('/api/auth/login', { email, password });
+      const { data } = response;
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMsg = data.message || 'Login failed';
+      if (!response.status === 200) {
+        const errorMsg = data?.message || 'Login failed';
         logError('Login failed', new Error(errorMsg), {
           module: 'AuthContext',
           function: 'login',
@@ -119,6 +145,12 @@ export function AuthProvider({ children }) {
         throw new Error(errorMsg);
       }
 
+      console.log('✅ AuthContext: Login successful', {
+        userId: data.user.id,
+        userRole: data.user.role,
+        userEmail: data.user.email,
+        tokenReceived: !!data.token
+      });
       logDev('debug', 'Login successful', { 
         user: sanitizeForLogging(data.user),
         tokenReceived: !!data.token
@@ -127,6 +159,7 @@ export function AuthProvider({ children }) {
       storage.setToken(data.token);
       storage.setUser(data.user);
       setUser(data.user);
+      console.log('💾 AuthContext: User state updated after login');
       return data.user;
     } catch (err) {
       setError(err.message);
@@ -136,47 +169,43 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Registration handler
+  // Register handler
   const register = useCallback(async (userData) => {
     setLoading(true);
     setError(null);
     
     logDev('debug', 'Registration attempt', { 
       email: userData.email ? `${userData.email.substring(0, 3)}...` : 'none',
-      role: userData.role
+      role: userData.role || 'unknown'
     });
 
     try {
-      const response = await fetch(`${baseUrl}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(userData)
-      });
+      const response = await api.post('/api/auth/register', userData);
+      const { data } = response;
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMsg = data.message || 'Registration failed';
+      if (response.status !== 200) {
+        const errorMsg = data?.message || 'Registration failed';
         logError('Registration failed', new Error(errorMsg), {
           module: 'AuthContext',
           function: 'register',
           status: response.status,
-          role: userData.role
+          email: userData.email ? `${userData.email.substring(0, 3)}...` : 'none',
+          role: userData.role || 'unknown'
         });
         throw new Error(errorMsg);
       }
 
-      logDev('debug', 'Registration successful', {
-        user: sanitizeForLogging(data.user),
-        tokenReceived: !!data.token
+      // Store token and user data
+      storage.setToken(data.data.token);
+      storage.setUser(data.data.user);
+      setUser(data.data.user);
+      
+      logDev('info', 'Registration successful', { 
+        userId: data.data.user.id, 
+        role: data.data.user.role 
       });
       
-      storage.setToken(data.token);
-      storage.setUser(data.user);
-      setUser(data.user);
-      return data.user;
+      return data.data.user;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -199,6 +228,15 @@ export function AuthProvider({ children }) {
 
   // Update profile handler
   const updateProfile = useCallback(async (profileData) => {
+    if (!user) {
+      const errorMsg = 'User not authenticated';
+      logError(errorMsg, new Error(errorMsg), {
+        module: 'AuthContext',
+        function: 'updateProfile'
+      });
+      throw new Error(errorMsg);
+    }
+    
     setLoading(true);
     setError(null);
     
@@ -208,20 +246,11 @@ export function AuthProvider({ children }) {
     });
 
     try {
-      const token = storage.getToken();
-      const response = await fetch(`${baseUrl}/api/auth/profile`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(profileData)
-      });
+      const response = await api.put('/api/auth/profile', profileData);
+      const { data } = response;
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMsg = data.message || 'Profile update failed';
+      if (response.status !== 200) {
+        const errorMsg = data?.message || 'Profile update failed';
         logError('Profile update failed', new Error(errorMsg), {
           module: 'AuthContext',
           function: 'updateProfile',
@@ -231,13 +260,112 @@ export function AuthProvider({ children }) {
         throw new Error(errorMsg);
       }
 
-      logDev('debug', 'Profile update successful', {
-        user: sanitizeForLogging(data.user)
+      // Update user data
+      const updatedUser = { ...user, ...data.data.user };
+      storage.setUser(updatedUser);
+      setUser(updatedUser);
+      
+      logDev('info', 'Profile update successful', { 
+        userId: updatedUser.id,
+        updatedFields: Object.keys(profileData)
       });
       
+      return updatedUser;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Google OAuth login handler
+  const loginWithGoogle = useCallback(async (googleToken, userInfo) => {
+    setLoading(true);
+    setError(null);
+    
+    logDev('debug', 'Google OAuth login attempt', { 
+      email: userInfo.email ? `${userInfo.email.substring(0, 3)}...` : 'none',
+      verified: userInfo.email_verified
+    });
+
+    try {
+      const response = await api.post('/api/auth/google', {
+        googleToken,
+        userInfo
+      });
+      const { data } = response;
+
+      if (!response.status === 200) {
+        const errorMsg = data?.message || 'Google login failed';
+        logError('Google login failed', new Error(errorMsg), {
+          module: 'AuthContext',
+          function: 'loginWithGoogle',
+          status: response.status,
+          email: userInfo.email ? `${userInfo.email.substring(0, 3)}...` : 'none'
+        });
+        throw new Error(errorMsg);
+      }
+
+      logDev('debug', 'Google login successful', { 
+        user: sanitizeForLogging(data.user),
+        tokenReceived: !!data.token
+      });
+      
+      storage.setToken(data.token);
       storage.setUser(data.user);
       setUser(data.user);
       return data.user;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Google OAuth registration handler
+  const registerWithGoogle = useCallback(async (googleToken, userInfo, additionalData = {}) => {
+    setLoading(true);
+    setError(null);
+    
+    logDev('debug', 'Google OAuth registration attempt', { 
+      email: userInfo.email ? `${userInfo.email.substring(0, 3)}...` : 'none',
+      role: additionalData.role || 'JOBSEEKER',
+      verified: userInfo.email_verified
+    });
+
+    try {
+      const response = await api.post('/api/auth/google/register', {
+        googleToken,
+        userInfo,
+        ...additionalData
+      });
+      const { data } = response;
+
+      if (response.status !== 200) {
+        const errorMsg = data?.message || 'Google registration failed';
+        logError('Google registration failed', new Error(errorMsg), {
+          module: 'AuthContext',
+          function: 'registerWithGoogle',
+          status: response.status,
+          email: userInfo.email ? `${userInfo.email.substring(0, 3)}...` : 'none',
+          role: additionalData.role || 'JOBSEEKER'
+        });
+        throw new Error(errorMsg);
+      }
+
+      // Store token and user data
+      storage.setToken(data.data.token);
+      storage.setUser(data.data.user);
+      setUser(data.data.user);
+      
+      logDev('info', 'Google registration successful', { 
+        userId: data.data.user.id, 
+        role: data.data.user.role 
+      });
+      
+      return data.data.user;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -255,8 +383,10 @@ export function AuthProvider({ children }) {
     login,
     logout,
     register,
-    updateProfile
-  }), [user, loading, error, login, logout, register, updateProfile]);
+    updateProfile,
+    loginWithGoogle,
+    registerWithGoogle
+  }), [user, loading, error, login, logout, register, updateProfile, loginWithGoogle, registerWithGoogle]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -284,7 +414,7 @@ export const AuthContextShape = PropTypes.shape({
   user: PropTypes.shape({
     id: PropTypes.string,
     email: PropTypes.string,
-    name: PropTypes.string,
+    name: PropTypes.string
     // Add other user properties as needed
   }),
   loading: PropTypes.bool.isRequired,

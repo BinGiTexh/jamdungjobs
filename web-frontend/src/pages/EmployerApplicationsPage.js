@@ -1,19 +1,19 @@
 import React from 'react';
-import { Container, Box, Typography } from '@mui/material';
+import { Navigate } from 'react-router-dom';
+import { Container, Box } from '@mui/material';
 import ApplicationsReview from '../components/employer/ApplicationsReview';
 import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
 
 const EmployerApplicationsPage = () => {
-  const { currentUser } = useAuth();
+  const { user } = useAuth();
 
   // Redirect to login if not authenticated
-  if (!currentUser) {
+  if (!user) {
     return <Navigate to="/login" state={{ from: '/employer/applications' }} />;
   }
 
   // Redirect to dashboard if user is a job seeker
-  if (currentUser.role === 'JOBSEEKER') {
+  if (user.role === 'JOBSEEKER') {
     return <Navigate to="/dashboard" />;
   }
 
