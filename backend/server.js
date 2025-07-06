@@ -24,6 +24,8 @@ const createNotificationsRouter = require("./routes/notifications.routes");
 const createJobsRouter = require("./routes/jobs.routes");
 const applicationManagementRouter = require("./application-management-api");
 const createSkillsRouter = require("./routes/skills.routes");
+const paymentsRouter = require("./routes/payments.routes");
+const createUsersRouter = require("./routes/users.routes");
 
 // Route initialization error handler
 const initializeRouter = (name, createRouter) => {
@@ -170,6 +172,7 @@ try {
   const companiesRouter = initializeRouter('companies', createCompaniesRouter);
   const notificationsRouter = initializeRouter('notifications', createNotificationsRouter);
   const skillsRouter = initializeRouter('skills', createSkillsRouter);
+  const usersRouter = initializeRouter('users', createUsersRouter);
 
   // Mount routes
   console.log("Mounting API routes...");
@@ -220,6 +223,19 @@ try {
   );
 
   app.use("/api/skills", skillsRouter);
+
+  // User profile routes (authenticated)
+  app.use("/api/users",
+    authenticateJWT,
+    (req, res, next) => {
+      console.log('Users route accessed:', req.method, req.path);
+      next();
+    },
+    usersRouter
+  );
+
+  // Payment routes
+  app.use("/api/payments", paymentsRouter);
 
   // Applications listing & management routes
   app.use('/api', applicationManagementRouter);

@@ -1,0 +1,13 @@
+migration_name = "init"
+
+[datasource]
+provider = "postgresql"
+url = "postgresql://jobboard:jobboard@localhost:5432/jobboard"
+
+[generator]
+provider = "prisma-client-js"
+output = "../../node_modules/.prisma/client"
+
+[[constraint]]
+type = "database"
+rule = "CREATE SCHEMA IF NOT EXISTS public"

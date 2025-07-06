@@ -75,17 +75,21 @@ async function main() {
   console.log('🌱  Seeding demo data …');
 
   // Ensure demo company exists (used for employer / job postings)
-  const company = await prisma.company.upsert({
-    where: { name: 'JamTest Ltd' },
-    create: {
-      name: 'JamTest Ltd',
-      description: 'Demo company for automated QA seeds.',
-      industry: 'Technology',
-      location: 'Kingston',
-      website: 'https://jamtest.example.com',
-    },
-    update: {},
+  let company = await prisma.company.findFirst({
+    where: { name: 'JamTest Ltd' }
   });
+  
+  if (!company) {
+    company = await prisma.company.create({
+      data: {
+        name: 'JamTest Ltd',
+        description: 'Demo company for automated QA seeds.',
+        industry: 'Technology',
+        location: 'Kingston',
+        website: 'https://jamtest.example.com',
+      }
+    });
+  }
 
   // Find any employer
   let employer = await prisma.user.findFirst({ where: { role: 'EMPLOYER' } });
@@ -107,23 +111,27 @@ async function main() {
     });
   }
 
-  // Upsert jobs
+  // Create jobs if they don't exist
   for (const job of JOBS) {
-    await prisma.job.upsert({
-      where: { title_companyId: { title: job.title, companyId: company.id } },
-      create: {
-        ...job,
-        companyId: company.id,
-        status: 'ACTIVE',
-      },
-      update: {
-        description: job.description,
-        skills: job.skills,
-        salary: job.salary,
-        location: job.location,
-        status: 'ACTIVE',
-      },
+    const existingJob = await prisma.job.findFirst({
+      where: {
+        title: job.title,
+        companyId: company.id
+      }
     });
+    
+    if (!existingJob) {
+      await prisma.job.create({
+        data: {
+          ...job,
+          companyId: company.id,
+          status: 'ACTIVE',
+        }
+      });
+      console.log(`✅ Created job: ${job.title}`);
+    } else {
+      console.log(`⏭️  Job already exists: ${job.title}`);
+    }
   }
 
   // Attach skills to candidate profile

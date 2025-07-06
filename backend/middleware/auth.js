@@ -108,7 +108,60 @@ const checkRole = (role) => {
   };
 };
 
+// Alias for payment routes compatibility
+const authenticateToken = authenticateJWT;
+
+// Enhanced role checking that supports multiple roles
+const requireRole = (roles) => {
+  return (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+          code: "AUTH_REQUIRED"
+        });
+      }
+
+      const userRole = (req.user.role || "").toUpperCase();
+      const allowedRoles = Array.isArray(roles) ? roles.map(r => r.toUpperCase()) : [roles.toUpperCase()];
+
+      if (!allowedRoles.includes(userRole)) {
+        console.log("Role check failed:", {
+          required: allowedRoles,
+          provided: userRole,
+          userId: req.user.id,
+          path: req.path
+        });
+
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. Required role(s): ${allowedRoles.join(', ')}`,
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error("Role check error:", {
+        error: error.message,
+        stack: error.stack,
+        userId: req.user?.id,
+        path: req.path
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Error checking user permissions",
+        code: "ROLE_CHECK_ERROR"
+      });
+    }
+  };
+};
+
 module.exports = {
   authenticateJWT,
-  checkRole
+  checkRole,
+  authenticateToken,
+  requireRole
 };
