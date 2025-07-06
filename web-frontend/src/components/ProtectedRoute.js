@@ -34,11 +34,22 @@ const LoadingSpinner = () => (
  * ProtectedRoute component that handles authentication-based routing
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render when authenticated
+ * @param {string} props.requiredRole - Required role to access this route (optional)
+ * @param {string} props.redirectTo - Where to redirect if not authenticated
  * @returns {React.ReactElement} Protected route component
  */
-export const ProtectedRoute = ({ children, redirectTo = '/login' }) => {
-  const { isAuthenticated, loading, error } = useAuth();
+const ProtectedRoute = ({ children, requiredRole, redirectTo = '/login' }) => {
+  const { user, isAuthenticated, loading, error } = useAuth();
   const location = useLocation();
+
+  console.log('🔐 ProtectedRoute Check:', {
+    isAuthenticated,
+    loading,
+    error,
+    user: user ? { id: user.id, role: user.role, email: user.email } : null,
+    requiredRole,
+    currentPath: location.pathname
+  });
 
   // Handle loading state
   if (loading) {
@@ -79,6 +90,7 @@ export const ProtectedRoute = ({ children, redirectTo = '/login' }) => {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
+    console.log('🚫 Not authenticated, redirecting to:', redirectTo);
     return (
       <Navigate
         to={redirectTo}
@@ -88,7 +100,24 @@ export const ProtectedRoute = ({ children, redirectTo = '/login' }) => {
     );
   }
 
-  // Render protected content if authenticated
+  // Check role if required
+  if (requiredRole && user?.role !== requiredRole) {
+    console.log('🚫 Role mismatch:', {
+      userRole: user?.role,
+      requiredRole,
+      redirectingTo: '/dashboard'
+    });
+    return (
+      <Navigate
+        to="/dashboard"
+        state={{ from: location.pathname }}
+        replace
+      />
+    );
+  }
+
+  console.log('✅ Access granted to protected route');
+  // Render protected content if authenticated and authorized
   return children;
 };
 
@@ -97,9 +126,13 @@ ProtectedRoute.propTypes = {
     PropTypes.arrayOf(PropTypes.node),
     PropTypes.node
   ]).isRequired,
-  redirectTo: PropTypes.string,
+  requiredRole: PropTypes.string,
+  redirectTo: PropTypes.string
 };
 
 ProtectedRoute.defaultProps = {
-  redirectTo: '/login',
+  redirectTo: '/login'
 };
+
+// Default export
+export default ProtectedRoute;
