@@ -36,6 +36,8 @@ env:
   SITE_URL: "https://staging-jobs.bingitech.io"
   DOCKER_COMPOSE_FILE: "docker-compose.prod.yml"
   VERSION: "1.2.0"
+  # Disable automatic Node.js detection
+  SKIP_NODE_SETUP: "true"
 
 jobs:
   deploy:
@@ -59,6 +61,9 @@ jobs:
         echo "Branch: ${{ github.ref_name }}"
         echo "Force rebuild: ${{ github.event.inputs.force_rebuild }}"
         echo "Skip tests: ${{ github.event.inputs.skip_tests }}"
+        echo ""
+        echo "ℹ️  This is a Docker-only deployment via SSH"
+        echo "ℹ️  No Node.js dependencies required on runner"
 
     - name: Setup SSH Agent
       uses: webfactory/ssh-agent@v0.8.0
