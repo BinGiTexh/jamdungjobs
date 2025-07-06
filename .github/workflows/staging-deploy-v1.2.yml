@@ -1,0 +1,381 @@
+name: Deploy v1.2 to Staging
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'terraform/**'
+      - 'docs/**'
+      - '*.md'
+      - 'testing/**'
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild Docker images'
+        required: false
+        default: 'false'
+        type: boolean
+      skip_tests:
+        description: 'Skip post-deployment tests'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  EC2_HOST: "3.89.154.166"
+  EC2_USER: "ubuntu"
+  DEPLOY_PATH: "/home/ubuntu/jamdungjobs"
+  SITE_URL: "https://staging-jobs.bingitech.io"
+  DOCKER_COMPOSE_FILE: "docker-compose.prod.yml"
+  VERSION: "1.2.0"
+
+jobs:
+  deploy:
+    name: Deploy v1.2 to Staging Server
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Verify Release Tag
+      run: |
+        echo "Deploying version: ${{ env.VERSION }}"
+        echo "Git commit: ${{ github.sha }}"
+        echo "Branch: ${{ github.ref_name }}"
+
+    - name: Setup SSH Agent
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+    - name: Add SSH Host to Known Hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Test SSH Connection and Server Health
+      run: |
+        echo "Testing SSH connection to ${{ env.EC2_HOST }}..."
+        ssh -o StrictHostKeyChecking=no ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo 'SSH connection successful' &&
+          echo 'Server details:' &&
+          uname -a &&
+          echo 'Docker version:' &&
+          docker --version &&
+          echo 'Available disk space:' &&
+          df -h / &&
+          echo 'Available memory:' &&
+          free -h
+        "
+
+    - name: Pre-deployment Backup
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo 'Creating pre-deployment backup...' &&
+          cd $(dirname ${{ env.DEPLOY_PATH }}) &&
+          BACKUP_DIR=$(basename ${{ env.DEPLOY_PATH }})_backup_$(date +%Y%m%d_%H%M%S) &&
+          if [ -d '${{ env.DEPLOY_PATH }}' ]; then
+            cp -r $(basename ${{ env.DEPLOY_PATH }}) \$BACKUP_DIR &&
+            echo 'Backup created: '\$BACKUP_DIR
+          else
+            echo 'No existing deployment to backup'
+          fi
+        "
+
+    - name: Stop Running Services
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          if [ -f '${{ env.DOCKER_COMPOSE_FILE }}' ]; then
+            echo 'Stopping running services...' &&
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down --timeout 30 &&
+            echo 'Services stopped successfully'
+          else
+            echo 'No existing services to stop'
+          fi
+        "
+
+    - name: Update Repository
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          if [ ! -d '${{ env.DEPLOY_PATH }}' ]; then
+            echo 'Cloning repository...' &&
+            git clone https://github.com/BinGiTexh/jamdungjobs.git ${{ env.DEPLOY_PATH }}
+          fi &&
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo 'Updating repository...' &&
+          git fetch origin &&
+          git reset --hard origin/${{ github.ref_name }} &&
+          git clean -fd &&
+          echo 'Repository updated to commit: '$(git rev-parse HEAD)
+        "
+
+    - name: Update Docker Compose for v1.2
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo 'Updating Docker Compose for v1.2...' &&
+          sed -i 's/jamdungjobs-api:1\.1\.0/jamdungjobs-api:${{ env.VERSION }}/g' ${{ env.DOCKER_COMPOSE_FILE }} &&
+          sed -i 's/jamdungjobs-frontend:1\.1\.0/jamdungjobs-frontend:${{ env.VERSION }}/g' ${{ env.DOCKER_COMPOSE_FILE }} &&
+          echo 'Docker image tags updated to v${{ env.VERSION }}'
+        "
+
+    - name: Restore Environment Configuration
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          # Look for the most recent backup with .env file
+          LATEST_BACKUP=\$(ls -t $(dirname ${{ env.DEPLOY_PATH }})/$(basename ${{ env.DEPLOY_PATH }})_backup* 2>/dev/null | head -1) &&
+          if [ -n \"\$LATEST_BACKUP\" ] && [ -f \"\$LATEST_BACKUP/.env\" ]; then
+            cp \"\$LATEST_BACKUP/.env\" .env &&
+            echo 'Environment configuration restored from: '\$LATEST_BACKUP
+          else
+            echo 'Warning: No backup .env found, ensure environment is configured'
+          fi
+        "
+
+    - name: Build Docker Images
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo 'Building Docker images for v${{ env.VERSION }}...' &&
+          FORCE_REBUILD='${{ github.event.inputs.force_rebuild }}' &&
+          if [ \"\$FORCE_REBUILD\" = 'true' ]; then
+            echo 'Force rebuild requested, building with --no-cache' &&
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build --no-cache
+          else
+            echo 'Building with cache enabled' &&
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build
+          fi &&
+          echo 'Docker images built successfully'
+        "
+
+    - name: Start Services
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo 'Starting services...' &&
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} up -d &&
+          echo 'Services started successfully'
+        "
+
+    - name: Wait for Services to Initialize
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo 'Waiting for services to initialize...' &&
+          for i in {1..60}; do
+            echo 'Checking service status (attempt \$i/60)...'
+            RUNNING_SERVICES=\$(docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps --services --filter 'status=running' | wc -l)
+            TOTAL_SERVICES=\$(docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps --services | wc -l)
+            echo \"Services running: \$RUNNING_SERVICES/\$TOTAL_SERVICES\"
+            
+            if [ \$RUNNING_SERVICES -ge 3 ]; then
+              echo 'Core services are running'
+              break
+            else
+              echo 'Services not ready yet, waiting...'
+              sleep 10
+            fi
+          done
+        "
+
+    - name: Apply Database Schema Updates (v1.2)
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo 'Applying v1.2 database schema updates...' &&
+          echo 'Checking database connection...' &&
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T postgres pg_isready -U postgres &&
+          echo 'Running Prisma schema updates...' &&
+          # First try db push (works for schema updates)
+          if docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma db push --accept-data-loss; then
+            echo 'Schema push successful'
+          else
+            echo 'Schema push failed, trying migration deploy...'
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api npx prisma migrate deploy
+          fi &&
+          echo 'Database schema updated for v1.2'
+        "
+
+    - name: Verify New v1.2 Features
+      if: ${{ github.event.inputs.skip_tests != 'true' }}
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo '=== Verifying v1.2 Features ===' &&
+          
+          # Test job view tracking
+          echo '📊 Testing job view tracking...' &&
+          timeout 15 docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api curl -f -s http://localhost:5000/api/jobs | jq '.jobs[0].id' > /tmp/job_id.txt &&
+          JOB_ID=\$(cat /tmp/job_id.txt | tr -d '\"') &&
+          if [ \"\$JOB_ID\" != \"null\" ] && [ -n \"\$JOB_ID\" ]; then
+            echo \"Testing view tracking for job: \$JOB_ID\" &&
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api curl -f -s -X POST http://localhost:5000/api/jobs/\$JOB_ID/track-view &&
+            echo '✅ Job view tracking endpoint working'
+          else
+            echo '⚠️  No jobs found to test view tracking'
+          fi &&
+          
+          # Test billing endpoints
+          echo '💳 Testing billing system...' &&
+          # Note: These endpoints require authentication, so we test if they return proper 401/403
+          STATUS=\$(docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api curl -s -o /dev/null -w '%{http_code}' http://localhost:5000/api/employer/subscription) &&
+          if [ \"\$STATUS\" = \"401\" ] || [ \"\$STATUS\" = \"403\" ]; then
+            echo '✅ Billing endpoints are properly secured'
+          else
+            echo '⚠️  Billing endpoints returned unexpected status: '\$STATUS
+          fi &&
+          
+          # Test analytics endpoints
+          echo '📈 Testing analytics endpoints...' &&
+          STATUS=\$(docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api curl -s -o /dev/null -w '%{http_code}' http://localhost:5000/api/employer/analytics) &&
+          if [ \"\$STATUS\" = \"401\" ] || [ \"\$STATUS\" = \"403\" ]; then
+            echo '✅ Analytics endpoints are properly secured'
+          else
+            echo '⚠️  Analytics endpoints returned unexpected status: '\$STATUS
+          fi &&
+          
+          echo '🎉 v1.2 feature verification completed!'
+        "
+
+    - name: Health Check & Service Verification
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo '=== Service Status ===' &&
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps &&
+          
+          echo '=== API Health Check ===' &&
+          for i in {1..5}; do
+            if timeout 30 docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T api curl -f http://localhost:5000/health; then
+              echo '✅ API health check passed'
+              break
+            else
+              echo \"API health check failed (attempt \$i/5), retrying...\"
+              sleep 10
+            fi
+          done &&
+          
+          echo '=== Database Connection Test ===' &&
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T postgres pg_isready -U postgres &&
+          echo '✅ Database connection successful' &&
+          
+          echo '=== Redis Connection Test ===' &&
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} exec -T redis redis-cli ping &&
+          echo '✅ Redis connection successful'
+        "
+
+    - name: Frontend Accessibility Test
+      if: ${{ github.event.inputs.skip_tests != 'true' }}
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo '=== Frontend Accessibility Tests ===' &&
+          
+          echo 'Testing main site access...' &&
+          timeout 15 curl -f -s ${{ env.SITE_URL }} | grep -q 'JamDung Jobs' &&
+          echo '✅ Main site accessible' &&
+          
+          echo 'Testing API proxy...' &&
+          timeout 15 curl -f -s ${{ env.SITE_URL }}/api/health | jq '.status' &&
+          echo '✅ API accessible through frontend proxy' &&
+          
+          echo 'Testing static assets...' &&
+          timeout 15 curl -f -s -o /dev/null ${{ env.SITE_URL }}/static/css/ &&
+          echo '✅ Static assets accessible'
+        "
+
+    - name: Performance & Resource Check
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo '=== Performance & Resource Check ===' &&
+          echo 'Memory usage:' &&
+          free -h &&
+          echo 'Disk usage:' &&
+          df -h / &&
+          echo 'Docker container resource usage:' &&
+          docker stats --no-stream &&
+          echo 'Service response times:' &&
+          time curl -s ${{ env.SITE_URL }}/api/health > /dev/null &&
+          echo '✅ Performance check completed'
+        "
+
+    - name: Cleanup Old Resources
+      run: |
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          echo 'Cleaning up old Docker resources...' &&
+          docker image prune -f &&
+          docker system prune -f &&
+          
+          echo 'Cleaning up old backups (keep last 5)...' &&
+          cd $(dirname ${{ env.DEPLOY_PATH }}) &&
+          ls -t $(basename ${{ env.DEPLOY_PATH }})_backup* 2>/dev/null | tail -n +6 | xargs rm -rf &&
+          
+          echo '✅ Cleanup completed'
+        "
+
+    - name: Deployment Success Notification
+      if: success()
+      run: |
+        echo "🚀 ✅ JamDung Jobs v${{ env.VERSION }} deployed successfully to staging!"
+        echo ""
+        echo "📋 Deployment Summary:"
+        echo "   🌐 Site URL: ${{ env.SITE_URL }}"
+        echo "   📊 Version: ${{ env.VERSION }}"
+        echo "   📝 Commit: ${{ github.sha }}"
+        echo "   🏷️  Branch: ${{ github.ref_name }}"
+        echo ""
+        echo "🆕 New Features in v${{ env.VERSION }}:"
+        echo "   🔔 Enhanced notification system with mark-as-read"
+        echo "   💳 Complete billing system with Stripe integration"
+        echo "   📊 Real-time job view tracking and analytics"
+        echo "   🎨 Consistent Jamaica theme across all components"
+        echo ""
+        echo "🔗 Quick Links:"
+        echo "   🏠 Homepage: ${{ env.SITE_URL }}"
+        echo "   🔍 Job Search: ${{ env.SITE_URL }}/jobs"
+        echo "   👤 User Dashboard: ${{ env.SITE_URL }}/dashboard"
+
+    - name: Rollback on Failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed, attempting rollback..."
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo 'Stopping failed deployment...' &&
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down --timeout 30 &&
+          
+          echo 'Looking for recent backup...' &&
+          LATEST_BACKUP=\$(ls -t $(dirname ${{ env.DEPLOY_PATH }})/$(basename ${{ env.DEPLOY_PATH }})_backup* 2>/dev/null | head -1) &&
+          
+          if [ -n \"\$LATEST_BACKUP\" ] && [ -d \"\$LATEST_BACKUP\" ]; then
+            echo 'Rolling back to: '\$LATEST_BACKUP &&
+            cd $(dirname ${{ env.DEPLOY_PATH }}) &&
+            rm -rf $(basename ${{ env.DEPLOY_PATH }}) &&
+            cp -r \"\$LATEST_BACKUP\" $(basename ${{ env.DEPLOY_PATH }}) &&
+            cd ${{ env.DEPLOY_PATH }} &&
+            echo 'Starting rollback services...' &&
+            docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} up -d &&
+            echo '🔄 Rollback completed'
+          else
+            echo '❌ No backup available for rollback'
+            exit 1
+          fi
+        "
+
+    - name: Post-Deployment Verification
+      if: success()
+      run: |
+        echo "🔍 Final verification of v${{ env.VERSION }} deployment..."
+        ssh ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "
+          cd ${{ env.DEPLOY_PATH }} &&
+          echo 'Final service status:' &&
+          docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps &&
+          echo 'Final health check:' &&
+          curl -f -s ${{ env.SITE_URL }}/api/health | jq '.' &&
+          echo '✅ v${{ env.VERSION }} verification completed successfully!'
+        "
