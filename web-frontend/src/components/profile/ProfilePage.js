@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import ResumeViewer from './ResumeViewer';
 
 const ProfilePage = () => {
   const { user } = useAuth();
@@ -47,6 +48,8 @@ const ProfilePage = () => {
   const [success, setSuccess] = useState('');
   const [profileData, setProfileData] = useState(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeViewerOpen, setResumeViewerOpen] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   // Clear success message after 5 seconds
   useEffect(() => {
@@ -197,6 +200,70 @@ const ProfilePage = () => {
       skillCount: newSkills.length,
       skills: newSkills
     });
+  };
+
+  // Handle logo upload for employers
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file size (2MB max)
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('Logo file size must be less than 2MB');
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Please upload a JPG, PNG, GIF, or WebP image');
+      return;
+    }
+
+    try {
+      setLogoUploading(true);
+      setError('');
+      setSuccess('');
+      
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      const response = await axios.post('http://localhost:5000/api/employer/profile/logo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
+        }
+      });
+
+      if (response.status === 200) {
+        // Update profile data with new logo info
+        setProfileData(prev => ({
+          ...prev,
+          company: {
+            ...prev?.company,
+            logoUrl: response.data.logoUrl
+          }
+        }));
+        setSuccess('Company logo uploaded successfully!');
+        logDev('info', 'Logo uploaded successfully', {
+          logoUrl: response.data.logoUrl
+        });
+      }
+    } catch (err) {
+      logError('Error uploading logo', err, {
+        module: 'ProfilePage',
+        function: 'handleLogoUpload',
+        userId: user?.id,
+        fileSize: file.size,
+        fileType: file.type
+      });
+      setError(err.response?.data?.message || 'Failed to upload logo. Please try again.');
+    } finally {
+      setLogoUploading(false);
+      // Clear the file input
+      e.target.value = '';
+    }
   };
 
   // Handle resume upload
@@ -700,13 +767,10 @@ const ProfilePage = () => {
                               📄 {profileData.candidateProfile.resumeFileName || 'Resume uploaded'}
                             </Typography>
                             <Button
-                              component="a"
-                              href={profileData.candidateProfile.resumeUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              onClick={() => setResumeViewerOpen(true)}
                               sx={{ color: '#4caf50', textDecoration: 'underline', mr: 2 }}
                             >
-                              View Resume
+                              Quick Preview
                             </Button>
                           </Box>
                         ) : (
@@ -785,6 +849,48 @@ const ProfilePage = () => {
                         placeholder="Describe your company"
                         sx={textFieldSx}
                       />
+                    </Grid>
+
+                    {/* Company Logo Upload */}
+                    <Grid item xs={12}>
+                      <Typography sx={{ color: '#FFD700', mb: 2 }}>Company Logo</Typography>
+                      <Card sx={{
+                        border: '2px dashed #FFD700',
+                        backgroundColor: 'rgba(255, 215, 0, 0.05)',
+                        p: 2,
+                        textAlign: 'center'
+                      }}>
+                        {profileData?.company?.logoUrl ? (
+                          <Box sx={{ mb: 2 }}>
+                            <img 
+                              src={profileData.company.logoUrl} 
+                              alt="Company Logo" 
+                              style={{ maxHeight: '100px', maxWidth: '200px', objectFit: 'contain' }}
+                            />
+                            <Typography sx={{ color: '#4caf50', mt: 1 }}>
+                              Logo uploaded
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography sx={{ color: '#666', mb: 1 }}>No logo uploaded</Typography>
+                        )}
+                        
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          style={{ marginTop: '0.5rem' }}
+                          disabled={logoUploading}
+                        />
+                        
+                        {logoUploading && (
+                          <Typography sx={{ color: '#4caf50', mt: 1 }}>Uploading logo...</Typography>
+                        )}
+                        
+                        <Typography sx={{ fontSize: '0.8rem', color: '#666', mt: 1 }}>
+                          Accepted formats: JPG, PNG, GIF (Max 2MB)
+                        </Typography>
+                      </Card>
                     </Grid>
                   </>
                 )}
@@ -979,6 +1085,25 @@ const ProfilePage = () => {
                       </Typography>
                     </Box>
 
+                    <Box sx={{ borderBottom: '1px solid rgba(255, 215, 0, 0.2)', pb: 2 }}>
+                      <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
+                        Company Logo
+                      </Typography>
+                      {profileData?.company?.logoUrl ? (
+                        <Box sx={{ mt: 1 }}>
+                          <img 
+                            src={profileData.company.logoUrl} 
+                            alt="Company Logo" 
+                            style={{ maxHeight: '80px', maxWidth: '160px', objectFit: 'contain' }}
+                          />
+                        </Box>
+                      ) : (
+                        <Typography variant="body1" sx={{ color: 'white' }}>
+                          No logo uploaded
+                        </Typography>
+                      )}
+                    </Box>
+
                     <Box>
                       <Typography variant="h6" sx={{ color: '#FFD700', mb: 1 }}>
                         Company Description
@@ -994,6 +1119,14 @@ const ProfilePage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Resume Viewer Modal */}
+      <ResumeViewer
+        open={resumeViewerOpen}
+        onClose={() => setResumeViewerOpen(false)}
+        resumeUrl={profileData?.candidateProfile?.resumeUrl}
+        resumeFileName={profileData?.candidateProfile?.resumeFileName}
+      />
     </Container>
   );
 };

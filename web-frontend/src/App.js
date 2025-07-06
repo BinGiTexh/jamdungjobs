@@ -8,6 +8,9 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeContextProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 
+// Analytics
+import { usePlausible } from './hooks/usePlausible';
+
 // Components
 import SimpleMobileNav from './components/navigation/SimpleMobileNav';
 import HomePage from './components/home/HomePage';
@@ -50,6 +53,9 @@ const JobSearchPage = () => {
 };
 
 function App() {
+  // Initialize Plausible Analytics
+  usePlausible();
+
   useEffect(() => {
     logDev('info', 'JamDung Jobs App initialized', {
       timestamp: new Date().toISOString(),

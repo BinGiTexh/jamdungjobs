@@ -23,8 +23,6 @@ import {
   FormControl,
   InputLabel
 } from '@mui/material';
-import api from '../../utils/axiosConfig';
-import { logError } from '../../utils/loggingUtils';
 
 // Icons
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -34,6 +32,8 @@ import EmailIcon from '@mui/icons-material/Email';
 import PersonIcon from '@mui/icons-material/Person';
 import WorkIcon from '@mui/icons-material/Work';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import { logError } from '../../utils/loggingUtils';
+import api from '../../utils/axiosConfig';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -45,7 +45,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   marginBottom: theme.spacing(2),
   transition: 'transform 0.2s ease-in-out',
   '&:hover': {
-    transform: 'translateY(-2px)',
+    transform: 'translateY(-2px)'
   }
 }));
 
@@ -285,7 +285,7 @@ const ApplicationsList = ({ jobListings }) => {
           PaperProps={{
             sx: {
               backgroundColor: '#1A1A1A',
-              border: '1px solid rgba(255, 215, 0, 0.3)',
+              border: '1px solid rgba(255, 215, 0, 0.3)'
             }
           }}
         >
@@ -311,7 +311,7 @@ const ApplicationsList = ({ jobListings }) => {
           PaperProps={{
             sx: {
               backgroundColor: '#1A1A1A',
-              border: '1px solid rgba(255, 215, 0, 0.3)',
+              border: '1px solid rgba(255, 215, 0, 0.3)'
             }
           }}
         >
@@ -362,15 +362,15 @@ const ApplicationsList = ({ jobListings }) => {
                       '& .MuiOutlinedInput-root': {
                         color: '#FFFFFF',
                         '& fieldset': {
-                          borderColor: 'rgba(255, 215, 0, 0.3)',
+                          borderColor: 'rgba(255, 215, 0, 0.3)'
                         },
                         '&:hover fieldset': {
-                          borderColor: 'rgba(255, 215, 0, 0.5)',
+                          borderColor: 'rgba(255, 215, 0, 0.5)'
                         },
                         '&.Mui-focused fieldset': {
-                          borderColor: '#FFD700',
-                        },
-                      },
+                          borderColor: '#FFD700'
+                        }
+                      }
                     }}
                   />
                 </Box>

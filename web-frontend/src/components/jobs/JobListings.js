@@ -19,7 +19,7 @@ import {
   FormControlLabel,
   Checkbox,
   useTheme,
-  useMediaQuery,
+  useMediaQuery
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -39,7 +39,7 @@ const JobCard = ({ job }) => {
         '&:hover': {
           borderColor: 'primary.main',
           transform: 'translateY(-4px)',
-          transition: 'all 0.2s ease-in-out',
+          transition: 'all 0.2s ease-in-out'
         }
       }}
     >
@@ -55,7 +55,7 @@ const JobCard = ({ job }) => {
               borderRadius: 1,
               mr: 2,
               border: '1px solid',
-              borderColor: 'divider',
+              borderColor: 'divider'
             }}
           />
           <Box>
@@ -102,7 +102,7 @@ const JobCard = ({ job }) => {
               variant="outlined"
               sx={{ 
                 borderColor: 'primary.main',
-                color: 'primary.main',
+                color: 'primary.main'
               }}
             />
           ))}
@@ -129,8 +129,8 @@ const JobListings = () => {
       type: 'Full-time',
       salary: '$80,000 - $120,000',
       description: 'Looking for an experienced developer to join our growing team...',
-      skills: ['React', 'Node.js', 'PostgreSQL'],
-    },
+      skills: ['React', 'Node.js', 'PostgreSQL']
+    }
     // Add more mock jobs...
   ];
 
@@ -189,7 +189,7 @@ const JobListings = () => {
                   <InputAdornment position="start">
                     <SearchIcon />
                   </InputAdornment>
-                ),
+                )
               }}
             />
           </Grid>
@@ -202,7 +202,7 @@ const JobListings = () => {
                   <InputAdornment position="start">
                     <LocationOnIcon />
                   </InputAdornment>
-                ),
+                )
               }}
             />
           </Grid>

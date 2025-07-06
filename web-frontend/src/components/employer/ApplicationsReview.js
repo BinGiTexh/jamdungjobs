@@ -23,19 +23,18 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
+  TextField,
   FormControl,
-  InputLabel,
   Select,
-  MenuItem,
-  TextField
+  MenuItem
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import EmailIcon from '@mui/icons-material/Email';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { format } from 'date-fns';
 import axios from 'axios';
-import { buildApiUrl } from '../../config';
-import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import { logDev, logError } from '../../utils/loggingUtils';
 
 const ApplicationsReview = ({ jobId }) => {
   const [applications, setApplications] = useState([]);
@@ -47,6 +46,10 @@ const ApplicationsReview = ({ jobId }) => {
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [interviewDialogOpen, setInterviewDialogOpen] = useState(false);
+  const [interviewDate, setInterviewDate] = useState('');
+  const [interviewTime, setInterviewTime] = useState('');
+  const [interviewNotes, setInterviewNotes] = useState('');
 
   useEffect(() => {
     fetchApplications();
@@ -55,14 +58,18 @@ const ApplicationsReview = ({ jobId }) => {
   const fetchApplications = async () => {
     setLoading(true);
     const endpoint = jobId 
-      ? buildApiUrl(`/jobs/${jobId}/applications`) 
-      : buildApiUrl('/applications/employer');
+      ? `http://localhost:5000/api/jobs/${jobId}/applications` 
+      : 'http://localhost:5000/api/employer/applications';
     
     try {
-      const response = await axios.get(endpoint);
-      setApplications(response.data);
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
+        }
+      });
+      setApplications(response.data?.applications || response.data || []);
       logDev('debug', 'Applications fetched successfully', { 
-        count: response.data?.length || 0,
+        count: response.data?.applications?.length || response.data?.length || 0,
         forJobId: jobId || 'all'
       });
     } catch (err) {
@@ -122,8 +129,12 @@ const ApplicationsReview = ({ jobId }) => {
   const handleStatusChange = async (applicationId, newStatus) => {
     setStatusUpdateLoading(true);
     try {
-      await axios.patch(buildApiUrl(`/applications/${applicationId}/status`), {
+      await axios.patch(`http://localhost:5000/api/employer/applications/${applicationId}/status`, {
         status: newStatus
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
+        }
       });
       
       setApplications(prevApplications => 
@@ -159,8 +170,12 @@ const ApplicationsReview = ({ jobId }) => {
     if (!feedback.trim() || !selectedApplication) return;
     
     try {
-      await axios.post(buildApiUrl(`/applications/${selectedApplication.id}/feedback`), {
+      await axios.post(`http://localhost:5000/api/employer/applications/${selectedApplication.id}/feedback`, {
         message: feedback
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
+        }
       });
       
       setFeedback('');
@@ -179,6 +194,43 @@ const ApplicationsReview = ({ jobId }) => {
         status: err.response?.status
       });
       setError('Failed to send feedback. Please try again.');
+    }
+  };
+
+  const handleScheduleInterview = async () => {
+    if (!interviewDate || !interviewTime || !selectedApplication) return;
+    
+    try {
+      await axios.post(`http://localhost:5000/api/employer/applications/${selectedApplication.id}/interview`, {
+        date: interviewDate,
+        time: interviewTime,
+        notes: interviewNotes
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
+        }
+      });
+      
+      // Update application status to INTERVIEW
+      await handleStatusChange(selectedApplication.id, 'INTERVIEW');
+      
+      setInterviewDate('');
+      setInterviewTime('');
+      setInterviewNotes('');
+      setInterviewDialogOpen(false);
+      logDev('debug', 'Interview scheduled successfully', {
+        applicationId: selectedApplication.id,
+        date: interviewDate,
+        time: interviewTime
+      });
+    } catch (err) {
+      logError('Error scheduling interview', err, {
+        module: 'ApplicationsReview',
+        function: 'handleScheduleInterview',
+        applicationId: selectedApplication?.id,
+        status: err.response?.status
+      });
+      setError('Failed to schedule interview. Please try again.');
     }
   };
 
@@ -240,7 +292,7 @@ const ApplicationsReview = ({ jobId }) => {
               width: '80px',
               height: '4px',
               background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-              borderRadius: '2px',
+              borderRadius: '2px'
             }
           }}
         >
@@ -257,15 +309,15 @@ const ApplicationsReview = ({ jobId }) => {
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 600,
-                fontSize: '1rem',
+                fontSize: '1rem'
               },
               '& .Mui-selected': {
-                color: '#2C5530',
+                color: '#2C5530'
               },
               '& .MuiTabs-indicator': {
                 backgroundColor: '#FFD700',
-                height: 3,
-              },
+                height: 3
+              }
             }}
           >
             <Tab label="All Applications" />
@@ -326,7 +378,7 @@ const ApplicationsReview = ({ jobId }) => {
                           sx={{ 
                             backgroundColor: statusStyle.bg,
                             color: statusStyle.color,
-                            fontWeight: 600,
+                            fontWeight: 600
                           }} 
                         />
                       </TableCell>
@@ -360,6 +412,18 @@ const ApplicationsReview = ({ jobId }) => {
                               sx={{ color: '#2C5530' }}
                             >
                               <EmailIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Schedule Interview">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => {
+                                setSelectedApplication(application);
+                                setInterviewDialogOpen(true);
+                              }}
+                              sx={{ color: '#2C5530' }}
+                            >
+                              <CalendarTodayIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </Box>
@@ -403,7 +467,40 @@ const ApplicationsReview = ({ jobId }) => {
                       {selectedApplication.user?.email}
                     </Typography>
                   </Grid>
-                  {/* Add more application details */}
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">Current Status</Typography>
+                    <Chip 
+                      label={selectedApplication.status.replace('_', ' ')} 
+                      sx={{ 
+                        backgroundColor: getStatusColor(selectedApplication.status).bg,
+                        color: getStatusColor(selectedApplication.status).color,
+                        fontWeight: 600,
+                        mb: 2
+                      }} 
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">Applied On</Typography>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {formatDate(selectedApplication.createdAt)}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="textSecondary">Update Status</Typography>
+                    <FormControl fullWidth sx={{ mt: 1 }}>
+                      <Select
+                        value={selectedApplication.status}
+                        onChange={(e) => handleStatusChange(selectedApplication.id, e.target.value)}
+                        disabled={statusUpdateLoading}
+                      >
+                        {statusOptions.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
                 </Grid>
               </DialogContent>
               <DialogActions sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
@@ -414,6 +511,22 @@ const ApplicationsReview = ({ jobId }) => {
                   Close
                 </Button>
                 <Button 
+                  variant="outlined"
+                  onClick={() => {
+                    setInterviewDialogOpen(true);
+                  }}
+                  startIcon={<CalendarTodayIcon />}
+                  sx={{
+                    color: '#2C5530',
+                    borderColor: '#2C5530',
+                    '&:hover': {
+                      backgroundColor: 'rgba(44, 85, 48, 0.1)'
+                    }
+                  }}
+                >
+                  Schedule Interview
+                </Button>
+                <Button 
                   variant="contained"
                   onClick={() => handleDownloadResume(selectedApplication.id, selectedApplication.resumeUrl)}
                   startIcon={<DownloadIcon />}
@@ -421,7 +534,7 @@ const ApplicationsReview = ({ jobId }) => {
                     background: 'linear-gradient(90deg, #2C5530, #FFD700)',
                     color: '#000',
                     '&:hover': {
-                      background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                      background: 'linear-gradient(90deg, #FFD700, #2C5530)'
                     }
                   }}
                 >
@@ -481,11 +594,86 @@ const ApplicationsReview = ({ jobId }) => {
                 background: 'linear-gradient(90deg, #2C5530, #FFD700)',
                 color: '#000',
                 '&:hover': {
-                  background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                  background: 'linear-gradient(90deg, #FFD700, #2C5530)'
                 }
               }}
             >
               Send Message
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Interview Scheduling Dialog */}
+        <Dialog
+          open={interviewDialogOpen}
+          onClose={() => setInterviewDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ 
+            fontWeight: 700, 
+            color: '#2C5530',
+            borderBottom: '1px solid #e0e0e0',
+            pb: 2
+          }}>
+            Schedule Interview
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            {selectedApplication && (
+              <>
+                <Typography variant="subtitle1" gutterBottom>
+                  Schedule an interview with {selectedApplication.user?.firstName} {selectedApplication.user?.lastName}
+                </Typography>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Interview Date"
+                  value={interviewDate}
+                  onChange={(e) => setInterviewDate(e.target.value)}
+                  sx={{ mt: 2, mb: 2 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  fullWidth
+                  type="time"
+                  label="Interview Time"
+                  value={interviewTime}
+                  onChange={(e) => setInterviewTime(e.target.value)}
+                  sx={{ mb: 2 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  label="Interview Notes (Optional)"
+                  value={interviewNotes}
+                  onChange={(e) => setInterviewNotes(e.target.value)}
+                  placeholder="Add any notes about the interview..."
+                />
+              </>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
+            <Button 
+              onClick={() => setInterviewDialogOpen(false)}
+              sx={{ color: '#2C5530' }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained"
+              onClick={handleScheduleInterview}
+              disabled={!interviewDate || !interviewTime}
+              sx={{
+                background: 'linear-gradient(90deg, #2C5530, #FFD700)',
+                color: '#000',
+                '&:hover': {
+                  background: 'linear-gradient(90deg, #FFD700, #2C5530)'
+                }
+              }}
+            >
+              Schedule Interview
             </Button>
           </DialogActions>
         </Dialog>

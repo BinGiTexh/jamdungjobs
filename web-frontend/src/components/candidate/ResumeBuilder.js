@@ -15,7 +15,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
+
   styled,
   Avatar
 } from '@mui/material';
@@ -52,8 +52,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
     bottom: 0,
     background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%)',
     opacity: 0.3,
-    zIndex: 0,
-  },
+    zIndex: 0
+  }
 }));
 
 // Jamaican educational institutions
@@ -358,12 +358,12 @@ const ResumeBuilder = ({ onSave, onExport }) => {
         color: 'white',
         '& fieldset': { borderColor: 'rgba(255, 215, 0, 0.3)' },
         '&:hover fieldset': { borderColor: 'rgba(255, 215, 0, 0.5)' },
-        '&.Mui-focused fieldset': { borderColor: '#FFD700' },
+        '&.Mui-focused fieldset': { borderColor: '#FFD700' }
       },
       '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
       '& .MuiInputLabel-root.Mui-focused': { color: '#FFD700' },
       '& .MuiFormHelperText-root': { color: 'rgba(255, 255, 255, 0.5)' },
-      mb: 2,
+      mb: 2
     };
 
     switch (step) {
@@ -392,7 +392,7 @@ const ResumeBuilder = ({ onSave, onExport }) => {
                     backgroundColor: 'rgba(0, 0, 0, 0.2)',
                     mb: 2,
                     mx: 'auto',
-                    position: 'relative',
+                    position: 'relative'
                   }}
                 >
                   {resumeData.personalInfo.photoUrl ? (
@@ -956,14 +956,14 @@ const ResumeBuilder = ({ onSave, onExport }) => {
             <StepLabel
               sx={{
                 '& .MuiStepLabel-label': {
-                  color: activeStep === steps.indexOf(label) ? '#FFD700' : 'rgba(255, 255, 255, 0.7)',
+                  color: activeStep === steps.indexOf(label) ? '#FFD700' : 'rgba(255, 255, 255, 0.7)'
                 },
                 '& .MuiStepIcon-root': {
-                  color: activeStep === steps.indexOf(label) ? '#2C5530' : 'rgba(255, 255, 255, 0.3)',
+                  color: activeStep === steps.indexOf(label) ? '#2C5530' : 'rgba(255, 255, 255, 0.3)'
                 },
                 '& .MuiStepIcon-root.Mui-completed': {
-                  color: '#2C5530',
-                },
+                  color: '#2C5530'
+                }
               }}
             >
               {label}
@@ -1002,7 +1002,7 @@ const ResumeBuilder = ({ onSave, onExport }) => {
                   color: '#FFFFFF',
                   mr: 2,
                   '&:hover': {
-                    backgroundColor: '#1E3D23',
+                    backgroundColor: '#1E3D23'
                   }
                 }}
               >
@@ -1015,7 +1015,7 @@ const ResumeBuilder = ({ onSave, onExport }) => {
                   backgroundColor: '#FFD700',
                   color: '#000000',
                   '&:hover': {
-                    backgroundColor: '#E6C200',
+                    backgroundColor: '#E6C200'
                   }
                 }}
               >
@@ -1031,7 +1031,7 @@ const ResumeBuilder = ({ onSave, onExport }) => {
                 backgroundColor: '#2C5530',
                 color: '#FFFFFF',
                 '&:hover': {
-                  backgroundColor: '#1E3D23',
+                  backgroundColor: '#1E3D23'
                 }
               }}
             >

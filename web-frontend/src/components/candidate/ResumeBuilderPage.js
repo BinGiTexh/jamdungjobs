@@ -14,13 +14,13 @@ import {
   styled,
   CircularProgress
 } from '@mui/material';
-import { useAuth } from '../../context/AuthContext';
-import ResumeBuilder from './ResumeBuilder';
-import ResumePreview from './ResumePreview';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import GetAppIcon from '@mui/icons-material/GetApp';
 import SaveIcon from '@mui/icons-material/Save';
+import { useAuth } from '../../context/AuthContext';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import ResumePreview from './ResumePreview';
+import ResumeBuilder from './ResumeBuilder';
 
 // Styled components for Jamaican theme
 const StyledContainer = styled(Container)(({ theme }) => ({
@@ -28,8 +28,8 @@ const StyledContainer = styled(Container)(({ theme }) => ({
   zIndex: 2,
   padding: theme.spacing(4),
   [theme.breakpoints.up('md')]: {
-    maxWidth: '1300px',
-  },
+    maxWidth: '1300px'
+  }
 }));
 
 const ResumeBuilderPage = () => {
@@ -237,7 +237,7 @@ const ResumeBuilderPage = () => {
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: '#0A0A0A',
-        position: 'relative',
+        position: 'relative'
       }}
     >
       {/* Background image with Jamaican styling */}
@@ -252,7 +252,7 @@ const ResumeBuilderPage = () => {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           opacity: 0.3,
-          zIndex: 1,
+          zIndex: 1
         }}
       />
       
@@ -363,7 +363,7 @@ const ResumeBuilderPage = () => {
                     sx={{ 
                       transform: 'scale(0.8)',
                       transformOrigin: 'top center',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
                     }}
                   >
                     <ResumePreview resumeData={resumeData} />
@@ -383,7 +383,7 @@ const ResumeBuilderPage = () => {
                     backgroundColor: '#2C5530',
                     color: '#FFFFFF',
                     '&:hover': {
-                      backgroundColor: '#1E3D23',
+                      backgroundColor: '#1E3D23'
                     }
                   }}
                 >
@@ -405,7 +405,7 @@ const ResumeBuilderPage = () => {
           sx: {
             backgroundColor: '#0A0A0A',
             backgroundImage: 'linear-gradient(135deg, rgba(44, 85, 48, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%)',
-            color: '#FFFFFF',
+            color: '#FFFFFF'
           }
         }}
       >
@@ -418,7 +418,7 @@ const ResumeBuilderPage = () => {
             sx={{ 
               p: 2,
               backgroundColor: '#FFFFFF',
-              borderRadius: 1,
+              borderRadius: 1
             }}
           >
             <ResumePreview resumeData={resumeData} />
@@ -443,7 +443,7 @@ const ResumeBuilderPage = () => {
             sx={{
               color: 'rgba(255, 255, 255, 0.7)',
               '&:hover': {
-                color: '#FFFFFF',
+                color: '#FFFFFF'
               }
             }}
           >

@@ -19,7 +19,7 @@ const PreviewPaper = styled(Paper)(({ theme }) => ({
   color: '#000000',
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
   minHeight: '800px',
-  position: 'relative',
+  position: 'relative'
 }));
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
@@ -27,7 +27,7 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
   fontWeight: 600,
   marginBottom: theme.spacing(1),
   borderBottom: '2px solid #FFD700',
-  paddingBottom: theme.spacing(0.5),
+  paddingBottom: theme.spacing(0.5)
 }));
 
 const ResumePreview = ({ resumeData }) => {
@@ -201,7 +201,7 @@ const ResumePreview = ({ resumeData }) => {
                 sx={{
                   backgroundColor: 'rgba(44, 85, 48, 0.1)',
                   color: '#2C5530',
-                  border: '1px solid rgba(44, 85, 48, 0.3)',
+                  border: '1px solid rgba(44, 85, 48, 0.3)'
                 }}
               />
             ))}

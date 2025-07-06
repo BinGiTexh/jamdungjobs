@@ -9,7 +9,6 @@ import {
   Box,
   TextField,
   CircularProgress,
-  Divider,
   Alert,
   Grid,
   FormControl,
@@ -23,7 +22,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import InfoIcon from '@mui/icons-material/Info';
 import api from '../../utils/api';
-import { buildApiUrl } from '../../config';
+import { _buildApiUrl } from '../../config';
 import { useAuth } from '../../context/AuthContext';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
@@ -115,7 +114,7 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
       setApplicationData(prev => ({
         ...prev,
         phoneNumber: mergedProfile.phoneNumber,
-        resumeId: resumes.length > 0 ? resumes[0].id : '',
+        resumeId: resumes.length > 0 ? resumes[0].id : ''
       }));
 
       // Calculate profile completeness based on merged profile
@@ -210,6 +209,12 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
     }));
 
     try {
+      // Check if job is available before proceeding
+      if (!job?.id) {
+        setError('Job information is not available. Please try again.');
+        return;
+      }
+
       // Create application data
       const payload = {
         jobId: job.id,
@@ -335,7 +340,7 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
                 background: 'linear-gradient(90deg, #2C5530, #FFD700)',
                 color: '#000',
                 '&:hover': {
-                  background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+                  background: 'linear-gradient(90deg, #FFD700, #2C5530)'
                 }
               }}
             >
@@ -375,8 +380,8 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
                 background: 'linear-gradient(90deg, #2C5530, #FFD700)',
                 color: '#000',
                 '&:hover': {
-                  background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                },
+                  background: 'linear-gradient(90deg, #FFD700, #2C5530)'
+                }
               }}
             >
               Close
@@ -404,9 +409,9 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
         borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
         background: 'linear-gradient(90deg, rgba(44, 85, 48, 0.1), rgba(255, 215, 0, 0.1))'
       }}>
-        <Typography variant="h6">Quick Apply: {job.title}</Typography>
+        <Typography variant="h6">Quick Apply: {job?.title || 'Loading...'}</Typography>
         <Typography variant="subtitle2" color="text.secondary">
-          {job.company?.name} • {job.location}
+          {job?.company?.name || 'Company'} • {job?.location || 'Location'}
         </Typography>
       </DialogTitle>
 
@@ -578,12 +583,12 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
             });
             handleSubmit();
           }}
-          disabled={submitting || !applicationData.resumeId || profileCompleteness.percentage < 50}
+          disabled={submitting || !applicationData.resumeId || profileCompleteness.percentage < 50 || !job?.id}
           sx={{
             background: 'linear-gradient(90deg, #2C5530, #FFD700)',
             color: '#000',
             '&:hover': {
-              background: 'linear-gradient(90deg, #FFD700, #2C5530)',
+              background: 'linear-gradient(90deg, #FFD700, #2C5530)'
             }
           }}
         >

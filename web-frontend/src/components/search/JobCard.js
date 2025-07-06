@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { useJobAnalytics } from '../../hooks/usePlausible';
 
 /**
  * Job Card Component
@@ -40,6 +41,7 @@ const JobCard = ({
 }) => {
 
   const navigate = useNavigate();
+  const { trackJobView, trackCompanyProfileView } = useJobAnalytics();
 
   const [isHovered, setIsHovered] = useState(false);
 
@@ -103,6 +105,9 @@ const JobCard = ({
 
   // Handle job click
   const handleJobClick = () => {
+    // Track job view
+    trackJobView(job.id, job.title, job.location);
+    
     if (onSelect) {
       onSelect(job);
     } else {
@@ -113,6 +118,15 @@ const JobCard = ({
   // Handle company click
   const handleCompanyClick = (e) => {
     e.stopPropagation();
+    
+    // Track company profile view
+    if (job.company?.id || job.companyId) {
+      trackCompanyProfileView(
+        job.company?.id || job.companyId, 
+        job.company?.name || 'Unknown Company'
+      );
+    }
+    
     navigate(`/companies/${job.company?.id || job.companyId}`);
   };
 

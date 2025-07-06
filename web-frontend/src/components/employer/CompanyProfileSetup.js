@@ -18,9 +18,9 @@ import {
   useMediaQuery,
   MenuItem
 } from '@mui/material';
-import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
 import api from '../../utils/axiosConfig';
 import { logError } from '../../utils/loggingUtils';
 import CompanyDescriptionBuilder from './CompanyDescriptionBuilder';
@@ -30,18 +30,18 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     color: '#FFFFFF',
     '& fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.3)',
+      borderColor: 'rgba(255, 215, 0, 0.3)'
     },
     '&:hover fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.5)',
+      borderColor: 'rgba(255, 215, 0, 0.5)'
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#FFD700',
-    },
+      borderColor: '#FFD700'
+    }
   },
   '& .MuiInputLabel-root': {
-    color: 'rgba(255, 215, 0, 0.7)',
-  },
+    color: 'rgba(255, 215, 0, 0.7)'
+  }
 }));
 
 const ImagePreview = styled(Box)(({ theme }) => ({
@@ -58,9 +58,9 @@ const ImagePreview = styled(Box)(({ theme }) => ({
   '&:hover': {
     border: '2px dashed #FFD700',
     '& .MuiBox-root': {
-      opacity: 1,
-    },
-  },
+      opacity: 1
+    }
+  }
 }));
 
 const UploadOverlay = styled(Box)(({ theme }) => ({
@@ -121,7 +121,7 @@ const CompanyProfileSetup = ({
   onSave,
   loading: externalLoading = false,
   error: externalError = null,
-  success: externalSuccess = false,
+  success: externalSuccess = false
 }) => {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
@@ -243,7 +243,7 @@ const CompanyProfileSetup = ({
 
       const locationString = locationParts.join(', ');
       
-      console.log('Setting location:', {
+      console.warn('Setting location:', {
         newLocation,
         locationString
       });
@@ -409,12 +409,12 @@ const CompanyProfileSetup = ({
       const method = initialData ? 'put' : 'post';
       const response = await api[method]('/api/employer/profile', formDataToSend, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
       if (response.data) {
-        console.log(response.data)
+        console.warn(response.data);
         // Extract company object from API response (supports both nested and flat)
         const company = response.data.data?.company || response.data.company || response.data;
         // Map the response data back to our form structure
@@ -514,7 +514,7 @@ const CompanyProfileSetup = ({
           backgroundColor: 'rgba(20, 20, 20, 0.95)',
           backgroundImage: 'none',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          border: '1px solid rgba(255, 215, 0, 0.2)',
+          border: '1px solid rgba(255, 215, 0, 0.2)'
         }
       }}
     >
@@ -565,7 +565,7 @@ const CompanyProfileSetup = ({
                       sx={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'contain',
+                        objectFit: 'contain'
                       }}
                     />
                     <UploadOverlay>
@@ -632,7 +632,7 @@ const CompanyProfileSetup = ({
                 error={!!validationErrors.companyName}
                 helperText={validationErrors.companyName}
                 InputLabelProps={{
-                  shrink: true,
+                  shrink: true
                 }}
               />
             </Grid>
@@ -649,7 +649,7 @@ const CompanyProfileSetup = ({
                 error={!!validationErrors.industry}
                 helperText={validationErrors.industry}
                 InputLabelProps={{
-                  shrink: true,
+                  shrink: true
                 }}
               >
                 {INDUSTRY_OPTIONS.map((option) => (
@@ -671,7 +671,7 @@ const CompanyProfileSetup = ({
                 error={!!validationErrors.website}
                 helperText={validationErrors.website}
                 InputLabelProps={{
-                  shrink: true,
+                  shrink: true
                 }}
               />
             </Grid>

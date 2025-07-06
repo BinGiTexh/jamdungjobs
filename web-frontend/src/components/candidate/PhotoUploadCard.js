@@ -34,8 +34,8 @@ const PhotoUploadCard = ({ userProfile, onProfileUpdate }) => {
 
       const response = await api.post('/api/jobseeker/profile/photo', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
       onProfileUpdate({
@@ -61,7 +61,7 @@ const PhotoUploadCard = ({ userProfile, onProfileUpdate }) => {
               width: 120,
               height: 120,
               border: '2px solid #FFD700',
-              backgroundColor: 'rgba(255, 215, 0, 0.1)',
+              backgroundColor: 'rgba(255, 215, 0, 0.1)'
             }}
           />
           <label htmlFor="photo-upload">
@@ -81,8 +81,8 @@ const PhotoUploadCard = ({ userProfile, onProfileUpdate }) => {
                 backgroundColor: '#FFD700',
                 color: '#1A1A1A',
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 215, 0, 0.8)',
-                },
+                  backgroundColor: 'rgba(255, 215, 0, 0.8)'
+                }
               }}
               disabled={uploading}
             >

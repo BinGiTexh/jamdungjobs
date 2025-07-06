@@ -13,9 +13,9 @@ import {
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import { useNavigate } from 'react-router-dom';
 import api from '../../utils/axiosConfig';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
-import { useNavigate } from 'react-router-dom';
 
 const NotificationsMenu = () => {
   const [notifications, setNotifications] = useState([]);
@@ -217,7 +217,7 @@ const NotificationsMenu = () => {
             width: '350px',
             backgroundColor: '#1A1A1A',
             border: '1px solid rgba(255, 215, 0, 0.3)',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
           }
         }}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}

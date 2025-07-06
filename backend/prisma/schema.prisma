@@ -119,6 +119,12 @@ model JobApplication {
   updatedAt      DateTime          @updatedAt
   userId         String
   status         ApplicationStatus @default(PENDING)
+  // Source tracking for analytics
+  applicationSource ApplicationSource? @map("application_source")
+  sourceDetails     String?             @map("source_details") // For "Other" explanations
+  utmSource        String?        @map("utm_source")     // Automatic tracking
+  utmMedium        String?        @map("utm_medium")
+  utmCampaign      String?        @map("utm_campaign")
   job            Job               @relation(fields: [jobId], references: [id])
   user           User              @relation(fields: [userId], references: [id])
   notifications  Notification[]
@@ -310,6 +316,18 @@ enum Currency {
 enum SubscriptionPlan {
   BASIC
   PREMIUM
+}
+
+enum ApplicationSource {
+  GOOGLE_SEARCH
+  FACEBOOK_SOCIAL
+  LINKEDIN
+  JOB_BOARD
+  COMPANY_WEBSITE
+  FRIEND_REFERRAL
+  EMAIL_NEWSLETTER
+  DIRECT_TRAFFIC
+  OTHER
 }
 
 // Payment Processing Models

@@ -3,7 +3,7 @@ import { logDev, logError, sanitizeForLogging } from './loggingUtils';
 
 // Create an axios instance with default configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000'
 });
 
 // Constants for localStorage keys (must match the ones in AuthContext.js)

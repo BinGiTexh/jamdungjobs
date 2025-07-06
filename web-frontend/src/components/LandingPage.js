@@ -8,7 +8,7 @@ import {
   Card,
   CardContent,
   useTheme,
-  useMediaQuery,
+  useMediaQuery
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import WorkIcon from '@mui/icons-material/Work';
@@ -29,8 +29,8 @@ const HeroSection = styled(Box)(({ theme }) => ({
     right: 0,
     bottom: 0,
     background: 'url(/images/pattern.svg) repeat',
-    opacity: 0.1,
-  },
+    opacity: 0.1
+  }
 }));
 
 const FeatureCard = styled(Card)(({ theme }) => ({
@@ -44,8 +44,8 @@ const FeatureCard = styled(Card)(({ theme }) => ({
   '& .MuiSvgIcon-root': {
     fontSize: 48,
     color: theme.palette.primary.main,
-    marginBottom: theme.spacing(2),
-  },
+    marginBottom: theme.spacing(2)
+  }
 }));
 
 const LandingPage = () => {

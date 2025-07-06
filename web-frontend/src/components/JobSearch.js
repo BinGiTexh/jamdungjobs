@@ -23,19 +23,24 @@ import {
   DialogContent,
   Slide
 } from '@mui/material';
+import {
+  FlashOn as FlashOnIcon,
+  CheckCircle as CheckCircleIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import FlashOnIcon from '@mui/icons-material/FlashOn';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import api from '../utils/api';
+import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
 import { JobTitleInput } from './common/JobTitleInput';
 import { JamaicaLocationAutocomplete } from './common/JamaicaLocationAutocomplete';
 import { SkillsAutocomplete } from './common/SkillsAutocomplete';
 import { SalaryRangeInput } from './common/SalaryRangeInput';
 import { SalaryDisplay } from './common/SalaryDisplay';
 import QuickApplyModal from './jobseeker/QuickApplyModal';
-import api from '../utils/api';
-import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
 import Seo from './common/Seo';
+import EmailCaptureModal from './search/EmailCaptureModal';
+import NoResultsWithAlerts from './search/NoResultsWithAlerts';
+import useEmailCapture from '../hooks/useEmailCapture';
 
 // Styled components for Jamaican theme
 const StyledContainer = styled(Container)(({ theme }) => ({
@@ -43,8 +48,8 @@ const StyledContainer = styled(Container)(({ theme }) => ({
   zIndex: 2,
   padding: theme.spacing(4),
   [theme.breakpoints.up('md')]: {
-    maxWidth: '1100px',
-  },
+    maxWidth: '1100px'
+  }
 }));
 
 const StyledCard = styled(Card)(({ theme }) => ({
@@ -63,8 +68,8 @@ const StyledCard = styled(Card)(({ theme }) => ({
     bottom: 0,
     background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%)',
     opacity: 0.2,
-    zIndex: 0,
-  },
+    zIndex: 0
+  }
 }));
 
 // Reusable form field styling
@@ -73,30 +78,41 @@ const formFieldStyle = {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     '& fieldset': {
       borderColor: 'rgba(255, 215, 0, 0.5)',
-      borderWidth: '2px',
+      borderWidth: '2px'
     },
     '&:hover fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.8)',
+      borderColor: 'rgba(255, 215, 0, 0.8)'
     },
     '&.Mui-focused fieldset': {
       borderColor: '#FFD700',
-      borderWidth: '2px',
-    },
+      borderWidth: '2px'
+    }
   },
   '& .MuiInputLabel-root': {
     color: '#FFD700',
-    fontWeight: 500,
+    fontWeight: 500
   },
   '& .MuiInputBase-input': {
-    color: 'white',
+    color: 'white'
   },
-  mb: 1,
+  mb: 1
 };
 
 const JobSearch = () => {
   const { isAuthenticated, currentUser } = useAuth();
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
+  
+  // Email capture integration
+  const {
+    showModal,
+    trigger,
+    searchContext,
+    triggerOnEmptySearch,
+    trackSearch,
+    closeModal,
+    handleEmailCaptureSuccess
+  } = useEmailCapture();
   const [filters, setFilters] = useState({
     query: '',
     location: null, // Changed to null to store location object
@@ -127,6 +143,26 @@ const JobSearch = () => {
   const [applicationDialogOpen, setApplicationDialogOpen] = useState(false);
 
   const jobTypes = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY'];
+  
+  // Trigger email capture on empty search results
+  useEffect(() => {
+    if (!searchState.loading && jobs.length === 0 && filters.query.trim()) {
+      const searchData = {
+        query: filters.query,
+        location: filters.location?.name || '',
+        jobType: filters.jobType,
+        skills: filters.skills,
+        salaryMin: filters.salaryMin
+      };
+      
+      // Trigger after a short delay to let user see the empty state first
+      const timer = setTimeout(() => {
+        triggerOnEmptySearch(searchData);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [jobs.length, searchState.loading, filters.query, filters.location, filters.jobType, filters.skills, filters.salaryMin, triggerOnEmptySearch]);
 
   const handleFilterChange = (field, value) => {
     // Add special handling for location to prevent JSON issues
@@ -445,7 +481,16 @@ const JobSearch = () => {
       return;
     }
 
-    let searchStartTime = Date.now();
+    // Track search for email capture
+    trackSearch({
+      query: filters.query,
+      location: filters.location?.name || '',
+      jobType: filters.jobType,
+      skills: filters.skills,
+      salaryMin: filters.salaryMin
+    });
+
+    const searchStartTime = Date.now();
     const MIN_LOADING_TIME = 1000; // Minimum time to show loading state (ms)
     let searchPromise;
     
@@ -598,7 +643,7 @@ const JobSearch = () => {
           flexDirection: 'column',
           backgroundColor: '#0A0A0A',
           position: 'relative',
-          overflow: 'hidden',
+          overflow: 'hidden'
         }}
       >
         {/* Background image with Jamaican styling */}
@@ -613,7 +658,7 @@ const JobSearch = () => {
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             opacity: 0.3,
-            zIndex: 1,
+            zIndex: 1
           }}
         />
         
@@ -696,17 +741,17 @@ const JobSearch = () => {
                         backgroundColor: 'rgba(255, 255, 255, 0.08)',
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: 'rgba(255, 215, 0, 0.5)',
-                          borderWidth: '2px',
+                          borderWidth: '2px'
                         },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(255, 215, 0, 0.8)',
+                          borderColor: 'rgba(255, 215, 0, 0.8)'
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#FFD700',
-                          borderWidth: '2px',
+                          borderWidth: '2px'
                         },
                         '& .MuiSelect-icon': {
-                          color: '#FFD700',
+                          color: '#FFD700'
                         }
                       }}
                     >
@@ -762,7 +807,7 @@ const JobSearch = () => {
                       transform: 'translateY(-2px)',
                       boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
                     },
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.3s ease'
                   }}
                 >
                   {searchState.loading ? (
@@ -788,12 +833,74 @@ const JobSearch = () => {
             )}
           </Box>
           
-          {/* Error Message */}
+          {/* Enhanced Error Message with Suggestions */}
           {searchState.error && (
-            <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(244, 67, 54, 0.1)', borderRadius: 1 }}>
-              <Typography color="error">
-                {searchState.error}
+            <Box sx={{ 
+              mb: 2, 
+              p: 3, 
+              bgcolor: 'rgba(255, 215, 0, 0.1)', 
+              borderRadius: 2,
+              border: '1px solid rgba(255, 215, 0, 0.3)'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ color: '#FFD700', fontWeight: 'bold' }}>
+                  🔍 Let's find you the perfect job!
+                </Typography>
+              </Box>
+              
+              <Typography variant="body1" sx={{ mb: 2, color: 'text.primary' }}>
+                We couldn't find jobs matching your exact search. Here are some suggestions:
               </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  • Try broader search terms (e.g., "Developer" instead of "Software Developer")
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  • Check different locations or try "Remote" jobs
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  • Browse all available positions below
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setFilters(prev => ({ ...prev, query: 'Developer' }));
+                    setTimeout(handleSearch, 100);
+                  }}
+                  sx={{
+                    bgcolor: '#009639',
+                    color: 'white',
+                    '&:hover': { bgcolor: '#007a2e' }
+                  }}
+                >
+                  Search "Developer"
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setFilters(prev => ({ ...prev, query: '', location: null }));
+                    setTimeout(handleSearch, 100);
+                  }}
+                  sx={{
+                    borderColor: '#FFD700',
+                    color: '#FFD700',
+                    '&:hover': { borderColor: '#009639', color: '#009639' }
+                  }}
+                >
+                  View All Jobs
+                </Button>
+                <Button
+                  variant="text"
+                  onClick={() => setSearchState(prev => ({ ...prev, error: null }))}
+                  sx={{ color: 'text.secondary' }}
+                >
+                  Dismiss
+                </Button>
+              </Box>
             </Box>
           )}
 
@@ -886,7 +993,7 @@ const JobSearch = () => {
                                   backgroundColor: isMatch ? 'rgba(44, 85, 48, 0.3)' : 'rgba(255, 255, 255, 0.1)',
                                   color: isMatch ? '#FFD700' : 'rgba(255, 255, 255, 0.7)',
                                   fontWeight: isMatch ? 'bold' : undefined,
-                                  border: isMatch ? '1px solid rgba(255, 215, 0, 0.3)' : undefined,
+                                  border: isMatch ? '1px solid rgba(255, 215, 0, 0.3)' : undefined
                                 }}
                               />
                             );
@@ -938,7 +1045,7 @@ const JobSearch = () => {
                                       borderColor: '#2C5530',
                                       color: '#2C5530',
                                       backgroundColor: 'rgba(255, 215, 0, 0.1)'
-                                    },
+                                    }
                                   }}
                                 >
                                   Quick Apply
@@ -953,22 +1060,24 @@ const JobSearch = () => {
                 </StyledCard>
               </Grid>
             )) : (
-              // No results state
+              // No results state - trigger email capture
               <Grid item xs={12}>
-                <Box sx={{ 
-                  textAlign: 'center', 
-                  py: 5, 
-                  backgroundColor: 'rgba(20, 20, 20, 0.85)',
-                  border: '1px solid rgba(255, 215, 0, 0.3)',
-                  borderRadius: 2
-                }}>
-                  <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
-                    No jobs found matching your criteria
-                  </Typography>
-                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    Try adjusting your search filters or using different keywords
-                  </Typography>
-                </Box>
+                <NoResultsWithAlerts
+                  searchQuery={filters.query}
+                  location={filters.location?.name || ''}
+                  onNewSearch={(newFilters) => {
+                    setFilters(prev => ({
+                      ...prev,
+                      query: newFilters.query || '',
+                      location: newFilters.location ? { name: newFilters.location } : null
+                    }));
+                    // Trigger search with new filters
+                    setTimeout(() => {
+                      handleSearch();
+                    }, 100);
+                  }}
+                  showEmailCapture={!isAuthenticated}
+                />
               </Grid>
             )}
           </Grid>
@@ -1044,6 +1153,15 @@ const JobSearch = () => {
             You have successfully applied for this job.
           </DialogContent>
         </Dialog>
+        
+        {/* Email Capture Modal */}
+        <EmailCaptureModal
+          open={showModal}
+          onClose={closeModal}
+          trigger={trigger}
+          searchContext={searchContext}
+          onSuccess={handleEmailCaptureSuccess}
+        />
         
         {/* Snackbar for notifications */}
         <Snackbar 

@@ -58,14 +58,16 @@ async function runTests(env = 'staging') {
     // Test 2: Public Job Listings
     const jobs = await apiRequest('GET', '/jobs');
     const jobsPassed = jobs?.status === 200;
+    const jobCount = jobs?.data?.jobs?.length || 0;
     logResult('2. Public Job Listings', jobsPassed, 
-      jobsPassed ? `(${jobs?.data?.length || 0} jobs found)` : `(Status: ${jobs?.status})`);
+      jobsPassed ? `(${jobCount} jobs found)` : `(Status: ${jobs?.status})`);
 
     // Test 3: Job Search
     const search = await apiRequest('GET', '/jobs?q=developer');
     const searchPassed = search?.status === 200;
+    const searchCount = search?.data?.jobs?.length || 0;
     logResult('3. Job Search', searchPassed, 
-      searchPassed ? `(${search?.data?.length || 0} results)` : `(Status: ${search?.status})`);
+      searchPassed ? `(${searchCount} results)` : `(Status: ${search?.status})`);
 
     // Test 4: Authentication Flow
     try {
@@ -93,17 +95,7 @@ async function runTests(env = 'staging') {
       logResult('4. Authentication Flow', false, `(Error: ${e.message})`);
     }
     
-    // Test 5: Company Listings (if available)
-    try {
-      const companies = await apiRequest('GET', '/companies');
-      const companiesPassed = companies?.status === 200;
-      logResult('5. Company Listings', companiesPassed, 
-        companiesPassed ? `(${companies?.data?.length || 0} companies)` : '(Not available)');
-    } catch (e) {
-      logResult('5. Company Listings', false, '(Endpoint not available)');
-    }
-
-    // Test 6: Employer Flow
+    // Test 5: Employer Flow
     try {
       // 6.1 Login with test employer
       const employerLogin = await apiRequest('POST', '/auth/login', {
@@ -124,25 +116,31 @@ async function runTests(env = 'staging') {
         logResult('6.2 Get Employer Profile', employerProfilePassed,
           employerProfilePassed ? '(Success)' : `(Status: ${employerProfile?.status})`);
         
-        // 6.3 Get employer's job postings
+        // 5.3 Get employer's job postings
         if (employerProfilePassed) {
           const employerJobs = await apiRequest('GET', '/employer/jobs', null, token);
           const jobsPassed = employerJobs?.status === 200;
-          logResult('6.3 Get Employer Jobs', jobsPassed,
+          logResult('5.3 Get Employer Jobs', jobsPassed,
             jobsPassed ? `(${employerJobs?.data?.length || 0} jobs)` : `(Status: ${employerJobs?.status})`);
         }
+        
+        // Test 6: Company Listings (after login)
+        const companies = await apiRequest('GET', '/companies', null, token);
+        const companiesPassed = companies?.status === 200;
+        logResult('6. Company Listings', companiesPassed, 
+          companiesPassed ? `(${companies?.data?.length || 0} companies)` : `(Status: ${companies?.status})`);
       }
       
     } catch (e) {
-      logResult('6. Employer Flow', false, `(Error: ${e.message})`);
+      logResult('5. Employer Flow', false, `(Error: ${e.message})`);
     }
     
     // Test 7: Job Application Flow (if jobs exist)
     try {
       // Get a job to apply to
       const jobsResponse = await apiRequest('GET', '/jobs?limit=1');
-      if (jobsResponse?.status === 200 && jobsResponse.data?.length > 0) {
-        const job = jobsResponse.data[0];
+      if (jobsResponse?.status === 200 && jobsResponse.data?.jobs?.length > 0) {
+        const job = jobsResponse.data.jobs[0];
         
         // Login as job seeker
         const login = await apiRequest('POST', '/auth/login', {
@@ -159,12 +157,14 @@ async function runTests(env = 'staging') {
             resumeUrl: 'https://example.com/resume.pdf'
           }, token);
           
-          const applicationPassed = application?.status === 201 || application?.status === 200;
-          logResult('7.1 Job Application', applicationPassed,
-            applicationPassed ? '(Success)' : `(Status: ${application?.status})`);
+          // 201 = Created, 200 = OK, 409 = Already applied
+          const applicationPassed = [200, 201, 409].includes(application?.status);
+          const statusMessage = application?.status === 409 ? 'Already Applied' : 
+                              (applicationPassed ? 'Success' : `Status: ${application?.status}`);
+          logResult('7.1 Job Application', applicationPassed, `(${statusMessage})`);
         }
       } else {
-        logResult('7. Job Application Flow', false, '(No jobs available to apply to)');
+        logResult('7. Job Application Flow', false, `(No jobs available to apply to. Status: ${jobsResponse?.status}, Data: ${JSON.stringify(jobsResponse?.data)})`);
       }
     } catch (e) {
       logResult('7. Job Application Flow', false, `(Error: ${e.message})`);

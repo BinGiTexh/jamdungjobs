@@ -3,7 +3,7 @@ import {
   Box, 
   Typography, 
   Container, 
-  Grid, 
+ 
   Paper, 
   styled, 
   Divider,
@@ -25,11 +25,11 @@ const StyledContainer = styled(Container)(({ theme }) => ({
   zIndex: 2,
   padding: theme.spacing(4),
   [theme.breakpoints.up('md')]: {
-    maxWidth: '1100px',
+    maxWidth: '1100px'
   },
   minHeight: '100vh',
   display: 'flex',
-  flexDirection: 'column',
+  flexDirection: 'column'
 }));
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -47,7 +47,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
   },
   '&::before': {
     content: '""',
@@ -56,8 +56,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
     left: 0,
     width: '100%',
     height: '4px',
-    background: 'linear-gradient(90deg, #FFD700, #007E1B, #FFD700)',
-  },
+    background: 'linear-gradient(90deg, #FFD700, #007E1B, #FFD700)'
+  }
 }));
 
 // Background wrapper
@@ -80,12 +80,12 @@ const BackgroundOverlay = styled(Box)({
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   opacity: 0.3,
-  zIndex: 1,
+  zIndex: 1
 });
 
-const GoldText = styled(Typography)(({ theme }) => ({
+const GoldText = styled(Typography)(({ theme: _theme }) => ({
   color: '#FFD700',
-  fontWeight: 600,
+  fontWeight: 600
 }));
 
 const AboutUs = () => {

@@ -2,13 +2,25 @@ import axios from 'axios';
 import { logDev } from './loggingUtils';
 
 // Create axios instance with base URL
+let baseURL = process.env.REACT_APP_API_URL === '/' 
+  ? window.location.origin 
+  : (process.env.REACT_APP_API_URL || 'http://localhost:5000');
+
+// Ensure baseURL does NOT already contain the '/api' segment to avoid double-prefixing in requests
+if (baseURL.endsWith('/api')) {
+  baseURL = baseURL.replace(/\/api$/, '');
+}
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+  baseURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
   }
 });
+
+// Log the base URL for debugging
+console.warn('API Base URL:', baseURL);
 
 // Consistent token key used across the app (matches AuthContext and axiosConfig)
 const TOKEN_KEY = 'jamdung_auth_token';

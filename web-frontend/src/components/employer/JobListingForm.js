@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import JobDescriptionBuilder from './JobDescriptionBuilder';
 import {
   Box,
   TextField,
@@ -18,9 +17,10 @@ import {
   Alert,
   FormLabel
 } from '@mui/material';
-import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
+import JobDescriptionBuilder from './JobDescriptionBuilder';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -28,7 +28,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   border: '1px solid rgba(255, 215, 0, 0.3)',
   backdropFilter: 'blur(10px)',
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-  borderRadius: theme.shape.borderRadius,
+  borderRadius: theme.shape.borderRadius
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
@@ -36,21 +36,21 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     color: '#FFFFFF',
     '& fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.3)',
+      borderColor: 'rgba(255, 215, 0, 0.3)'
     },
     '&:hover fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.5)',
+      borderColor: 'rgba(255, 215, 0, 0.5)'
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#FFD700',
-    },
+      borderColor: '#FFD700'
+    }
   },
   '& .MuiInputLabel-root': {
     color: 'rgba(255, 215, 0, 0.7)',
     '& .MuiInputLabel-asterisk': {
-      color: '#FF5252',
-    },
-  },
+      color: '#FF5252'
+    }
+  }
 }));
 
 const StyledFormControl = styled(FormControl)(({ theme }) => ({
@@ -58,21 +58,21 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     color: '#FFFFFF',
     '& fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.3)',
+      borderColor: 'rgba(255, 215, 0, 0.3)'
     },
     '&:hover fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.5)',
+      borderColor: 'rgba(255, 215, 0, 0.5)'
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#FFD700',
-    },
+      borderColor: '#FFD700'
+    }
   },
   '& .MuiInputLabel-root': {
     color: 'rgba(255, 215, 0, 0.7)',
     '& .MuiInputLabel-asterisk': {
-      color: '#FF5252',
-    },
-  },
+      color: '#FF5252'
+    }
+  }
 }));
 
 const salaryOptions = Array.from({ length: 20 }, (_, i) => (i + 2) * 10000); // 20k to 200k
@@ -83,8 +83,8 @@ const StyledChip = styled(Chip)(({ theme }) => ({
   color: '#FFD700',
   border: '1px solid rgba(255, 215, 0, 0.3)',
   '&:hover': {
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-  },
+    backgroundColor: 'rgba(255, 215, 0, 0.2)'
+  }
 }));
 
 const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
@@ -248,14 +248,14 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
       description = '',
       responsibilities = [],
       requirements = [],
-      benefits = [],
+      benefits = []
     } = builderData;
     setFormData(prev => ({
       ...prev,
       description,
       responsibilities,
       requirements,
-      benefits,
+      benefits
     }));
     setBuilderOpen(false);
   };
@@ -312,7 +312,7 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
             description: formData.description,
             responsibilities: formData.responsibilities,
             requirements: formData.requirements,
-            benefits: formData.benefits,
+            benefits: formData.benefits
           }}
                 />
               )}

@@ -11,9 +11,46 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authenticateJWT, checkRole } = require('./middleware/auth');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: function (req, file, cb) {
+    // Accept PDF, DOC, DOCX files
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, DOC, and DOCX files are allowed'), false);
+    }
+  }
+});
 
 /**
  * GET /api/employer/applications
@@ -237,6 +274,150 @@ router.patch('/employer/applications/:id/status', authenticateJWT, checkRole('EM
   } catch (error) {
     console.error('Error updating application status:', error);
     res.status(500).json({ message: 'Error updating application status', error: error.message });
+  }
+});
+
+/**
+ * POST /api/applications
+ * Submit a new job application
+ */
+router.post('/applications', authenticateJWT, upload.single('resume'), async (req, res) => {
+  try {
+    const { 
+      jobId, 
+      coverLetter, 
+      phoneNumber, 
+      availability, 
+      salary, 
+      additionalInfo,
+      savedResumeId,
+      applicationSource,
+      sourceDetails
+    } = req.body;
+
+    // Validate required fields
+    if (!jobId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Job ID is required',
+        code: 'MISSING_JOB_ID'
+      });
+    }
+
+    if (!applicationSource) {
+      return res.status(400).json({
+        success: false,
+        message: 'Application source is required',
+        code: 'MISSING_APPLICATION_SOURCE'
+      });
+    }
+
+    if (applicationSource === 'OTHER' && !sourceDetails) {
+      return res.status(400).json({
+        success: false,
+        message: 'Source details are required when selecting "Other"',
+        code: 'MISSING_SOURCE_DETAILS'
+      });
+    }
+
+    // Ensure job exists
+    const job = await prisma.job.findUnique({ 
+      where: { id: jobId }, 
+      include: { company: true } 
+    });
+    
+    if (!job) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Job not found',
+        code: 'JOB_NOT_FOUND'
+      });
+    }
+
+    // Prevent duplicate application
+    const existing = await prisma.jobApplication.findFirst({
+      where: { jobId, userId: req.user.id }
+    });
+    
+    if (existing) {
+      return res.status(409).json({ 
+        success: false,
+        code: 'ALREADY_APPLIED',
+        message: 'You have already applied to this job'
+      });
+    }
+
+    // Handle resume upload or saved resume
+    let resumeUrl = null;
+    if (req.file) {
+      resumeUrl = `/uploads/${req.file.filename}`;
+    }
+
+    // Create application with source tracking
+    const application = await prisma.jobApplication.create({
+      data: {
+        jobId,
+        userId: req.user.id,
+        coverLetter,
+        phoneNumber,
+        availability,
+        salary,
+        additionalInfo,
+        savedResumeId,
+        resumeUrl,
+        applicationSource,
+        sourceDetails,
+        status: 'PENDING'
+      }
+    });
+
+    // Notify candidate of successful application
+    await prisma.notification.create({
+      data: {
+        type: 'APPLICATION_UPDATE',
+        title: `Application submitted for ${job.title}`,
+        message: `You applied to ${job.title} at ${job.company?.name || 'company'}`,
+        recipientId: req.user.id,
+        jobApplicationId: application.id
+      }
+    });
+
+    // Notify all employer users of the company
+    if (job.company) {
+      const employers = await prisma.user.findMany({
+        where: {
+          companyId: job.company.id,
+          role: 'EMPLOYER'
+        },
+        select: { id: true }
+      });
+
+      if (employers.length) {
+        await prisma.notification.createMany({
+          data: employers.map((emp) => ({
+            type: 'APPLICATION_UPDATE',
+            title: `New application for ${job.title}`,
+            message: `${req.user.email} applied to ${job.title}`,
+            recipientId: emp.id,
+            jobApplicationId: application.id
+          }))
+        });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Application submitted successfully',
+      data: application
+    });
+  } catch (error) {
+    console.error('Error submitting application:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error submitting application', 
+      code: 'SERVER_ERROR',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

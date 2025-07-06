@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Grid, Box, Alert, CircularProgress } from '@mui/material';
+import api from '../../utils/axiosConfig';
 import BasicInfoCard from './BasicInfoCard';
 import AboutMeCard from './AboutMeCard';
 import PhotoUploadCard from './PhotoUploadCard';
-import api from '../../utils/axiosConfig';
 
 const CandidateProfile = () => {
   const [profile, setProfile] = useState(null);
@@ -13,7 +13,7 @@ const CandidateProfile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/user/profile');
+      const response = await api.get('/api/users/me');
       setProfile(response.data);
       setError(null);
     } catch (err) {

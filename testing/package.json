@@ -2,5 +2,8 @@
   "devDependencies": {
     "axios": "^1.10.0",
     "jest": "^30.0.0"
+  },
+  "dependencies": {
+    "form-data": "^4.0.3"
   }
 }

@@ -22,59 +22,59 @@ const StyledButton = styled(Button)(({ theme }) => ({
   backgroundColor: '#FFD700',
   color: '#000000',
   '&:hover': {
-    backgroundColor: '#FFC700',
-  },
+    backgroundColor: '#FFC700'
+  }
 }));
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
     backgroundColor: '#1a1a1a',
     color: '#FFFFFF',
-    minWidth: '600px',
-  },
+    minWidth: '600px'
+  }
 }));
 
 const StyledTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
     '& fieldset': {
-      borderColor: '#FFD700',
+      borderColor: '#FFD700'
     },
     '&:hover fieldset': {
-      borderColor: '#FFD700',
+      borderColor: '#FFD700'
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#FFD700',
-    },
+      borderColor: '#FFD700'
+    }
   },
   '& .MuiInputLabel-root': {
-    color: '#FFD700',
+    color: '#FFD700'
   },
   '& .MuiOutlinedInput-input': {
-    color: '#FFFFFF',
-  },
+    color: '#FFFFFF'
+  }
 });
 
 const StyledFormControl = styled(FormControl)({
   '& .MuiOutlinedInput-root': {
     '& fieldset': {
-      borderColor: '#FFD700',
+      borderColor: '#FFD700'
     },
     '&:hover fieldset': {
-      borderColor: '#FFD700',
+      borderColor: '#FFD700'
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#FFD700',
-    },
+      borderColor: '#FFD700'
+    }
   },
   '& .MuiInputLabel-root': {
-    color: '#FFD700',
+    color: '#FFD700'
   },
   '& .MuiSelect-icon': {
-    color: '#FFD700',
+    color: '#FFD700'
   },
   '& .MuiOutlinedInput-input': {
-    color: '#FFFFFF',
-  },
+    color: '#FFFFFF'
+  }
 });
 
 const getLocationDisplay = (location) => {
@@ -95,7 +95,7 @@ const DialogCreateJobListing = ({ open, onClose, onSave }) => {
     salaryMax: '',
     experienceLevel: 'ENTRY_LEVEL',
     skills: [],
-    applicationDeadline: '',
+    applicationDeadline: ''
   });
 
   const [formErrors, setFormErrors] = useState({});

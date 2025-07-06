@@ -9,17 +9,9 @@ import {
   ListItemIcon, Divider, Badge
 } from '@mui/material';
 import { keyframes } from '@mui/material/styles';
-import { useAuth } from '../../context/AuthContext';
-import { buildApiUrl, buildAssetUrl } from '../../config';
-import api from '../../utils/axiosConfig';
 import axios from 'axios';
-import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 
 // Import components
-import CompanyProfileSetup from './CompanyProfileSetup';
-import ApplicationsList from './ApplicationsList';
-import JobDetailsDialog from './JobDetailsDialog';
-import CreateJobListing from './CreateJobListing';
 // Import icons
 import EditIcon from '@mui/icons-material/Edit';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -31,6 +23,14 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import WorkIcon from '@mui/icons-material/Work';
 import PeopleIcon from '@mui/icons-material/People';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import api from '../../utils/axiosConfig';
+import { buildApiUrl, buildAssetUrl } from '../../config';
+import { useAuth } from '../../context/AuthContext';
+import CreateJobListing from './CreateJobListing';
+import JobDetailsDialog from './JobDetailsDialog';
+import ApplicationsList from './ApplicationsList';
+import CompanyProfileSetup from './CompanyProfileSetup';
 
 // Define animations
 const fadeInUp = keyframes({
@@ -56,14 +56,14 @@ const underlineExpand = keyframes({
 // Styled components
 const StyledContainer = styled(Container)(({ theme }) => ({
   marginTop: theme.spacing(4),
-  animation: `${fadeInUp} 0.6s ease-out`,
+  animation: `${fadeInUp} 0.6s ease-out`
 }));
 
 const DashboardWrapper = styled(Box)(({ theme }) => ({
   position: 'relative',
   padding: theme.spacing(3),
   minHeight: '100vh',
-  backgroundColor: '#0A0A0A',
+  backgroundColor: '#0A0A0A'
 }));
 
 const BackgroundOverlay = styled(Box)(({ theme }) => ({
@@ -76,7 +76,7 @@ const BackgroundOverlay = styled(Box)(({ theme }) => ({
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   opacity: 0.15,
-  zIndex: 0,
+  zIndex: 0
 }));
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -91,8 +91,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   '&:hover': {
     transform: 'translateY(-2px)',
     boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-    border: '1px solid rgba(44, 85, 48, 0.4)',
-  },
+    border: '1px solid rgba(44, 85, 48, 0.4)'
+  }
 }));
 
 const TabPanel = ({ children, value, index }) => (
@@ -104,7 +104,7 @@ const TabPanel = ({ children, value, index }) => (
 TabPanel.propTypes = {
   children: PropTypes.node,
   index: PropTypes.number.isRequired,
-  value: PropTypes.number.isRequired,
+  value: PropTypes.number.isRequired
 };
 
 const EmployerDashboard = () => {
@@ -160,10 +160,10 @@ const EmployerDashboard = () => {
   const fetchEmployerData = useCallback(async () => {
     setDataLoading(prev => ({ ...prev, employer: true }));
     try {
-      console.log('Fetching employer data...');
+      console.warn('Fetching employer data...');
       const response = await api.get('/api/employer/profile');
       const data = response?.data?.data ?? response?.data;
-      console.log('Employer data response:', data);
+      console.warn('Employer data response:', data);
 
       // Validate response structure
       if (!data) {
@@ -198,7 +198,7 @@ const EmployerDashboard = () => {
           logoUrl: company.logoUrl || null
         };
 
-        console.log('Mapped company data:', companyData);
+        console.warn('Mapped company data:', companyData);
 
         // Check if we have essential company data
         if (companyData.companyName && companyData.industry) {
@@ -216,7 +216,7 @@ const EmployerDashboard = () => {
         }
       } else {
         // No company data found
-        console.log('No company data found');
+        console.warn('No company data found');
         setNeedsProfileSetup(true);
         setCompanyProfile({
           companyName: '',
@@ -302,7 +302,7 @@ const EmployerDashboard = () => {
           text: 'Unexpected server response format. Please try again later.'
         });
       } else if (error.response?.status === 404) {
-        console.log('New employer detected - initializing empty profile');
+        console.warn('New employer detected - initializing empty profile');
         setNeedsProfileSetup(true);
         setMessage({
           type: 'info',
@@ -586,7 +586,7 @@ const EmployerDashboard = () => {
                         sx: {
                           maxHeight: 400,
                           width: '350px',
-                          backgroundColor: '#1A1A1A',
+                          backgroundColor: '#1A1A1A'
                         }
                       }}
                     >
@@ -605,7 +605,7 @@ const EmployerDashboard = () => {
                             onClick={() => handleNotificationClick(notification)}
                             sx={{
                               borderLeft: notification.status === 'UNREAD' ? '3px solid #FFD700' : 'none',
-                              backgroundColor: notification.status === 'UNREAD' ? 'rgba(255, 215, 0, 0.1)' : 'transparent',
+                              backgroundColor: notification.status === 'UNREAD' ? 'rgba(255, 215, 0, 0.1)' : 'transparent'
                             }}
                           >
                             <ListItemText
@@ -678,12 +678,12 @@ const EmployerDashboard = () => {
                             textTransform: 'none',
                             '&:hover': {
                               backgroundColor: '#1E3D23',
-                              boxShadow: '0 4px 12px rgba(44, 85, 48, 0.2)',
+                              boxShadow: '0 4px 12px rgba(44, 85, 48, 0.2)'
                             },
                             '&.Mui-disabled': {
                               backgroundColor: 'rgba(44, 85, 48, 0.5)',
-                              color: '#FFFFFF',
-                            },
+                              color: '#FFFFFF'
+                            }
                           }}
                         >
                           {apiLoading.profileUpdate ? 'Updating...' : 'Edit Profile'}
@@ -814,8 +814,8 @@ const EmployerDashboard = () => {
                         backgroundColor: '#FFD700',
                         color: '#000',
                         '&:hover': {
-                          backgroundColor: '#FFD700',
-                        },
+                          backgroundColor: '#FFD700'
+                        }
                       }}
                     >
                       Create New Listing
@@ -869,8 +869,8 @@ const EmployerDashboard = () => {
                                 borderColor: '#FFD700',
                                 '&:hover': {
                                   borderColor: '#FFD700',
-                                  backgroundColor: 'rgba(255, 215, 0, 0.1)',
-                                },
+                                  backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                                }
                               }}
                             >
                               Edit
@@ -884,8 +884,8 @@ const EmployerDashboard = () => {
                                 borderColor: '#2C5530',
                                 '&:hover': {
                                   borderColor: '#2C5530',
-                                  backgroundColor: 'rgba(44, 85, 48, 0.1)',
-                                },
+                                  backgroundColor: 'rgba(44, 85, 48, 0.1)'
+                                }
                               }}
                             >
                               View

@@ -7,33 +7,30 @@ import {
   Chip,
   Grid,
   Paper,
-  Divider,
   MenuItem,
   IconButton,
   styled
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 
-const StyledTextField = styled(TextField)(({ theme }) => ({
+const StyledTextField = styled(TextField)(({ theme: _theme }) => ({
   '& .MuiInputLabel-root': {
-    color: 'rgba(255, 215, 0, 0.7)',
+    color: 'rgba(255, 215, 0, 0.7)'
   },
   '& .MuiOutlinedInput-root': {
     color: 'white',
     '& fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.3)',
+      borderColor: 'rgba(255, 215, 0, 0.3)'
     },
     '&:hover fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.5)',
+      borderColor: 'rgba(255, 215, 0, 0.5)'
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#FFD700',
-    },
-  },
+      borderColor: '#FFD700'
+    }
+  }
 }));
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -53,8 +50,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
     bottom: 0,
     background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%)',
     opacity: 0.3,
-    zIndex: 0,
-  },
+    zIndex: 0
+  }
 }));
 
 // Industry templates
@@ -91,7 +88,7 @@ const industryTemplates = {
       'Team building activities',
       'Performance bonuses'
     ]
-  },
+  }
   // Add other industry templates from the backup file
 };
 

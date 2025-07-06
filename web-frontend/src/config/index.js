@@ -1,6 +1,6 @@
 const environments = {
   development: {
-    apiUrl: 'http://localhost:5000',
+    apiUrl: process.env.REACT_APP_API_URL || 'http://localhost:5000',
     apiGateway: false
   },
   staging: {
@@ -14,6 +14,17 @@ const environments = {
 };
 
 const environment = process.env.REACT_APP_ENV || 'development';
+
+// Ensure apiUrl never ends with /api to avoid double prefixes
+if (environments.development.apiUrl.endsWith('/api')) {
+  environments.development.apiUrl = environments.development.apiUrl.replace(/\/api$/, '');
+}
+if (environments.staging.apiUrl.endsWith('/api')) {
+  environments.staging.apiUrl = environments.staging.apiUrl.replace(/\/api$/, '');
+}
+if (environments.production.apiUrl.endsWith('/api')) {
+  environments.production.apiUrl = environments.production.apiUrl.replace(/\/api$/, '');
+}
 
 export const config = {
   ...environments[environment],

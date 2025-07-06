@@ -30,6 +30,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import JamaicaLocationProfileAutocomplete from '../common/JamaicaLocationProfileAutocomplete';
+import ResumeViewer from './ResumeViewer';
 
 const ProfileEditModal = ({ open, onClose, onSave }) => {
   const { user, updateUser } = useAuth();
@@ -39,6 +40,7 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
   const [success, setSuccess] = useState('');
   const [profileData, setProfileData] = useState(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeViewerOpen, setResumeViewerOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     // Personal Information
@@ -591,50 +593,99 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                           <Typography variant="body2" sx={{ color: '#006400', mb: 1 }}>
                             📄 {profileData.candidateProfile.resumeFileName || 'Resume uploaded'}
                           </Typography>
-                          <Button 
-                            href={profileData.candidateProfile.resumeUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            size="small"
-                            sx={{ color: '#006400', mr: 1 }}
-                          >
-                            View Resume
-                          </Button>
+                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <Button 
+                              onClick={() => setResumeViewerOpen(true)}
+                              size="small"
+                              sx={{ color: '#006400' }}
+                            >
+                              Quick Preview
+                            </Button>
+                            <Button
+                              component="label"
+                              variant="outlined"
+                              startIcon={<UploadIcon />}
+                              disabled={resumeUploading}
+                              size="small"
+                              sx={{
+                                borderColor: '#009639',
+                                color: '#009639',
+                                '&:hover': {
+                                  borderColor: '#007A2E',
+                                  backgroundColor: 'rgba(0, 150, 57, 0.04)'
+                                }
+                              }}
+                            >
+                              {resumeUploading ? 'Uploading...' : 'Replace Resume'}
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx"
+                                onChange={handleResumeUpload}
+                                style={{ display: 'none' }}
+                              />
+                            </Button>
+                          </Box>
                         </Box>
                       ) : (
-                        <Typography variant="body2" sx={{ color: '#666', mb: 1 }}>
-                          No resume uploaded
-                        </Typography>
+                        <Box>
+                          <Typography variant="body2" sx={{ color: '#666', mb: 2 }}>
+                            📝 No resume uploaded yet
+                          </Typography>
+                          
+                          <Typography variant="body2" sx={{ color: '#333', mb: 2, fontWeight: 500 }}>
+                            Choose an option to get started:
+                          </Typography>
+                          
+                          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap', mb: 2 }}>
+                            <Button
+                              component="label"
+                              variant="outlined"
+                              startIcon={<UploadIcon />}
+                              disabled={resumeUploading}
+                              size="small"
+                              sx={{
+                                borderColor: '#009639',
+                                color: '#009639',
+                                '&:hover': {
+                                  borderColor: '#007A2E',
+                                  backgroundColor: 'rgba(0, 150, 57, 0.04)'
+                                }
+                              }}
+                            >
+                              {resumeUploading ? 'Uploading...' : 'Upload Existing Resume'}
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx"
+                                onChange={handleResumeUpload}
+                                style={{ display: 'none' }}
+                              />
+                            </Button>
+                            
+                            <Button
+                              variant="contained"
+                              startIcon={<DescriptionIcon />}
+                              size="small"
+                              onClick={() => {
+                                // Navigate to resume builder
+                                window.open('/resume-builder', '_blank');
+                              }}
+                              sx={{
+                                backgroundColor: '#FFD700',
+                                color: '#000',
+                                '&:hover': {
+                                  backgroundColor: '#E6C200'
+                                }
+                              }}
+                            >
+                              Build Resume
+                            </Button>
+                          </Box>
+                          
+                          <Typography variant="caption" sx={{ display: 'block', color: '#666' }}>
+                            Upload: PDF, DOC, DOCX (Max 5MB) | Build: Create a professional resume from scratch
+                          </Typography>
+                        </Box>
                       )}
-                      
-                      <Button
-                        component="label"
-                        variant="outlined"
-                        startIcon={<UploadIcon />}
-                        disabled={resumeUploading}
-                        size="small"
-                        sx={{
-                          mt: 1,
-                          borderColor: '#009639',
-                          color: '#009639',
-                          '&:hover': {
-                            borderColor: '#007A2E',
-                            backgroundColor: 'rgba(0, 150, 57, 0.04)'
-                          }
-                        }}
-                      >
-                        {resumeUploading ? 'Uploading...' : 'Upload Resume'}
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleResumeUpload}
-                          style={{ display: 'none' }}
-                        />
-                      </Button>
-                      
-                      <Typography variant="caption" sx={{ display: 'block', color: '#666', mt: 1 }}>
-                        Accepted formats: PDF, DOC, DOCX (Max 5MB)
-                      </Typography>
                     </Box>
                   </Grid>
                 </Grid>
@@ -718,13 +769,21 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
             background: 'linear-gradient(45deg, #009639 30%, #FFD700 90%)',
             color: 'white',
             '&:hover': {
-              background: 'linear-gradient(45deg, #007A2E 30%, #E6C200 90%)',
+              background: 'linear-gradient(45deg, #007A2E 30%, #E6C200 90%)'
             }
           }}
         >
           {loading ? 'Saving...' : 'Save Changes'}
         </Button>
       </DialogActions>
+
+      {/* Resume Viewer Modal */}
+      <ResumeViewer
+        open={resumeViewerOpen}
+        onClose={() => setResumeViewerOpen(false)}
+        resumeUrl={profileData?.candidateProfile?.resumeUrl}
+        resumeFileName={profileData?.candidateProfile?.resumeFileName}
+      />
     </Dialog>
   );
 };

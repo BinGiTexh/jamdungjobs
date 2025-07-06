@@ -28,9 +28,10 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
-import { buildApiUrl } from '../../config';
 import { format } from 'date-fns';
+import { buildApiUrl } from '../../config';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import EmptyApplicationsState from './EmptyApplicationsState';
 
 const ApplicationsList = () => {
   const [applications, setApplications] = useState([]);
@@ -226,8 +227,8 @@ const ApplicationsList = () => {
             scrollButtons="auto"
             sx={{
               '& .MuiTabs-indicator': {
-                backgroundColor: '#FFD700',
-              },
+                backgroundColor: '#FFD700'
+              }
             }}
           >
             <Tab label="All Applications" sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-selected': { color: '#FFD700' } }} />
@@ -251,57 +252,7 @@ const ApplicationsList = () => {
             {error}
           </Alert>
         ) : filteredApplications.length === 0 ? (
-          <Paper 
-            elevation={1} 
-            sx={{ 
-              p: 4, 
-              textAlign: 'center',
-              borderRadius: 2,
-              backgroundColor: 'rgba(249, 249, 249, 0.9)',
-              border: '1px solid rgba(255, 215, 0, 0.1)',
-              backdropFilter: 'blur(5px)'
-            }}
-          >
-            <Box sx={{ mb: 3 }}>
-              <img 
-                src="/images/icons/application-empty.svg" 
-                alt="No applications" 
-                style={{ width: '100px', height: '100px', opacity: 0.7 }} 
-                onError={(e) => {
-                  e.target.src = 'https://img.icons8.com/fluency/96/null/document.png';
-                }}
-              />
-            </Box>
-            <Typography variant="h6" sx={{ color: '#2C5530', fontWeight: 600 }} gutterBottom>
-              {tabValue === 0 ? "Ready to start your career journey?" : "Nothing here yet"}
-            </Typography>
-            <Typography variant="body1" color="textSecondary" paragraph sx={{ maxWidth: '500px', mx: 'auto' }}>
-              {tabValue === 0 
-                ? "Your job applications will appear here once you start applying. Browse available jobs to find your perfect match in Jamaica." 
-                : "You don't have any applications in this category yet. Keep applying to see updates here."}
-            </Typography>
-            <Button 
-              variant="contained"
-              href="/jobs"
-              sx={{
-                mt: 2,
-                background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                color: '#000',
-                '&:hover': {
-                  background: 'linear-gradient(90deg, #FFD700, #2C5530)',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
-                },
-                transition: 'all 0.3s ease',
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                py: 1.2
-              }}
-            >
-              Explore Jobs
-            </Button>
-          </Paper>
+          <EmptyApplicationsState />
         ) : (
           <TableContainer component={Paper} sx={{ 
             mb: 4, 
@@ -334,7 +285,7 @@ const ApplicationsList = () => {
                           sx={{ 
                             backgroundColor: statusStyle.bg,
                             color: statusStyle.color,
-                            fontWeight: 600,
+                            fontWeight: 600
                           }} 
                         />
                       </TableCell>
@@ -483,9 +434,9 @@ const ApplicationsList = () => {
                     boxShadow: '0 2px 8px rgba(0, 126, 27, 0.5)',
                     '&:hover': {
                       background: 'linear-gradient(45deg, #005714 30%, #007E1B 90%)',
-                      boxShadow: '0 4px 12px rgba(0, 126, 27, 0.7)',
+                      boxShadow: '0 4px 12px rgba(0, 126, 27, 0.7)'
                     },
-                    textTransform: 'none',
+                    textTransform: 'none'
                   }}
                 >
                   Download Resume

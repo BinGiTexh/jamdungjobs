@@ -115,6 +115,15 @@ resource "aws_iam_role_policy" "ec2_access" {
         Resource = [
           "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:jamdung_${var.environment}_jwt-*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.init_scripts.arn}/*"
+        ]
       }
     ]
   })
@@ -153,7 +162,9 @@ resource "aws_instance" "staging" {
   
   # User data script with all required variables
   user_data_replace_on_change = true
-  user_data = base64encode(templatefile("${path.module}/user_data/init.sh", {
+  user_data = base64encode(templatefile("${path.module}/user_data/bootstrap.sh", {
+    s3_bucket              = aws_s3_bucket.init_scripts.id
+    s3_key                 = aws_s3_object.init_script.key
     environment            = var.environment
     db_password           = random_password.db_password.result
     jwt_secret_name      = aws_secretsmanager_secret.jwt.name

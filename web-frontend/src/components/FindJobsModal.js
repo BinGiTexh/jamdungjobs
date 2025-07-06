@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes, FaFilter, FaRegBookmark, FaBookmark, FaClock, FaBuilding, FaMapMarkerAlt, FaBriefcase } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { logDev, logError, sanitizeForLogging } from '../utils/logging';
 import { LocationAutocomplete } from './common/LocationAutocomplete';
 import { JobTitleAutocomplete } from './common/JobTitleAutocomplete';
 import { SalaryRangeAutocomplete } from './common/SalaryRangeAutocomplete';
 import { CompanyAutocomplete } from './common/CompanyAutocomplete';
 import { SkillsAutocomplete } from './common/SkillsAutocomplete';
-import { logDev, logError, sanitizeForLogging } from '../utils/logging';
 
 const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote'];
 const sortOptions = [
@@ -128,7 +128,7 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
       setTotalPages(data.pagination.pages);
 
       // Fetch saved jobs if user is logged in
-      if (user?.role === 'candidate') {
+      if (user?.role === 'JOBSEEKER') {
         const savedResponse = await fetch('http://localhost:5000/api/users/me', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
@@ -469,7 +469,7 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
                         {job.salary}
                       </div>
                     )}
-                    {user?.role === 'candidate' && (
+                    {user?.role === 'JOBSEEKER' && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

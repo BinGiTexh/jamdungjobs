@@ -12,7 +12,16 @@
  */
 export const logDev = (level, ...args) => {
   if (process.env.NODE_ENV !== 'production') {
-    console[level](...args);
+    // Validate log level and provide fallback
+    const validLevels = ['debug', 'info', 'warn', 'error', 'log'];
+    const logLevel = validLevels.includes(level) ? level : 'log';
+    
+    // Use console.log as fallback for debug level since it might not exist in all browsers
+    if (logLevel === 'debug' && typeof console.debug !== 'function') {
+      console.log(`[DEBUG]`, ...args);
+    } else {
+      console[logLevel](...args);
+    }
   }
 };
 

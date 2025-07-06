@@ -23,15 +23,7 @@ import {
   LinearProgress,
   Fade
 } from '@mui/material';
-import { useAuth } from '../../context/AuthContext';
-import { buildApiUrl, buildAssetUrl } from '../../config';
-import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
-import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
-import api from '../../utils/axiosConfig';
 import axios from 'axios';
-import ApplicationsList from '../jobseeker/ApplicationsList';
-import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
-import NotificationsMenu from './NotificationsMenu';
 
 // Import icons
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -43,6 +35,14 @@ import EditIcon from '@mui/icons-material/Edit';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AddIcon from '@mui/icons-material/Add';
 import Avatar from '@mui/material/Avatar';
+import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import ApplicationsList from '../jobseeker/ApplicationsList';
+import api from '../../utils/axiosConfig';
+import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
+import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
+import { buildApiUrl, buildAssetUrl } from '../../config';
+import { useAuth } from '../../context/AuthContext';
+import NotificationsMenu from './NotificationsMenu';
 
 // Styled components for Jamaican theme - matching login page styling
 const StyledContainer = styled(Container)(({ theme }) => ({
@@ -50,11 +50,11 @@ const StyledContainer = styled(Container)(({ theme }) => ({
   zIndex: 2,
   padding: theme.spacing(4),
   [theme.breakpoints.up('md')]: {
-    maxWidth: '1100px',
+    maxWidth: '1100px'
   },
   minHeight: '100vh',
   display: 'flex',
-  flexDirection: 'column',
+  flexDirection: 'column'
 }));
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -72,7 +72,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
   },
   '&::before': {
     content: '""',
@@ -81,8 +81,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
     left: 0,
     width: '100%',
     height: '4px',
-    background: 'linear-gradient(90deg, #FFD700, #007E1B, #FFD700)',
-  },
+    background: 'linear-gradient(90deg, #FFD700, #007E1B, #FFD700)'
+  }
 }));
 
 // Background wrapper for the entire dashboard
@@ -105,7 +105,7 @@ const BackgroundOverlay = styled(Box)({
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   opacity: 0.3,
-  zIndex: 1,
+  zIndex: 1
 });
 
 const StyledTab = styled(Tab)(({ theme }) => ({
@@ -115,8 +115,8 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   minWidth: 100,
   color: 'rgba(255, 255, 255, 0.7)',
   '&.Mui-selected': {
-    color: '#FFD700',
-  },
+    color: '#FFD700'
+  }
 }));
 
 const StyledButton = styled(Button)(({ theme, variant }) => ({
@@ -130,17 +130,17 @@ const StyledButton = styled(Button)(({ theme, variant }) => ({
     boxShadow: '0 2px 8px rgba(0, 126, 27, 0.5)',
     '&:hover': {
       background: 'linear-gradient(45deg, #005714 30%, #007E1B 90%)',
-      boxShadow: '0 4px 12px rgba(0, 126, 27, 0.7)',
-    },
+      boxShadow: '0 4px 12px rgba(0, 126, 27, 0.7)'
+    }
   }),
   ...(variant === 'outlined' && {
     borderColor: '#FFD700',
     color: '#FFD700',
     '&:hover': {
       borderColor: '#FFD700',
-      backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    },
-  }),
+      backgroundColor: 'rgba(255, 215, 0, 0.1)'
+    }
+  })
 }));
 
 const StyledChip = styled(Chip)(({ theme }) => ({
@@ -149,7 +149,7 @@ const StyledChip = styled(Chip)(({ theme }) => ({
   fontWeight: 500,
   margin: theme.spacing(0.5),
   borderRadius: 16,
-  border: '1px solid rgba(255, 215, 0, 0.3)',
+  border: '1px solid rgba(255, 215, 0, 0.3)'
 }));
 
 const VisuallyHiddenInput = styled('input')({
@@ -161,7 +161,7 @@ const VisuallyHiddenInput = styled('input')({
   bottom: 0,
   left: 0,
   whiteSpace: 'nowrap',
-  width: 1,
+  width: 1
 });
 
 // File upload button wrapper - matching login page styling
@@ -169,34 +169,34 @@ const FileUploadButton = styled(Button)(({ theme }) => ({
   background: 'linear-gradient(45deg, #007E1B 30%, #009921 90%)',
   color: 'white',
   '&:hover': {
-    background: 'linear-gradient(45deg, #005714 30%, #007E1B 90%)',
+    background: 'linear-gradient(45deg, #005714 30%, #007E1B 90%)'
   },
   padding: '8px 24px',
   borderRadius: theme.shape.borderRadius,
   textTransform: 'none',
   fontWeight: 500,
   marginTop: theme.spacing(1),
-  boxShadow: '0 2px 8px rgba(0, 126, 27, 0.25)',
+  boxShadow: '0 2px 8px rgba(0, 126, 27, 0.25)'
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     '& fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.3)',
+      borderColor: 'rgba(255, 215, 0, 0.3)'
     },
     '&:hover fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.5)',
+      borderColor: 'rgba(255, 215, 0, 0.5)'
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#FFD700',
-    },
+      borderColor: '#FFD700'
+    }
   },
   '& .MuiInputLabel-root': {
-    color: 'rgba(255, 215, 0, 0.7)',
+    color: 'rgba(255, 215, 0, 0.7)'
   },
   '& .MuiInputBase-input': {
-    color: 'white',
-  },
+    color: 'white'
+  }
 }));
 
 const CandidateDashboard = () => {
@@ -363,7 +363,7 @@ const CandidateDashboard = () => {
         // Ensure arrays are always properly initialized
         skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
         education: candidateData.education || [],
-        experience: candidateData.experience || [],
+        experience: candidateData.experience || []
       };
       
       logDev('debug', 'Profile URLs:', {
@@ -610,7 +610,7 @@ const CandidateDashboard = () => {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
-        },
+        }
       });
 
       if (!response.data || !response.data.photoUrl) {
@@ -747,7 +747,7 @@ const CandidateDashboard = () => {
   const renderProfileSection = () => {
     // Get the photo URL and log details for debugging
     const photoUrl = getFullUrl(profile.photoUrl);
-    console.log('Profile photo rendering:', { 
+    console.warn('Profile photo rendering:', { 
       originalUrl: profile.photoUrl,
       processedUrl: photoUrl,
       profileData: JSON.stringify(profile)
@@ -908,7 +908,7 @@ const CandidateDashboard = () => {
                               borderRadius: 4,
                               backgroundColor: theme.palette.primary.light,
                               '& .MuiLinearProgress-bar': {
-                                backgroundColor: theme.palette.primary.main,
+                                backgroundColor: theme.palette.primary.main
                               }
                             }}
                           />
@@ -1389,7 +1389,7 @@ return (
               backgroundColor: 'rgba(30, 30, 30, 0.9)',
               color: message.type === 'error' ? '#ff6b6b' : message.type === 'success' ? '#51cf66' : '#FFD700',
               border: '1px solid',
-              borderColor: message.type === 'error' ? '#ff6b6b' : message.type === 'success' ? '#51cf66' : '#FFD700',
+              borderColor: message.type === 'error' ? '#ff6b6b' : message.type === 'success' ? '#51cf66' : '#FFD700'
             }}
             onClose={() => setMessage(null)}
           >
@@ -1412,7 +1412,7 @@ return (
             scrollButtons="auto"
             sx={{
               '& .MuiTabs-indicator': {
-                backgroundColor: '#FFD700',
+                backgroundColor: '#FFD700'
               },
               flexGrow: 1
             }}

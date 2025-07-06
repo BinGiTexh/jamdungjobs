@@ -27,6 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import api from '../../utils/api';
 import { logError, logDev } from '../../utils/loggingUtils';
+import { useJobAnalytics } from '../../hooks/usePlausible';
 
 /**
  * Basic Job Search Component
@@ -42,6 +43,7 @@ const BasicJobSearch = ({
   maxWidth = 'lg'
 }) => {
   const navigate = useNavigate();
+  const { trackJobSearch, trackJobView } = useJobAnalytics();
 
   // Search state
   const [query, setQuery] = useState(initialQuery);
@@ -133,6 +135,12 @@ const BasicJobSearch = ({
         query: searchQuery, 
         results: searchResults?.length || 0, 
         total 
+      });
+
+      // Track search in analytics
+      trackJobSearch(searchQuery, {
+        location: searchLocation,
+        resultsCount: searchResults?.length || 0
       });
 
     } catch (err) {

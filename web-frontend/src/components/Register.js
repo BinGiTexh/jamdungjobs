@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import {
   Container,
   Box,
@@ -18,12 +17,14 @@ import {
   Divider,
   Fade
 } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
 import { JamaicaLocationAutocomplete } from './common/JamaicaLocationAutocomplete';
+import GoogleOAuthButton from './auth/GoogleOAuthButton';
 
 const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { register } = useAuth();
+  const { register, registerWithGoogle } = useAuth();
   
   // Check if we have a role in the location state (e.g., coming from "Post a Job")
   const defaultRole = location.state?.role || 'JOBSEEKER';
@@ -46,7 +47,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   
   // Set a message if coming from another page
-  const [message, setMessage] = useState(location.state?.message || '');
+  const [message, _setMessage] = useState(location.state?.message || '');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -129,6 +130,26 @@ const Register = () => {
     }
   };
 
+  const handleGoogleSuccess = async (googleData) => {
+    try {
+      const user = await registerWithGoogle(
+        googleData.googleToken, 
+        googleData.userInfo, 
+        { role: formData.role }
+      );
+      
+      // Redirect based on role
+      const redirectTo = user.role === 'EMPLOYER' ? '/employer/dashboard' : '/dashboard';
+      navigate(redirectTo);
+    } catch (err) {
+      setError(err.message || 'Google registration failed');
+    }
+  };
+
+  const handleGoogleError = (_error) => {
+    setError('Google registration failed. Please try again.');
+  };
+
   return (
     <Box
       sx={{
@@ -137,7 +158,7 @@ const Register = () => {
         flexDirection: 'column',
         backgroundColor: '#0A0A0A',
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'hidden'
       }}
     >
       {/* Background image with Jamaican styling */}
@@ -152,14 +173,14 @@ const Register = () => {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           opacity: 0.3,
-          zIndex: 1,
+          zIndex: 1
         }}
       />
       
       <Container component="main" maxWidth="md" sx={{ 
         position: 'relative', 
         zIndex: 2,
-        py: 8,
+        py: 8
       }}>
         <Fade in={true} timeout={800}>
           <Box
@@ -167,7 +188,7 @@ const Register = () => {
               mt: 4,
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
+              alignItems: 'center'
             }}
           >
             <Typography 
@@ -188,7 +209,7 @@ const Register = () => {
                   width: '80px',
                   height: '4px',
                   background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                  borderRadius: '2px',
+                  borderRadius: '2px'
                 }
               }}
             >
@@ -215,8 +236,8 @@ const Register = () => {
                   bottom: 0,
                   background: 'linear-gradient(135deg, rgba(44, 85, 48, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%)',
                   opacity: 0.1,
-                  zIndex: 0,
-                },
+                  zIndex: 0
+                }
               }}
             >
               {error && (
@@ -230,6 +251,31 @@ const Register = () => {
                   {message}
                 </Alert>
               )}
+              
+              {/* Google OAuth Button */}
+              <GoogleOAuthButton
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                text={`Continue with Google as ${formData.role === 'EMPLOYER' ? 'Employer' : 'Job Seeker'}`}
+                variant="outlined"
+                sx={{ mb: 3 }}
+              />
+              
+              {/* Divider */}
+              <Divider sx={{ 
+                my: 3,
+                '&::before, &::after': {
+                  borderColor: 'rgba(255, 215, 0, 0.3)'
+                }
+              }}>
+                <Typography variant="body2" sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  px: 2,
+                  fontWeight: 500
+                }}>
+                  or create account manually
+                </Typography>
+              </Divider>
               
               <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, position: 'relative', zIndex: 1 }}>
                 <Grid container spacing={2}>
@@ -247,18 +293,18 @@ const Register = () => {
                         sx: {
                           color: 'white',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                            borderColor: 'rgba(255, 215, 0, 0.3)'
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                            borderColor: 'rgba(255, 215, 0, 0.6)'
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFD700',
-                          },
-                        },
+                            borderColor: '#FFD700'
+                          }
+                        }
                       }}
                       InputLabelProps={{
-                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' }
                       }}
                     />
                   </Grid>
@@ -275,18 +321,18 @@ const Register = () => {
                         sx: {
                           color: 'white',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                            borderColor: 'rgba(255, 215, 0, 0.3)'
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                            borderColor: 'rgba(255, 215, 0, 0.6)'
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFD700',
-                          },
-                        },
+                            borderColor: '#FFD700'
+                          }
+                        }
                       }}
                       InputLabelProps={{
-                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' }
                       }}
                     />
                   </Grid>
@@ -305,18 +351,18 @@ const Register = () => {
                         sx: {
                           color: 'white',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                            borderColor: 'rgba(255, 215, 0, 0.3)'
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                            borderColor: 'rgba(255, 215, 0, 0.6)'
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFD700',
-                          },
-                        },
+                            borderColor: '#FFD700'
+                          }
+                        }
                       }}
                       InputLabelProps={{
-                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' }
                       }}
                     />
                   </Grid>
@@ -336,21 +382,21 @@ const Register = () => {
                         sx: {
                           color: 'white',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                            borderColor: 'rgba(255, 215, 0, 0.3)'
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                            borderColor: 'rgba(255, 215, 0, 0.6)'
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFD700',
-                          },
-                        },
+                            borderColor: '#FFD700'
+                          }
+                        }
                       }}
                       InputLabelProps={{
-                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' }
                       }}
                       FormHelperTextProps={{
-                        sx: { color: 'rgba(255, 255, 255, 0.5)' },
+                        sx: { color: 'rgba(255, 255, 255, 0.5)' }
                       }}
                     />
                   </Grid>
@@ -369,18 +415,18 @@ const Register = () => {
                         sx: {
                           color: 'white',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.3)',
+                            borderColor: 'rgba(255, 215, 0, 0.3)'
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 215, 0, 0.6)',
+                            borderColor: 'rgba(255, 215, 0, 0.6)'
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#FFD700',
-                          },
-                        },
+                            borderColor: '#FFD700'
+                          }
+                        }
                       }}
                       InputLabelProps={{
-                        sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                        sx: { color: 'rgba(255, 255, 255, 0.7)' }
                       }}
                     />
                   </Grid>
@@ -400,8 +446,8 @@ const Register = () => {
                           control={<Radio sx={{ 
                             color: 'rgba(255, 215, 0, 0.5)',
                             '&.Mui-checked': {
-                              color: '#FFD700',
-                            },
+                              color: '#FFD700'
+                            }
                           }} />} 
                           label={<Typography sx={{ color: 'white' }}>Job Seeker</Typography>} 
                         />
@@ -410,8 +456,8 @@ const Register = () => {
                           control={<Radio sx={{ 
                             color: 'rgba(255, 215, 0, 0.5)',
                             '&.Mui-checked': {
-                              color: '#FFD700',
-                            },
+                              color: '#FFD700'
+                            }
                           }} />} 
                           label={<Typography sx={{ color: 'white' }}>Employer</Typography>} 
                         />
@@ -425,8 +471,8 @@ const Register = () => {
                         <Divider sx={{ 
                           my: 3, 
                           '&::before, &::after': {
-                            borderColor: 'rgba(255, 215, 0, 0.3)',
-                          },
+                            borderColor: 'rgba(255, 215, 0, 0.3)'
+                          }
                         }}>
                           <Typography variant="h6" sx={{ fontWeight: 600, color: '#FFD700' }}>
                             Company Information
@@ -447,18 +493,18 @@ const Register = () => {
                             sx: {
                               color: 'white',
                               '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 215, 0, 0.3)',
+                                borderColor: 'rgba(255, 215, 0, 0.3)'
                               },
                               '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 215, 0, 0.6)',
+                                borderColor: 'rgba(255, 215, 0, 0.6)'
                               },
                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#FFD700',
-                              },
-                            },
+                                borderColor: '#FFD700'
+                              }
+                            }
                           }}
                           InputLabelProps={{
-                            sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                            sx: { color: 'rgba(255, 255, 255, 0.7)' }
                           }}
                         />
                       </Grid>
@@ -478,18 +524,18 @@ const Register = () => {
                             sx: {
                               color: 'white',
                               '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 215, 0, 0.3)',
+                                borderColor: 'rgba(255, 215, 0, 0.3)'
                               },
                               '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 215, 0, 0.6)',
+                                borderColor: 'rgba(255, 215, 0, 0.6)'
                               },
                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#FFD700',
-                              },
-                            },
+                                borderColor: '#FFD700'
+                              }
+                            }
                           }}
                           InputLabelProps={{
-                            sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                            sx: { color: 'rgba(255, 255, 255, 0.7)' }
                           }}
                         />
                       </Grid>
@@ -518,18 +564,18 @@ const Register = () => {
                             sx: {
                               color: 'white',
                               '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 215, 0, 0.3)',
+                                borderColor: 'rgba(255, 215, 0, 0.3)'
                               },
                               '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 215, 0, 0.6)',
+                                borderColor: 'rgba(255, 215, 0, 0.6)'
                               },
                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#FFD700',
-                              },
-                            },
+                                borderColor: '#FFD700'
+                              }
+                            }
                           }}
                           InputLabelProps={{
-                            sx: { color: 'rgba(255, 255, 255, 0.7)' },
+                            sx: { color: 'rgba(255, 255, 255, 0.7)' }
                           }}
                         />
                       </Grid>
@@ -556,7 +602,7 @@ const Register = () => {
                         transition: 'all 0.3s ease',
                         textTransform: 'none',
                         fontSize: '1.1rem',
-                        fontWeight: 600,
+                        fontWeight: 600
                       }}
                     >
                       {loading ? (

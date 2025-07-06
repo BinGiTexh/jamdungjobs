@@ -11,6 +11,8 @@
     "@mui/material": "^5.11.16",
     "@mui/system": "^5.11.16",
     "@mui/utils": "^5.11.16",
+    "@stripe/react-stripe-js": "^3.7.0",
+    "@stripe/stripe-js": "^7.4.0",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -21,8 +23,10 @@
     "react-helmet": "^6.1.0",
     "react-icons": "^5.5.0",
     "react-markdown": "^8.0.7",
+    "react-query": "^3.39.3",
     "react-router-dom": "^6.15.0",
     "react-scripts": "^5.0.1",
+    "recharts": "^3.0.2",
     "web-vitals": "^2.1.4"
   },
   "overrides": {
@@ -34,22 +38,24 @@
   "scripts": {
     "start": "npm run dev",
     "dev": "npm run theme:check && react-scripts start",
-    "build": "react-scripts build",
+    "build": "npm run lint:check && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "theme:audit": "node scripts/theme-audit.js",
     "theme:check": "node scripts/theme-audit.js --warn-only",
     "theme:fix": "node scripts/theme-fix.js",
-    "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
-    "quality:check": "npm run lint && npm run theme:check",
+    "lint": "eslint src/ --ext .js,.jsx --format stylish",
+    "lint:check": "eslint src/ --ext .js,.jsx --max-warnings 0",
+    "lint:fix": "eslint src/ --ext .js,.jsx --fix",
+    "lint:fix-dry": "eslint src/ --ext .js,.jsx --fix-dry-run",
+    "lint:report": "eslint src/ --ext .js,.jsx --format json --output-file reports/eslint-report.json",
+    "cleanup": "node scripts/eslint-cleanup.js",
+    "cleanup:unused": "npx eslint src/ --fix --rule 'no-unused-vars: error' --ext .js,.jsx",
+    "cleanup:imports": "npx eslint src/ --fix --rule 'import/order: error' --ext .js,.jsx",
+    "quality:check": "npm run lint:check && npm run theme:check",
+    "quality:fix": "npm run lint:fix && npm run theme:fix",
+    "pre-commit": "npm run quality:check",
     "docker:dev": "react-scripts start"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [

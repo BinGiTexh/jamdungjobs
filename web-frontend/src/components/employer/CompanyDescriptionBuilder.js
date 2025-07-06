@@ -12,7 +12,7 @@ import {
   AccordionDetails,
   Paper,
   Divider,
-  Grid,
+  Grid
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { styled } from '@mui/material/styles';
@@ -25,31 +25,31 @@ const SectionField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     color: '#FFFFFF',
     '& fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.3)',
+      borderColor: 'rgba(255, 215, 0, 0.3)'
     },
     '&:hover fieldset': {
-      borderColor: 'rgba(255, 215, 0, 0.5)',
+      borderColor: 'rgba(255, 215, 0, 0.5)'
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#FFD700',
-    },
+      borderColor: '#FFD700'
+    }
   },
   '& .MuiInputLabel-root': {
-    color: 'rgba(255, 215, 0, 0.7)',
-  },
+    color: 'rgba(255, 215, 0, 0.7)'
+  }
 }));
 
 const StyledFormControlLabel = styled(FormControlLabel)(() => ({
   '.MuiFormControlLabel-label': {
     color: '#FFD700',
-    fontWeight: 600,
+    fontWeight: 600
   },
   '.MuiRadio-root': {
     color: 'rgba(255, 215, 0, 0.7)',
     '&.Mui-checked': {
-      color: '#FFD700',
-    },
-  },
+      color: '#FFD700'
+    }
+  }
 }));
 
 const PreviewContainer = styled(Paper)(({ theme }) => ({
@@ -58,7 +58,7 @@ const PreviewContainer = styled(Paper)(({ theme }) => ({
   overflowY: 'auto',
   backgroundColor: '#0A0A0A',
   color: '#FFFFFF',
-  border: '1px solid rgba(255, 215, 0, 0.2)',
+  border: '1px solid rgba(255, 215, 0, 0.2)'
 }));
 
 const TEMPLATE_SECTIONS = {
@@ -165,11 +165,11 @@ const CompanyDescriptionBuilder = ({ value, onChange }) => {
 
 CompanyDescriptionBuilder.propTypes = {
   value: PropTypes.string,
-  onChange: PropTypes.func.isRequired,
+  onChange: PropTypes.func.isRequired
 };
 
 CompanyDescriptionBuilder.defaultProps = {
-  value: '',
+  value: ''
 };
 
 export default CompanyDescriptionBuilder;

@@ -81,6 +81,9 @@ services:
       - REACT_APP_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       # Stripe Configuration
       - REACT_APP_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-pk_test_your_stripe_publishable_key_here}
+      # Analytics Configuration
+      - REACT_APP_PLAUSIBLE_DOMAIN=localhost:3000
+      - REACT_APP_PLAUSIBLE_API_HOST=http://localhost:8000
       - WDS_SOCKET_PORT=0
       - CHOKIDAR_USEPOLLING=true
       - NODE_ENV=development
@@ -96,9 +99,58 @@ services:
     depends_on:
       - api
 
+  # Plausible Analytics Database
+  plausible_db:
+    image: postgres:14-alpine
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=plausible
+    volumes:
+      - plausible_db:/var/lib/postgresql/data
+
+  # ClickHouse for Plausible events
+  plausible_events_db:
+    image: clickhouse/clickhouse-server:22.6-alpine
+    restart: always
+    volumes:
+      - plausible_events_db:/var/lib/clickhouse
+      - ./plausible/clickhouse-config.xml:/etc/clickhouse-server/config.d/logging.xml:ro
+      - ./plausible/clickhouse-user-config.xml:/etc/clickhouse-server/users.d/logging.xml:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # Plausible Analytics
+  plausible:
+    image: plausible/analytics:v2.0
+    restart: always
+    command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    ports:
+      - "8000:8000"
+    environment:
+      - BASE_URL=http://localhost:8000
+      - SECRET_KEY_BASE=InVtbSB0cmFja2luZyB5b3UgZm9yIEphbURuZyBKb2JzIDopCg
+      - TOTP_VAULT_KEY=SWYgeW91IGFyZSByZWFkaW5nIHRoaXMsIGhpISBJIGFtIGEgc2VjcmV0IGtleS4K
+      - DATABASE_URL=postgres://postgres:postgres@plausible_db:5432/plausible
+      - CLICKHOUSE_DATABASE_URL=http://plausible_events_db:8123/plausible_events_db
+      - DISABLE_REGISTRATION=true
+      - ADMIN_USER_EMAIL=admin@jamdungjobs.com
+      - ADMIN_USER_NAME=JamDung Admin
+      - ADMIN_USER_PWD=admin123
+    depends_on:
+      - plausible_db
+      - plausible_events_db
+
 volumes:
   frontend_node_modules:
   postgres_data:
   uploads:
     name: jamdung_uploads  # Named volume for better identification
   api_node_modules:
+  plausible_db:
+  plausible_events_db:

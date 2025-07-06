@@ -33,6 +33,7 @@ import { styled } from '@mui/material/styles';
 import axios from 'axios';
 import { buildApiUrl } from '../../config';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import { useJobAnalytics } from '../../hooks/usePlausible';
 
 // Styled component for the file input
 const VisuallyHiddenInput = styled('input')({
@@ -44,10 +45,13 @@ const VisuallyHiddenInput = styled('input')({
   bottom: 0,
   left: 0,
   whiteSpace: 'nowrap',
-  width: 1,
+  width: 1
 });
 
 const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
+  // Analytics hook
+  const { trackJobApplication } = useJobAnalytics();
+  
   // Step state for the multi-step form
   const [activeStep, setActiveStep] = useState(0);
   const [savedResumes, setSavedResumes] = useState([]);
@@ -60,7 +64,10 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
     phoneNumber: '',
     availability: 'IMMEDIATE',
     salary: '',
-    additionalInfo: ''
+    additionalInfo: '',
+    // Source tracking
+    applicationSource: '',
+    sourceDetails: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -77,6 +84,19 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
     { value: 'TWO_WEEKS', label: 'Two Weeks' },
     { value: 'ONE_MONTH', label: 'One Month' },
     { value: 'NEGOTIABLE', label: 'Negotiable' }
+  ];
+
+  // Application source options for tracking
+  const applicationSourceOptions = [
+    { value: 'GOOGLE_SEARCH', label: 'Google Search' },
+    { value: 'FACEBOOK_SOCIAL', label: 'Facebook/Social Media' },
+    { value: 'LINKEDIN', label: 'LinkedIn' },
+    { value: 'JOB_BOARD', label: 'Job Board/Website' },
+    { value: 'COMPANY_WEBSITE', label: 'Company Website' },
+    { value: 'FRIEND_REFERRAL', label: 'Friend/Referral' },
+    { value: 'EMAIL_NEWSLETTER', label: 'Email Newsletter' },
+    { value: 'DIRECT_TRAFFIC', label: 'Direct (typed URL)' },
+    { value: 'OTHER', label: 'Other' }
   ];
   
   // Fetch user's saved resumes
@@ -161,6 +181,18 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
         setError('Please select a saved resume');
         return;
       }
+      
+      // Validate mandatory source tracking
+      if (!formData.applicationSource) {
+        setError('Please select how you heard about this job');
+        return;
+      }
+      
+      // If "Other" is selected, ensure details are provided
+      if (formData.applicationSource === 'OTHER' && !formData.sourceDetails.trim()) {
+        setError('Please specify where you heard about this job');
+        return;
+      }
     }
     
     setActiveStep((prevStep) => prevStep + 1);
@@ -230,6 +262,12 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
       applicationData.append('availability', formData.availability);
       applicationData.append('salary', formData.salary);
       applicationData.append('additionalInfo', formData.additionalInfo);
+      
+      // Add source tracking data
+      applicationData.append('applicationSource', formData.applicationSource);
+      if (formData.sourceDetails) {
+        applicationData.append('sourceDetails', formData.sourceDetails);
+      }
 
       // Log application submission with sanitized data
       logDev('debug', 'Submitting job application', sanitizeForLogging({
@@ -260,6 +298,10 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
           resumeType: resumeOption,
           status: response.status
         }));
+        
+        // Track application submission in analytics
+        trackJobApplication(jobId, jobTitle, formData.applicationSource);
+        
         onSuccess(response.data);
       }
     } catch (err) {
@@ -338,7 +380,7 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
                 variant="outlined"
                 sx={{ 
                   borderColor: '#2C5530',
-                  color: '#2C5530',
+                  color: '#2C5530'
                 }}
               />
             </Box>
@@ -440,6 +482,21 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
               </Paper>
             </Grid>
           )}
+
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1" color="text.secondary">How did you hear about this job?</Typography>
+            <Typography variant="body1">
+              {formData.applicationSource 
+                ? applicationSourceOptions.find(opt => opt.value === formData.applicationSource)?.label || 'Not specified'
+                : 'Not specified'
+              }
+              {formData.applicationSource === 'OTHER' && formData.sourceDetails && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Details: {formData.sourceDetails}
+                </Typography>
+              )}
+            </Typography>
+          </Grid>
         </Grid>
       </Box>
     </Box>
@@ -452,7 +509,7 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
         sx={{ 
           p: { xs: 2, sm: 4 }, 
           borderRadius: 2,
-          border: '1px solid rgba(255, 215, 0, 0.1)',
+          border: '1px solid rgba(255, 215, 0, 0.1)'
         }}
       >
         <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
@@ -482,7 +539,7 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
                     width: '80px',
                     height: '4px',
                     background: 'linear-gradient(90deg, #2C5530, #FFD700)',
-                    borderRadius: '2px',
+                    borderRadius: '2px'
                   }
                 }}
               >
@@ -562,6 +619,48 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
                     placeholder="Any other information you'd like to share with the employer..."
                   />
                 </Grid>
+
+                {/* Application Source Tracking - Mandatory */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ mb: 2, color: '#2C5530', fontWeight: 600 }}>
+                    🇯🇲 Help Us Improve JamDung Jobs
+                  </Typography>
+                  <FormControl fullWidth required>
+                    <InputLabel>How did you hear about this job? *</InputLabel>
+                    <Select
+                      value={formData.applicationSource}
+                      label="How did you hear about this job? *"
+                      onChange={handleChange('applicationSource')}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#2C5530',
+                          },
+                        },
+                      }}
+                    >
+                      {applicationSourceOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Show details field when "Other" is selected */}
+                {formData.applicationSource === 'OTHER' && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Please specify"
+                      value={formData.sourceDetails}
+                      onChange={handleChange('sourceDetails')}
+                      placeholder="Please tell us where you heard about this job..."
+                      required
+                    />
+                  </Grid>
+                )}
               </>
             ) : (
               <Grid item xs={12}>
@@ -625,7 +724,7 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
                     transition: 'all 0.3s ease',
                     textTransform: 'none',
                     fontSize: '1.1rem',
-                    fontWeight: 600,
+                    fontWeight: 600
                   }}
                 >
                   {loading ? (
