@@ -9,7 +9,12 @@ RUN npm ci
 # Copy source files
 COPY web-frontend/public ./public
 COPY web-frontend/src ./src
-COPY web-frontend/.env.example ./.env
+COPY web-frontend/scripts ./scripts
+
+# Set production environment variables
+ENV REACT_APP_ENV=production
+ENV REACT_APP_API_URL=/api
+ENV NODE_ENV=production
 
 # Build the static assets
 RUN npm run build
