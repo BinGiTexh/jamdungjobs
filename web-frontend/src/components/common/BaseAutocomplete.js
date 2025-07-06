@@ -12,7 +12,7 @@ export const BaseAutocomplete = ({
   renderSuggestion,
   loading = false,
   clearable = true,
-  className = "",
+  className = ''
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [touchStartY, setTouchStartY] = useState(0);

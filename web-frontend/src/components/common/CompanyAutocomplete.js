@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaBuilding } from 'react-icons/fa';
-import { BaseAutocomplete } from './BaseAutocomplete';
 import { logDev, logError } from '../../utils/loggingUtils';
+import { BaseAutocomplete } from './BaseAutocomplete';
 
 export const CompanyAutocomplete = ({ value, onChange }) => {
   const [suggestions, setSuggestions] = useState([]);

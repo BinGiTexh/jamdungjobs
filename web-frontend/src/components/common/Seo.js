@@ -19,33 +19,33 @@ const Seo = ({ title, description, lang = 'en', meta = [] }) => {
       meta={[
         {
           name: 'description',
-          content: metaDescription,
+          content: metaDescription
         },
         {
           property: 'og:title',
-          content: title || defaultTitle,
+          content: title || defaultTitle
         },
         {
           property: 'og:description',
-          content: metaDescription,
+          content: metaDescription
         },
         {
           property: 'og:type',
-          content: 'website',
+          content: 'website'
         },
         {
           name: 'twitter:card',
-          content: 'summary_large_image',
+          content: 'summary_large_image'
         },
         {
           name: 'twitter:title',
-          content: title || defaultTitle,
+          content: title || defaultTitle
         },
         {
           name: 'twitter:description',
-          content: metaDescription,
+          content: metaDescription
         },
-        ...meta,
+        ...meta
       ]}
     />
   );

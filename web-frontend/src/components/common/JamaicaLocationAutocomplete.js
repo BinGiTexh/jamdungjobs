@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { searchLocations, jamaicaParishes } from '../../data/jamaicaLocations';
-import { logDev, logError } from '../../utils/loggingUtils';
+import { logDev, _logError } from '../../utils/loggingUtils';
 
 /**
  * Jamaica-specific location autocomplete component
@@ -20,7 +20,7 @@ import { logDev, logError } from '../../utils/loggingUtils';
 export const JamaicaLocationAutocomplete = ({ 
   value, 
   onChange, 
-  placeholder = "Location in Jamaica", 
+  placeholder = 'Location in Jamaica', 
   radius = 10, 
   onRadiusChange,
   sx = {}
@@ -186,6 +186,11 @@ export const JamaicaLocationAutocomplete = ({
         id="jamaica-location-autocomplete"
         options={options}
         getOptionLabel={(option) => typeof option === 'string' ? option : option.mainText}
+        isOptionEqualToValue={(option, value) => {
+          if (!option || !value) return false;
+          if (typeof option === 'string' && typeof value === 'string') return option === value;
+          return option.placeId === value.placeId || option.name === value.name;
+        }}
         filterOptions={(x) => x} // Disable built-in filtering
         autoComplete
         includeInputInList
@@ -194,7 +199,7 @@ export const JamaicaLocationAutocomplete = ({
         onChange={handleOptionSelect}
         inputValue={inputValue}
         onInputChange={handleInputChange}
-        noOptionsText={inputValue.length < 2 ? "Type at least 2 characters" : "No locations found"}
+        noOptionsText={inputValue.length < 2 ? 'Type at least 2 characters' : 'No locations found'}
         renderInput={(params) => (
           <TextField
             {...params}
@@ -212,20 +217,20 @@ export const JamaicaLocationAutocomplete = ({
                 backgroundColor: 'rgba(255, 255, 255, 0.08)',
                 '& .MuiOutlinedInput-notchedOutline': {
                   borderColor: 'rgba(255, 215, 0, 0.5)',
-                  borderWidth: '2px',
+                  borderWidth: '2px'
                 },
                 '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 215, 0, 0.8)',
+                  borderColor: 'rgba(255, 215, 0, 0.8)'
                 },
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                   borderColor: '#FFD700',
-                  borderWidth: '2px',
+                  borderWidth: '2px'
                 },
                 ...sx
               }
             }}
             InputLabelProps={{
-              sx: { color: '#FFD700', fontWeight: 500 },
+              sx: { color: '#FFD700', fontWeight: 500 }
             }}
           />
         )}
@@ -239,16 +244,31 @@ export const JamaicaLocationAutocomplete = ({
                 />
               </Grid>
               <Grid item xs>
-                <Typography variant="body1" color="text.primary">
+                <Typography variant="body1" sx={{ color: 'white', fontWeight: 500 }}>
                   {option.mainText}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                   {option.secondaryText}
                 </Typography>
               </Grid>
             </Grid>
           </li>
         )}
+        PaperProps={{
+          sx: {
+            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+            border: '1px solid rgba(255, 215, 0, 0.3)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+            '& .MuiAutocomplete-option': {
+              '&:hover': {
+                backgroundColor: 'rgba(44, 85, 48, 0.2)'
+              },
+              '&[aria-selected="true"]': {
+                backgroundColor: 'rgba(44, 85, 48, 0.4)'
+              }
+            }
+          }
+        }}
       />
       
       {/* Parish filters */}
@@ -263,7 +283,7 @@ export const JamaicaLocationAutocomplete = ({
               label={parish}
               size="small"
               onClick={() => handleParishSelect(parish)}
-              color={selectedParishes.includes(parish) ? "primary" : "default"}
+              color={selectedParishes.includes(parish) ? 'primary' : 'default'}
               sx={{
                 backgroundColor: selectedParishes.includes(parish) 
                   ? 'rgba(44, 85, 48, 0.8)' 
@@ -273,7 +293,7 @@ export const JamaicaLocationAutocomplete = ({
                 '&:hover': {
                   backgroundColor: selectedParishes.includes(parish) 
                     ? 'rgba(44, 85, 48, 0.9)' 
-                    : 'rgba(255, 255, 255, 0.15)',
+                    : 'rgba(255, 255, 255, 0.15)'
                 }
               }}
             />
@@ -300,22 +320,22 @@ export const JamaicaLocationAutocomplete = ({
             '& .MuiSlider-thumb': {
               backgroundColor: '#FFD700',
               '&:hover, &.Mui-focusVisible': {
-                boxShadow: '0px 0px 0px 8px rgba(255, 215, 0, 0.16)',
-              },
+                boxShadow: '0px 0px 0px 8px rgba(255, 215, 0, 0.16)'
+              }
             },
             '& .MuiSlider-track': {
-              backgroundColor: '#FFD700',
+              backgroundColor: '#FFD700'
             },
             '& .MuiSlider-rail': {
-              backgroundColor: 'rgba(255, 215, 0, 0.3)',
+              backgroundColor: 'rgba(255, 215, 0, 0.3)'
             },
             '& .MuiSlider-mark': {
-              backgroundColor: 'rgba(255, 215, 0, 0.5)',
+              backgroundColor: 'rgba(255, 215, 0, 0.5)'
             },
             '& .MuiSlider-valueLabel': {
               backgroundColor: '#2C5530',
-              color: '#FFD700',
-            },
+              color: '#FFD700'
+            }
           }}
         />
       </Box>

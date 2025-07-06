@@ -63,6 +63,7 @@ export const JobTitleInput = ({ value, onChange, sx }) => {
       options={commonJobTitles}
       value={value}
       inputValue={inputValue}
+      isOptionEqualToValue={(option, value) => option === value}
       onInputChange={(event, newInputValue) => {
         setInputValue(newInputValue);
         onChange(newInputValue);
@@ -85,25 +86,25 @@ export const JobTitleInput = ({ value, onChange, sx }) => {
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'rgba(255, 215, 0, 0.5)',
-                borderWidth: '2px',
+                borderWidth: '2px'
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 215, 0, 0.8)',
+                borderColor: 'rgba(255, 215, 0, 0.8)'
               },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: '#FFD700',
-                borderWidth: '2px',
-              },
+                borderWidth: '2px'
+              }
             }
           }}
           InputLabelProps={{
-            sx: { color: '#FFD700', fontWeight: 500 },
+            sx: { color: '#FFD700', fontWeight: 500 }
           }}
         />
       )}
       renderOption={(props, option) => (
         <Box component="li" {...props}>
-          <Typography sx={{ color: '#2C5530', fontWeight: 500 }}>
+          <Typography sx={{ color: 'white', fontWeight: 500 }}>
             {option}
           </Typography>
         </Box>
@@ -115,10 +116,10 @@ export const JobTitleInput = ({ value, onChange, sx }) => {
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
           '& .MuiAutocomplete-option': {
             '&:hover': {
-              backgroundColor: 'rgba(44, 85, 48, 0.2)',
+              backgroundColor: 'rgba(44, 85, 48, 0.2)'
             },
             '&[aria-selected="true"]': {
-              backgroundColor: 'rgba(44, 85, 48, 0.4)',
+              backgroundColor: 'rgba(44, 85, 48, 0.4)'
             }
           }
         }

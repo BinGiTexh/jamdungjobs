@@ -53,19 +53,19 @@ export const SalaryRangeInput = ({ value, onChange, sx }) => {
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'rgba(255, 215, 0, 0.5)',
-                borderWidth: '2px',
+                borderWidth: '2px'
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 215, 0, 0.8)',
+                borderColor: 'rgba(255, 215, 0, 0.8)'
               },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: '#FFD700',
-                borderWidth: '2px',
-              },
+                borderWidth: '2px'
+              }
             }
           }}
           InputLabelProps={{
-            sx: { color: '#FFD700', fontWeight: 500 },
+            sx: { color: '#FFD700', fontWeight: 500 }
           }}
         />
         <TextField
@@ -84,19 +84,19 @@ export const SalaryRangeInput = ({ value, onChange, sx }) => {
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'rgba(255, 215, 0, 0.5)',
-                borderWidth: '2px',
+                borderWidth: '2px'
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 215, 0, 0.8)',
+                borderColor: 'rgba(255, 215, 0, 0.8)'
               },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: '#FFD700',
-                borderWidth: '2px',
-              },
+                borderWidth: '2px'
+              }
             }
           }}
           InputLabelProps={{
-            sx: { color: '#FFD700', fontWeight: 500 },
+            sx: { color: '#FFD700', fontWeight: 500 }
           }}
         />
       </Box>
@@ -118,19 +118,19 @@ export const SalaryRangeInput = ({ value, onChange, sx }) => {
             '& .MuiSlider-thumb': {
               backgroundColor: '#FFD700',
               '&:hover, &.Mui-focusVisible': {
-                boxShadow: '0px 0px 0px 8px rgba(255, 215, 0, 0.16)',
-              },
+                boxShadow: '0px 0px 0px 8px rgba(255, 215, 0, 0.16)'
+              }
             },
             '& .MuiSlider-track': {
-              backgroundColor: '#FFD700',
+              backgroundColor: '#FFD700'
             },
             '& .MuiSlider-rail': {
-              backgroundColor: 'rgba(255, 215, 0, 0.3)',
+              backgroundColor: 'rgba(255, 215, 0, 0.3)'
             },
             '& .MuiSlider-valueLabel': {
               backgroundColor: '#2C5530',
-              color: '#FFD700',
-            },
+              color: '#FFD700'
+            }
           }}
         />
       </Box>

@@ -33,14 +33,14 @@ const handleGoogleMapsError = (status) => {
   return false;
 };
 
-export const LocationAutocomplete = ({ value, onChange, placeholder = "Location", radius, onRadiusChange }) => {
+export const LocationAutocomplete = ({ value, onChange, placeholder = 'Location', radius, onRadiusChange }) => {
   const [inputValue, setInputValue] = useState('');
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [_isLoaded, setIsLoaded] = useState(false);
   const [searchRadius, setSearchRadius] = useState(radius || 10); // Default 10 km
   const autocompleteRef = useRef(null);
-  const inputRef = useRef(null);
+  const _inputRef = useRef(null);
 
   useEffect(() => {
     // Check if script is already loaded
@@ -116,7 +116,7 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
               autocompleteRef.current.getPlacePredictions(
                 {
                   input,
-                  types: ['(cities)', 'locality', 'sublocality', 'neighborhood'],
+                  types: ['(cities)', 'locality', 'sublocality', 'neighborhood']
                   // Allow locations in Jamaica by default, but don't restrict to only Jamaica
                   // componentRestrictions: { country: 'jm' }
                 },
@@ -231,6 +231,11 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
           id="location-autocomplete"
           options={options}
           getOptionLabel={(option) => typeof option === 'string' ? option : option.mainText}
+          isOptionEqualToValue={(option, value) => {
+            if (!option || !value) return false;
+            if (typeof option === 'string' && typeof value === 'string') return option === value;
+            return option.placeId === value.placeId || option.mainText === value.mainText;
+          }}
           filterOptions={(x) => x} // Disable built-in filtering
           autoComplete
           includeInputInList
@@ -264,19 +269,19 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
                   backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'rgba(255, 215, 0, 0.5)',
-                    borderWidth: '2px',
+                    borderWidth: '2px'
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 215, 0, 0.8)',
+                    borderColor: 'rgba(255, 215, 0, 0.8)'
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                     borderColor: '#FFD700',
-                    borderWidth: '2px',
-                  },
+                    borderWidth: '2px'
+                  }
                 }
               }}
               InputLabelProps={{
-                sx: { color: '#FFD700', fontWeight: 500 },
+                sx: { color: '#FFD700', fontWeight: 500 }
               }}
             />
           )}
@@ -322,22 +327,22 @@ export const LocationAutocomplete = ({ value, onChange, placeholder = "Location"
             '& .MuiSlider-thumb': {
               backgroundColor: '#FFD700',
               '&:hover, &.Mui-focusVisible': {
-                boxShadow: '0px 0px 0px 8px rgba(255, 215, 0, 0.16)',
-              },
+                boxShadow: '0px 0px 0px 8px rgba(255, 215, 0, 0.16)'
+              }
             },
             '& .MuiSlider-track': {
-              backgroundColor: '#FFD700',
+              backgroundColor: '#FFD700'
             },
             '& .MuiSlider-rail': {
-              backgroundColor: 'rgba(255, 215, 0, 0.3)',
+              backgroundColor: 'rgba(255, 215, 0, 0.3)'
             },
             '& .MuiSlider-mark': {
-              backgroundColor: 'rgba(255, 215, 0, 0.5)',
+              backgroundColor: 'rgba(255, 215, 0, 0.5)'
             },
             '& .MuiSlider-valueLabel': {
               backgroundColor: '#2C5530',
-              color: '#FFD700',
-            },
+              color: '#FFD700'
+            }
           }}
         />
       </Grid>

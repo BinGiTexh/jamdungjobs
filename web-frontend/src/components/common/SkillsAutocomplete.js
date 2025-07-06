@@ -95,7 +95,7 @@ export const SkillsAutocomplete = ({
   };
   
   // Calculate skill match score (for future use in job matching)
-  const calculateSkillMatch = (jobSkills, userSkills) => {
+  const _calculateSkillMatch = (jobSkills, userSkills) => {
     if (!jobSkills || !userSkills || jobSkills.length === 0 || userSkills.length === 0) {
       return 0;
     }
@@ -117,6 +117,11 @@ export const SkillsAutocomplete = ({
       autoHighlight
       options={getFilteredOptions()}
       value={value}
+      isOptionEqualToValue={(option, value) => {
+        if (!option || !value) return false;
+        if (typeof option === 'string' && typeof value === 'string') return option === value;
+        return option === value || (option.name && value.name && option.name === value.name);
+      }}
       onChange={(event, newValue) => {
         onChange(newValue);
       }}
@@ -145,19 +150,19 @@ export const SkillsAutocomplete = ({
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'rgba(255, 215, 0, 0.5)',
-                borderWidth: '2px',
+                borderWidth: '2px'
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 215, 0, 0.8)',
+                borderColor: 'rgba(255, 215, 0, 0.8)'
               },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: '#FFD700',
-                borderWidth: '2px',
-              },
+                borderWidth: '2px'
+              }
             }
           }}
           InputLabelProps={{
-            sx: { color: '#FFD700', fontWeight: 500 },
+            sx: { color: '#FFD700', fontWeight: 500 }
           }}
           FormHelperTextProps={{
             sx: { color: 'rgba(255, 215, 0, 0.7)' }
@@ -181,9 +186,9 @@ export const SkillsAutocomplete = ({
                 '& .MuiChip-deleteIcon': {
                   color: '#FFD700',
                   '&:hover': {
-                    color: '#FFFFFF',
-                  },
-                },
+                    color: '#FFFFFF'
+                  }
+                }
               }}
             />
           );
@@ -208,7 +213,7 @@ export const SkillsAutocomplete = ({
             border: '1px solid rgba(255, 215, 0, 0.3)',
             maxHeight: '300px',
             overflowY: 'auto',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
           }} 
         />
       )}

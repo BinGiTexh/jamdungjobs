@@ -25,7 +25,7 @@ const logDev = (level, ...args) => {
 export const JamaicaLocationProfileAutocomplete = ({ 
   value, 
   onChange, 
-  placeholder = "Location in Jamaica", 
+  placeholder = 'Location in Jamaica', 
   sx = {}
 }) => {
   const [inputValue, setInputValue] = useState('');
@@ -140,6 +140,11 @@ export const JamaicaLocationProfileAutocomplete = ({
       id="jamaica-location-profile-autocomplete"
       options={options}
       getOptionLabel={(option) => typeof option === 'string' ? option : option.mainText}
+      isOptionEqualToValue={(option, value) => {
+        if (!option || !value) return false;
+        if (typeof option === 'string' && typeof value === 'string') return option === value;
+        return option.placeId === value.placeId || option.name === value.name;
+      }}
       filterOptions={(x) => x} // Disable built-in filtering
       autoComplete
       includeInputInList
@@ -148,7 +153,7 @@ export const JamaicaLocationProfileAutocomplete = ({
       onChange={handleOptionSelect}
       inputValue={inputValue}
       onInputChange={handleInputChange}
-      noOptionsText={inputValue.length < 2 ? "Type at least 2 characters" : "No locations found"}
+      noOptionsText={inputValue.length < 2 ? 'Type at least 2 characters' : 'No locations found'}
       renderInput={(params) => (
         <TextField
           {...params}
@@ -166,20 +171,20 @@ export const JamaicaLocationProfileAutocomplete = ({
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'rgba(255, 215, 0, 0.5)',
-                borderWidth: '2px',
+                borderWidth: '2px'
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 215, 0, 0.8)',
+                borderColor: 'rgba(255, 215, 0, 0.8)'
               },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: '#FFD700',
-                borderWidth: '2px',
+                borderWidth: '2px'
               },
               ...sx
             }
           }}
           InputLabelProps={{
-            sx: { color: '#FFD700', fontWeight: 500 },
+            sx: { color: '#FFD700', fontWeight: 500 }
           }}
         />
       )}
