@@ -103,7 +103,7 @@ export const usePayment = () => {
 };
 
 // Subscription management hook
-export const useSubscription = (customerId) => {
+export const useSubscription = (_customerId) => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
