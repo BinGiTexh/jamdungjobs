@@ -1,0 +1,49 @@
+{
+  "name": "jamdungjobs",
+  "version": "1.2.0",
+  "description": "Jamaica's premier job search platform connecting local talent with opportunities",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm run install:backend && npm run install:frontend && npm run install:testing",
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd web-frontend && npm install",
+    "install:testing": "cd testing && npm install",
+    "start": "npm run start:backend",
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd web-frontend && npm start",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd web-frontend && npm run build",
+    "test": "cd testing && npm test",
+    "test:api": "cd testing && node api.test.js",
+    "test:smoke": "cd testing && node basic-smoke-test.js",
+    "test:comprehensive": "cd testing && node comprehensive-qa-test.js",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd web-frontend && npm run lint",
+    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "docker:build": "docker-compose -f docker-compose.prod.yml build",
+    "docker:up": "docker-compose -f docker-compose.prod.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.prod.yml down"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BinGiTexh/jamdungjobs.git"
+  },
+  "keywords": [
+    "jobs",
+    "jamaica",
+    "employment",
+    "careers",
+    "job-board",
+    "hiring"
+  ],
+  "author": "BinGiTech",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
