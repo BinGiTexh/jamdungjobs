@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaFilter, FaRegBookmark, FaBookmark, FaClock, FaBuilding, FaMapMarkerAlt, FaBriefcase } from 'react-icons/fa';
+import { FaTimes, FaRegBookmark, FaBookmark, FaClock, FaBuilding, FaMapMarkerAlt, FaBriefcase } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { logDev, logError, sanitizeForLogging } from '../utils/logging';
@@ -181,17 +181,6 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const getJobStatusBadge = (job) => {
-    const deadline = new Date(job.applicationDeadline);
-    const now = new Date();
-    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-
-    if (daysLeft < 0) return { text: 'Expired', color: 'red' };
-    if (daysLeft <= 3) return { text: 'Closing Soon', color: 'orange' };
-    if (job.featured) return { text: 'Featured', color: 'yellow' };
-    if (job.remote) return { text: 'Remote', color: 'green' };
-    return null;
-  };
 
   const handleQuickApply = (job) => {
     if (!user) {

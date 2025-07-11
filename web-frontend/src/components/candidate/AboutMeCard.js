@@ -14,9 +14,7 @@ import {
   Chip,
   Box,
   Autocomplete,
-  Grid,
-  CircularProgress,
-  Alert
+  Grid
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import api from '../../utils/axiosConfig';
@@ -34,7 +32,6 @@ const AboutMeCard = ({ userProfile, onProfileUpdate }) => {
   });
   const [error, setError] = useState(null);
   const [resumeUploading, setResumeUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
 
   // Common skills suggestions
@@ -128,7 +125,6 @@ const AboutMeCard = ({ userProfile, onProfileUpdate }) => {
 
   const handleSubmit = async () => {
     try {
-      setSaving(true);
       setError(null);
       setSuccess('');
       
@@ -177,8 +173,6 @@ const AboutMeCard = ({ userProfile, onProfileUpdate }) => {
       }
       
       setError(errorMessage);
-    } finally {
-      setSaving(false);
     }
   };
 

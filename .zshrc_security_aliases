@@ -1,0 +1,21 @@
+# 1Password Security Framework Aliases
+# Add to your ~/.zshrc: source ~/jamdungjobs/.zshrc_security_aliases
+
+# Quick security framework access
+alias get-security-framework='op document get "Global Security Framework" --output ~/CLAUDE_GLOBAL_SECURITY.md && echo "✅ Security framework synced to ~/CLAUDE_GLOBAL_SECURITY.md"'
+alias sync-security='bash /Users/mcameron/sync-security-framework.sh'
+
+# Quick security checks
+alias security-scan='git secrets --scan && npm audit'
+alias security-check='echo "🔒 Running security checks..." && git secrets --scan && if [ -f package.json ]; then npm audit; fi'
+
+# Environment variable helpers
+alias show-env-template='cat .env.example 2>/dev/null || echo "No .env.example found"'
+alias check-secrets='grep -r "password\|secret\|key" . --include="*.js" --include="*.ts" --exclude-dir=node_modules'
+
+echo "🔒 Security aliases loaded!"
+echo "Available commands:"
+echo "  get-security-framework  - Download latest from 1Password"
+echo "  sync-security           - Full security sync"
+echo "  security-scan           - Quick security check"
+echo "  security-check          - Comprehensive security check"

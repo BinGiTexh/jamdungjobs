@@ -54,7 +54,7 @@ const underlineExpand = keyframes({
 });
 
 // Styled components
-const StyledContainer = styled(Container)(({ theme }) => ({
+const StyledContainer = styled(Container)(({ _theme }) => ({
   marginTop: theme.spacing(4),
   animation: `${fadeInUp} 0.6s ease-out`
 }));

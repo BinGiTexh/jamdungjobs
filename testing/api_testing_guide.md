@@ -33,7 +33,7 @@ Authorization: Bearer <token>
 # Using cURL
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "testjobseeker@jamdungjobs.com", "password": "Test@123"}'
+  -d '{"email": "YOUR_TEST_EMAIL", "password": "YOUR_TEST_PASSWORD"}'
 ```
 
 ```javascript
@@ -41,8 +41,8 @@ curl -X POST http://localhost:5000/api/auth/login \
 // POST http://localhost:5000/api/auth/login
 // Body (raw JSON):
 {
-  "email": "testjobseeker@jamdungjobs.com",
-  "password": "Test@123"
+  "email": "YOUR_TEST_EMAIL",
+  "password": "YOUR_TEST_PASSWORD"
 }
 ```
 
@@ -95,8 +95,8 @@ curl -X POST http://localhost:5000/api/auth/login \
 // POST http://localhost:5000/api/auth/login
 // Body (raw JSON):
 {
-  "email": "testjobseeker@jamdungjobs.com",
-  "password": "Test@123"
+  "email": "YOUR_TEST_EMAIL",
+  "password": "YOUR_TEST_PASSWORD"
 }
 ```
 

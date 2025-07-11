@@ -8,14 +8,13 @@ import {
   Divider,
   Box,
   ListItemText,
-  ListItemIcon,
   Button
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/axiosConfig';
-import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import { logDev, logError } from '../../utils/loggingUtils';
 
 const NotificationsMenu = () => {
   const [notifications, setNotifications] = useState([]);

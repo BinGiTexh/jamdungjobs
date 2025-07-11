@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
@@ -135,7 +135,6 @@ const ProfileCompletionPrompt = ({ profileData, onComplete }) => {
     // Store dismissal in localStorage to persist across sessions
     localStorage.setItem('profile_completion_dismissed', 'true');
   };
-
 
   return (
     <ProgressCard className={isComplete ? 'completed' : ''}>

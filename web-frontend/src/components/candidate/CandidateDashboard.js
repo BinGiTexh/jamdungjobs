@@ -23,7 +23,6 @@ import {
   LinearProgress,
   Fade
 } from '@mui/material';
-import axios from 'axios';
 
 // Import icons
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -32,7 +31,6 @@ import GetAppIcon from '@mui/icons-material/GetApp';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AddIcon from '@mui/icons-material/Add';
 import Avatar from '@mui/material/Avatar';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
@@ -40,7 +38,7 @@ import ApplicationsList from '../jobseeker/ApplicationsList';
 import api from '../../utils/axiosConfig';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
-import { buildApiUrl, buildAssetUrl } from '../../config';
+import { buildAssetUrl } from '../../config';
 import { useAuth } from '../../context/AuthContext';
 import NotificationsMenu from './NotificationsMenu';
 
@@ -108,7 +106,7 @@ const BackgroundOverlay = styled(Box)({
   zIndex: 1
 });
 
-const StyledTab = styled(Tab)(({ theme }) => ({
+const StyledTab = styled(Tab)(({ _theme }) => ({
   fontWeight: 500,
   fontSize: '0.95rem',
   textTransform: 'none',
@@ -143,11 +141,11 @@ const StyledButton = styled(Button)(({ theme, variant }) => ({
   })
 }));
 
-const StyledChip = styled(Chip)(({ theme }) => ({
+const StyledChip = styled(Chip)(({ _theme }) => ({
   backgroundColor: 'rgba(255, 215, 0, 0.15)',
   color: '#FFD700',
   fontWeight: 500,
-  margin: theme.spacing(0.5),
+  margin: "4px",
   borderRadius: 16,
   border: '1px solid rgba(255, 215, 0, 0.3)'
 }));
@@ -231,11 +229,6 @@ const CandidateDashboard = () => {
     return [];
   };
 
-  // Helper function to ensure skills is always an array
-  const ensureSkillsArray = (profile) => ({
-    ...profile,
-    skills: Array.isArray(profile?.skills) ? profile.skills : []
-  });
 
   // Helper to build full asset URL using shared helper
   const getFullUrl = (relativeUrl) => {

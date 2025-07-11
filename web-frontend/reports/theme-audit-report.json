@@ -1,15 +1,15 @@
 {
-  "timestamp": "2025-07-06T05:30:55.533Z",
+  "timestamp": "2025-07-11T22:37:20.641Z",
   "summary": {
-    "totalFiles": 147,
-    "filesWithIssues": 146,
-    "totalIssues": 2321,
+    "totalFiles": 153,
+    "filesWithIssues": 152,
+    "totalIssues": 2598,
     "issuesByType": {
-      "hardcodedColors": 2168,
+      "hardcodedColors": 2439,
       "hardcodedSpacing": 0,
       "hardcodedTypography": 0,
-      "hardcodedBreakpoints": 9,
-      "missingThemeImports": 144
+      "hardcodedBreakpoints": 10,
+      "missingThemeImports": 149
     }
   },
   "results": [
@@ -997,6 +997,18 @@
       "hasIssues": true
     },
     {
+      "file": "/app/src/components/PublicRoute.js",
+      "component": "PublicRoute",
+      "themeIssues": [],
+      "importIssues": {
+        "hasUseTheme": false,
+        "hasThemeImport": false,
+        "isValid": false
+      },
+      "breakpointIssues": [],
+      "hasIssues": true
+    },
+    {
       "file": "/app/src/components/Register.js",
       "component": "Register",
       "themeIssues": [
@@ -1733,6 +1745,20 @@
         },
         {
           "type": "hardcoded-color",
+          "value": "#ffcdd2",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "LoginPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#ef5350",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "LoginPage"
+        },
+        {
+          "type": "hardcoded-color",
           "value": "#FFD700",
           "suggestion": "theme.palette.secondary.main",
           "severity": "error",
@@ -1859,6 +1885,20 @@
         },
         {
           "type": "hardcoded-color",
+          "value": "rgba(211, 47, 47, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "LoginPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(211, 47, 47, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "LoginPage"
+        },
+        {
+          "type": "hardcoded-color",
           "value": "rgba(255, 215, 0, 0.3)",
           "suggestion": "Use theme.palette values",
           "severity": "error",
@@ -1923,6 +1963,34 @@
         {
           "type": "hardcoded-color",
           "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "LoginPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "LoginPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "LoginPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "LoginPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "LoginPage"
@@ -5405,36 +5473,22 @@
       "themeIssues": [
         {
           "type": "hardcoded-color",
-          "value": "#FFD700",
-          "suggestion": "theme.palette.secondary.main",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
         {
           "type": "hardcoded-color",
-          "value": "#FFD700",
-          "suggestion": "theme.palette.secondary.main",
+          "value": "#1A1A1A",
+          "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
         {
           "type": "hardcoded-color",
-          "value": "#FFD700",
-          "suggestion": "theme.palette.secondary.main",
-          "severity": "error",
-          "component": "SkillsAutocomplete"
-        },
-        {
-          "type": "hardcoded-color",
-          "value": "#FFD700",
-          "suggestion": "theme.palette.secondary.main",
-          "severity": "error",
-          "component": "SkillsAutocomplete"
-        },
-        {
-          "type": "hardcoded-color",
-          "value": "#FFD700",
-          "suggestion": "theme.palette.secondary.main",
+          "value": "#2D2D2D",
+          "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
@@ -5454,56 +5508,63 @@
         },
         {
           "type": "hardcoded-color",
-          "value": "#FFFFFF",
+          "value": "#006B2F",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
         {
           "type": "hardcoded-color",
-          "value": "rgba(255, 255, 255, 0.08)",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#006B2F",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
         {
           "type": "hardcoded-color",
-          "value": "rgba(255, 215, 0, 0.5)",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#006B2F",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
         {
           "type": "hardcoded-color",
-          "value": "rgba(255, 215, 0, 0.8)",
+          "value": "#FFF",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
         {
           "type": "hardcoded-color",
-          "value": "rgba(255, 215, 0, 0.7)",
+          "value": "#004D21",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
         {
           "type": "hardcoded-color",
-          "value": "rgba(44, 85, 48, 0.8)",
-          "suggestion": "Use theme.palette values",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
           "severity": "error",
           "component": "SkillsAutocomplete"
         },
         {
           "type": "hardcoded-color",
-          "value": "rgba(255, 215, 0, 0.5)",
-          "suggestion": "Use theme.palette values",
-          "severity": "error",
-          "component": "SkillsAutocomplete"
-        },
-        {
-          "type": "hardcoded-color",
-          "value": "rgba(20, 20, 20, 0.95)",
+          "value": "#006B2F",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
@@ -5517,7 +5578,77 @@
         },
         {
           "type": "hardcoded-color",
-          "value": "rgba(0, 0, 0, 0.5)",
+          "value": "rgba(0, 107, 47, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.5)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 107, 47, 0.5)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 107, 47, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 107, 47, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 107, 47, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "SkillsAutocomplete"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 107, 47, 0.1)",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "SkillsAutocomplete"
@@ -5525,7 +5656,7 @@
       ],
       "importIssues": {
         "hasUseTheme": false,
-        "hasThemeImport": false,
+        "hasThemeImport": true,
         "isValid": false
       },
       "breakpointIssues": [],
@@ -5679,10 +5810,242 @@
     {
       "file": "/app/src/components/dashboard/EmployerDashboard.js",
       "component": "EmployerDashboard",
-      "themeIssues": [],
+      "themeIssues": [
+        {
+          "type": "hardcoded-color",
+          "value": "#1a1a1a",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2c2c2c",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#000000",
+          "suggestion": "theme.palette.text.primary",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#0a0a0a",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4CAF50",
+          "suggestion": "theme.palette.primary.light",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FF6B35",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.15)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.4)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 150, 57, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 150, 57, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerDashboard"
+        }
+      ],
       "importIssues": {
         "hasUseTheme": false,
-        "hasThemeImport": false,
+        "hasThemeImport": true,
         "isValid": false
       },
       "breakpointIssues": [],
@@ -5713,12 +6076,244 @@
       "hasIssues": true
     },
     {
-      "file": "/app/src/components/dashboard/JobseekerDashboard.js",
-      "component": "JobseekerDashboard",
-      "themeIssues": [],
+      "file": "/app/src/components/dashboard/JobSeekerDashboard.js",
+      "component": "JobSeekerDashboard",
+      "themeIssues": [
+        {
+          "type": "hardcoded-color",
+          "value": "#1a1a1a",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2c2c2c",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#000000",
+          "suggestion": "theme.palette.text.primary",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#0a0a0a",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FF6B35",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4CAF50",
+          "suggestion": "theme.palette.primary.light",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.15)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.4)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobSeekerDashboard"
+        }
+      ],
       "importIssues": {
         "hasUseTheme": false,
-        "hasThemeImport": false,
+        "hasThemeImport": true,
         "isValid": false
       },
       "breakpointIssues": [],
@@ -8563,13 +9158,6 @@
         },
         {
           "type": "hardcoded-color",
-          "value": "#FFD700",
-          "suggestion": "theme.palette.secondary.main",
-          "severity": "error",
-          "component": "JobListingForm"
-        },
-        {
-          "type": "hardcoded-color",
           "value": "#FFFFFF",
           "suggestion": "Use theme.palette values",
           "severity": "error",
@@ -8655,27 +9243,6 @@
         {
           "type": "hardcoded-color",
           "value": "rgba(255, 215, 0, 0.7)",
-          "suggestion": "Use theme.palette values",
-          "severity": "error",
-          "component": "JobListingForm"
-        },
-        {
-          "type": "hardcoded-color",
-          "value": "rgba(255, 215, 0, 0.1)",
-          "suggestion": "Use theme.palette values",
-          "severity": "error",
-          "component": "JobListingForm"
-        },
-        {
-          "type": "hardcoded-color",
-          "value": "rgba(255, 215, 0, 0.3)",
-          "suggestion": "Use theme.palette values",
-          "severity": "error",
-          "component": "JobListingForm"
-        },
-        {
-          "type": "hardcoded-color",
-          "value": "rgba(255, 215, 0, 0.2)",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "JobListingForm"
@@ -11062,6 +11629,20 @@
         },
         {
           "type": "hardcoded-color",
+          "value": "#2C5530",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobApplicationForm"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2C5530",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "JobApplicationForm"
+        },
+        {
+          "type": "hardcoded-color",
           "value": "#FFD700",
           "suggestion": "theme.palette.secondary.main",
           "severity": "error",
@@ -11717,6 +12298,529 @@
       "hasIssues": true
     },
     {
+      "file": "/app/src/components/onboarding/OnboardingTour.js",
+      "component": "OnboardingTour",
+      "themeIssues": [
+        {
+          "type": "hardcoded-color",
+          "value": "#1A1A1A",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2C2C2C",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#000000",
+          "suggestion": "theme.palette.text.primary",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4CAF50",
+          "suggestion": "theme.palette.primary.light",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(45, 45, 45, 0.6)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "OnboardingTour"
+        }
+      ],
+      "importIssues": {
+        "hasUseTheme": true,
+        "hasThemeImport": true,
+        "isValid": true
+      },
+      "breakpointIssues": [],
+      "hasIssues": true
+    },
+    {
+      "file": "/app/src/components/onboarding/ProfileCompletionPrompt.js",
+      "component": "ProfileCompletionPrompt",
+      "themeIssues": [
+        {
+          "type": "hardcoded-color",
+          "value": "#2D2D2D",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#1A1A1A",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2D3D2D",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#1A2A1A",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#000000",
+          "suggestion": "theme.palette.text.primary",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4CAF50",
+          "suggestion": "theme.palette.primary.light",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4CAF50",
+          "suggestion": "theme.palette.primary.light",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4CAF50",
+          "suggestion": "theme.palette.primary.light",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 150, 57, 0.4)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.5)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.05)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.6)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "ProfileCompletionPrompt"
+        }
+      ],
+      "importIssues": {
+        "hasUseTheme": false,
+        "hasThemeImport": true,
+        "isValid": false
+      },
+      "breakpointIssues": [],
+      "hasIssues": true
+    },
+    {
       "file": "/app/src/components/payments/AdminAnalytics.js",
       "component": "AdminAnalytics",
       "themeIssues": [
@@ -11917,6 +13021,472 @@
     {
       "file": "/app/src/components/payments/index.js",
       "component": "index",
+      "themeIssues": [],
+      "importIssues": {
+        "hasUseTheme": false,
+        "hasThemeImport": false,
+        "isValid": false
+      },
+      "breakpointIssues": [],
+      "hasIssues": true
+    },
+    {
+      "file": "/app/src/components/profile/EnhancedProfilePage.js",
+      "component": "EnhancedProfilePage",
+      "themeIssues": [
+        {
+          "type": "hardcoded-color",
+          "value": "#1A1A1A",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2C2C2C",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2D2D2D",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#1A1A1A",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#000000",
+          "suggestion": "theme.palette.text.primary",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#000",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4caf50",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#666",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4caf50",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4caf50",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#666",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4caf50",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 0, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.4)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 0, 0, 0.4)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(45, 45, 45, 0.8)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.5)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.4)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 0, 0, 0.5)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(45, 45, 45, 0.6)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EnhancedProfilePage"
+        }
+      ],
+      "importIssues": {
+        "hasUseTheme": false,
+        "hasThemeImport": true,
+        "isValid": false
+      },
+      "breakpointIssues": [],
+      "hasIssues": true
+    },
+    {
+      "file": "/app/src/components/profile/PhoneInputFix.js",
+      "component": "PhoneInputFix",
       "themeIssues": [],
       "importIssues": {
         "hasUseTheme": false,
@@ -15400,15 +16970,7 @@
     {
       "file": "/app/src/pages/BasicSearchPage.js",
       "component": "BasicSearchPage",
-      "themeIssues": [
-        {
-          "type": "hardcoded-color",
-          "value": "#f5f5f5",
-          "suggestion": "Use theme.palette values",
-          "severity": "error",
-          "component": "BasicSearchPage"
-        }
-      ],
+      "themeIssues": [],
       "importIssues": {
         "hasUseTheme": false,
         "hasThemeImport": false,
@@ -15693,15 +17255,8 @@
         },
         {
           "type": "hardcoded-color",
-          "value": "#1A1A1A",
-          "suggestion": "Use theme.palette values",
-          "severity": "error",
-          "component": "EmployerBillingPage"
-        },
-        {
-          "type": "hardcoded-color",
-          "value": "#666",
-          "suggestion": "Use theme.palette values",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
           "severity": "error",
           "component": "EmployerBillingPage"
         },
@@ -15784,15 +17339,22 @@
         },
         {
           "type": "hardcoded-color",
-          "value": "#f8f9fa",
+          "value": "#1a1a1a",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "EmployerBillingPage"
         },
         {
           "type": "hardcoded-color",
-          "value": "#1A1A1A",
+          "value": "#2c2c2c",
           "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
           "severity": "error",
           "component": "EmployerBillingPage"
         },
@@ -15805,8 +17367,22 @@
         },
         {
           "type": "hardcoded-color",
-          "value": "#1A1A1A",
+          "value": "#1a1a1a",
           "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2c2c2c",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
           "severity": "error",
           "component": "EmployerBillingPage"
         },
@@ -15826,6 +17402,20 @@
         },
         {
           "type": "hardcoded-color",
+          "value": "#1a1a1a",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2c2c2c",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
           "value": "#FFD700",
           "suggestion": "theme.palette.secondary.main",
           "severity": "error",
@@ -15833,7 +17423,70 @@
         },
         {
           "type": "hardcoded-color",
-          "value": "#1A1A1A",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4CAF50",
+          "suggestion": "theme.palette.primary.light",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#000000",
+          "suggestion": "theme.palette.text.primary",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.8)",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "EmployerBillingPage"
@@ -15847,7 +17500,49 @@
         },
         {
           "type": "hardcoded-color",
-          "value": "rgba(255, 215, 0, 0.8)",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.1)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerBillingPage"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
           "suggestion": "Use theme.palette values",
           "severity": "error",
           "component": "EmployerBillingPage"
@@ -15956,6 +17651,292 @@
         "isValid": false
       },
       "breakpointIssues": [],
+      "hasIssues": true
+    },
+    {
+      "file": "/app/src/pages/EmployerPostJobPageNew.js",
+      "component": "EmployerPostJobPageNew",
+      "themeIssues": [
+        {
+          "type": "hardcoded-color",
+          "value": "#121212",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2C2C2C",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2D2D2D",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#1A1A1A",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#000000",
+          "suggestion": "theme.palette.text.primary",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#009639",
+          "suggestion": "theme.palette.primary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#121212",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#2C2C2C",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFFFFF",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#4CAF50",
+          "suggestion": "theme.palette.primary.light",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "#FFD700",
+          "suggestion": "theme.palette.secondary.main",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.2)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 0, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 215, 0, 0.3)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(0, 0, 0, 0.5)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.9)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        },
+        {
+          "type": "hardcoded-color",
+          "value": "rgba(255, 255, 255, 0.7)",
+          "suggestion": "Use theme.palette values",
+          "severity": "error",
+          "component": "EmployerPostJobPageNew"
+        }
+      ],
+      "importIssues": {
+        "hasUseTheme": false,
+        "hasThemeImport": true,
+        "isValid": false
+      },
+      "breakpointIssues": [
+        {
+          "type": "hardcoded-breakpoint",
+          "value": "1200px",
+          "suggestion": "Use theme.breakpoints.down() or theme.breakpoints.up()",
+          "severity": "warning"
+        }
+      ],
       "hasIssues": true
     },
     {
@@ -17128,21 +19109,21 @@
       "priority": "high",
       "type": "hardcoded-colors",
       "title": "Replace hardcoded colors with theme values",
-      "description": "Found 2168 hardcoded colors. Replace with theme.palette values.",
+      "description": "Found 2439 hardcoded colors. Replace with theme.palette values.",
       "action": "Use theme.palette.primary.main, theme.palette.secondary.main, etc."
     },
     {
       "priority": "high",
       "type": "missing-imports",
       "title": "Add proper theme imports",
-      "description": "Found 144 components without proper theme imports.",
+      "description": "Found 149 components without proper theme imports.",
       "action": "Import useTheme from @mui/material/styles or custom ThemeContext"
     },
     {
       "priority": "low",
       "type": "hardcoded-breakpoints",
       "title": "Use theme breakpoints",
-      "description": "Found 9 hardcoded breakpoint values.",
+      "description": "Found 10 hardcoded breakpoint values.",
       "action": "Use theme.breakpoints.down() or theme.breakpoints.up()"
     }
   ]
