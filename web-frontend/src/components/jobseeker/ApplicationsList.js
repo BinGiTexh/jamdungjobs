@@ -29,7 +29,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { buildApiUrl } from '../../config';
+import { buildApiUrl, buildAssetUrl } from '../../config';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
 import EmptyApplicationsState from './EmptyApplicationsState';
 
@@ -130,7 +130,11 @@ const ApplicationsList = () => {
 
   const handleDownloadResume = async (applicationId, resumeUrl) => {
     try {
-      const response = await axios.get(resumeUrl, {
+      // Build the full URL for the resume download
+      const fullResumeUrl = buildAssetUrl(resumeUrl);
+      logDev('debug', 'Downloading resume', { applicationId, resumeUrl, fullResumeUrl });
+      
+      const response = await axios.get(fullResumeUrl, {
         responseType: 'blob'
       });
       

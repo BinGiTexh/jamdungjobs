@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import api from '../utils/axiosConfig';
 
 const NotificationContext = createContext();
 
@@ -26,40 +27,37 @@ export const NotificationProvider = ({ children }) => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('jamdung_auth_token');
-      const response = await fetch('http://localhost:5000/api/employer/notifications', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/api/notifications');
 
-      if (response.ok) {
-        const data = await response.json();
-        const notificationsList = data.notifications || [];
+      if (response.status === 200) {
+        const data = response.data;
+        const notificationsList = data.data || [];
         setNotifications(notificationsList);
-        setUnreadCount(notificationsList.filter(n => !n.read).length);
+        setUnreadCount(notificationsList.filter(n => n.status === 'UNREAD').length);
       } else {
         // Mock data for demo
         const mockNotifications = [
           {
             id: 1,
-            type: 'new_application',
+            type: 'APPLICATION_UPDATE',
             title: 'New Application Received',
-            message: 'John Doe applied for Software Developer position',
+            content: 'John Doe applied for Software Developer position',
             createdAt: new Date().toISOString(),
+            status: 'UNREAD',
             read: false
           },
           {
             id: 2,
-            type: 'interview_scheduled',
+            type: 'SYSTEM',
             title: 'Interview Scheduled',
-            message: 'Interview with Jane Smith scheduled for tomorrow',
+            content: 'Interview with Jane Smith scheduled for tomorrow',
             createdAt: new Date(Date.now() - 86400000).toISOString(),
+            status: 'UNREAD',
             read: false
           }
         ];
         setNotifications(mockNotifications);
-        setUnreadCount(mockNotifications.filter(n => !n.read).length);
+        setUnreadCount(mockNotifications.filter(n => n.status === 'UNREAD').length);
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -70,22 +68,14 @@ export const NotificationProvider = ({ children }) => {
 
   const markAsRead = async (notificationId) => {
     try {
-      const token = localStorage.getItem('jamdung_auth_token');
-      const response = await fetch(`http://localhost:5000/api/employer/notifications/${notificationId}/read`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      await api.patch(`/api/notifications/${notificationId}/mark-read`);
 
-      if (response.ok) {
-        setNotifications(prev => 
-          prev.map(notif => 
-            notif.id === notificationId ? { ...notif, read: true } : notif
-          )
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId ? { ...notif, status: 'read', read: true } : notif
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
@@ -93,18 +83,10 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('jamdung_auth_token');
-      const response = await fetch('http://localhost:5000/api/employer/notifications/mark-all-read', {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      await api.patch('/api/notifications/mark-all-read');
 
-      if (response.ok) {
-        setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
-        setUnreadCount(0);
-      }
+      setNotifications(prev => prev.map(notif => ({ ...notif, status: 'read', read: true })));
+      setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }

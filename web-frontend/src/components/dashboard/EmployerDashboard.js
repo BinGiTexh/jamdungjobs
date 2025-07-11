@@ -1,165 +1,385 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Box,
   Container,
-  Grid
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  Button,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import {
+  Add as AddIcon,
   Work as WorkIcon,
-  PersonAdd as PersonAddIcon,
-  Event as EventIcon,
-  CheckCircle as CheckCircleIcon
+  People as PeopleIcon,
+  TrendingUp as TrendingUpIcon,
+  Visibility as VisibilityIcon,
+  Business as BusinessIcon,
+  Analytics as AnalyticsIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import WelcomeHeader from './WelcomeHeader';
-import StatsCard from './StatsCard';
-import RecentApplicationsWidget from './RecentApplicationsWidget';
-import JobPostingPerformance from './JobPostingPerformance';
-import NotificationsPanel from './NotificationsPanel';
-import QuickActions from './QuickActions';
-import UpcomingInterviews from './UpcomingInterviews';
+import { styled } from '@mui/material/styles';
+import api from '../../utils/api';
+
+const DashboardCard = styled(Card)(() => ({
+  background: 'linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%)',
+  border: '1px solid rgba(255, 215, 0, 0.2)',
+  borderRadius: '12px',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: '0 8px 25px rgba(255, 215, 0, 0.15)',
+    borderColor: 'rgba(255, 215, 0, 0.4)'
+  }
+}));
+
+const ActionButton = styled(Button)(() => ({
+  background: 'linear-gradient(90deg, #FFD700, #009639)',
+  color: '#000000',
+  fontWeight: 600,
+  borderRadius: '8px',
+  padding: '12px 24px',
+  textTransform: 'none',
+  '&:hover': {
+    background: 'linear-gradient(90deg, #009639, #FFD700)',
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 15px rgba(255, 215, 0, 0.3)'
+  },
+  transition: 'all 0.3s ease'
+}));
+
+const SecondaryButton = styled(Button)(() => ({
+  color: '#FFD700',
+  borderColor: '#FFD700',
+  borderRadius: '8px',
+  padding: '12px 24px',
+  textTransform: 'none',
+  '&:hover': {
+    borderColor: '#009639',
+    color: '#009639',
+    background: 'rgba(255, 215, 0, 0.1)'
+  }
+}));
+
+const StatsCard = ({ title, value, icon, color = '#FFD700', onClick, subtitle }) => (
+  <DashboardCard sx={{ cursor: onClick ? 'pointer' : 'default' }} onClick={onClick}>
+    <CardContent>
+      <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box>
+          <Typography variant="h4" sx={{ color: color, fontWeight: 'bold', mb: 0.5 }}>
+            {value}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+            {title}
+          </Typography>
+          {subtitle && (
+            <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+              {subtitle}
+            </Typography>
+          )}
+        </Box>
+        <Box sx={{ color: color, opacity: 0.8 }}>
+          {icon}
+        </Box>
+      </Box>
+    </CardContent>
+  </DashboardCard>
+);
+
+const QuickActionCard = ({ title, description, icon, onClick, primary = false }) => (
+  <DashboardCard>
+    <CardContent sx={{ textAlign: 'center', p: 3 }}>
+      <Box sx={{ color: '#FFD700', mb: 2 }}>
+        {icon}
+      </Box>
+      <Typography variant="h6" sx={{ color: '#FFFFFF', mb: 1, fontWeight: 600 }}>
+        {title}
+      </Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+        {description}
+      </Typography>
+      {primary ? (
+        <ActionButton fullWidth onClick={onClick}>
+          Get Started
+        </ActionButton>
+      ) : (
+        <SecondaryButton variant="outlined" fullWidth onClick={onClick}>
+          Manage
+        </SecondaryButton>
+      )}
+    </CardContent>
+  </DashboardCard>
+);
 
 const EmployerDashboard = () => {
-  const { } = useAuth();
-  const [dashboardStats, setDashboardStats] = useState({
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
     activeJobs: 0,
+    totalApplications: 0,
     newApplications: 0,
-    interviews: 0,
-    filled: 0
+    jobViews: 0,
+    companyProfile: 0
   });
-  const [, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboardStats = async () => {
+    const fetchEmployerDashboardData = async () => {
+      if (!user) return;
+      
       try {
-        const token = localStorage.getItem('jamdung_auth_token');
+        setLoading(true);
         
-        // Fetch employer jobs
-        const jobsResponse = await fetch('http://localhost:5000/api/employer/jobs', {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        // Fetch real data from multiple endpoints
+        const dataPromises = [
+          // Fetch active job listings
+          api.get('/api/employer/jobs').catch(() => ({ data: [] })),
+          // Fetch applications received for employer's jobs
+          api.get('/api/employer/applications').catch(() => ({ data: [] })),
+          // Fetch job views analytics (if endpoint exists)
+          api.get('/api/employer/analytics/job-views').catch(() => ({ data: { totalViews: 0 } })),
+          // Fetch employer profile completion
+          api.get('/api/employer/profile').catch(() => ({ data: user }))
+        ];
+        
+        const [jobsResponse, applicationsResponse, analyticsResponse, profileResponse] = await Promise.all(dataPromises);
+        
+        // Extract real data or default to 0
+        const activeJobs = Array.isArray(jobsResponse.data) ? jobsResponse.data.filter(job => job.status === 'ACTIVE' || job.status === 'PUBLISHED').length : 0;
+        const allApplications = Array.isArray(applicationsResponse.data) ? applicationsResponse.data : [];
+        const totalApplications = allApplications.length;
+        
+        // Calculate new applications (last 7 days)
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const newApplications = allApplications.filter(app => 
+          app.appliedAt && new Date(app.appliedAt) > oneWeekAgo
+        ).length;
+        
+        // Get job views from analytics
+        const jobViews = analyticsResponse.data?.totalViews || analyticsResponse.data?.count || 0;
+        
+        // Calculate company profile completion (simplified for now)
+        const profileCompletion = profileResponse.data?.companyProfile ? 90 : 
+          (profileResponse.data?.firstName && profileResponse.data?.lastName && profileResponse.data?.email) ? 60 : 30;
+        
+        console.log('🏢 Employer Dashboard Data Debug:', {
+          jobsResponse: jobsResponse.data,
+          applicationsResponse: applicationsResponse.data,
+          analyticsResponse: analyticsResponse.data,
+          calculatedMetrics: {
+            activeJobs,
+            totalApplications,
+            newApplications,
+            jobViews,
+            profileCompletion
           }
         });
         
-        let activeJobs = 0;
-        if (jobsResponse.ok) {
-          const jobsData = await jobsResponse.json();
-          activeJobs = jobsData.jobs?.filter(job => job.status === 'active').length || 0;
-        }
-        
-        // Fetch applications
-        const applicationsResponse = await fetch('http://localhost:5000/api/employer/applications', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        let newApplications = 0;
-        let interviews = 0;
-        let filled = 0;
-        
-        if (applicationsResponse.ok) {
-          const applicationsData = await applicationsResponse.json();
-          const applications = applicationsData.applications || [];
-          
-          // Count applications from last 7 days as "new"
-          const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-          newApplications = applications.filter(app => 
-            new Date(app.createdAt) > weekAgo
-          ).length;
-          
-          interviews = applications.filter(app => app.status === 'interview').length;
-          filled = applications.filter(app => app.status === 'accepted').length;
-        } else {
-          // Mock data for demo
-          activeJobs = Math.floor(Math.random() * 10) + 3;
-          newApplications = Math.floor(Math.random() * 25) + 5;
-          interviews = Math.floor(Math.random() * 8) + 2;
-          filled = Math.floor(Math.random() * 5) + 1;
-        }
-        
-        setDashboardStats({
+        setDashboardData({
           activeJobs,
+          totalApplications,
           newApplications,
-          interviews,
-          filled
+          jobViews,
+          companyProfile: profileCompletion
         });
         
       } catch (error) {
-        console.error('Failed to fetch dashboard stats:', error);
-        // Set mock data on error
-        setDashboardStats({
-          activeJobs: 5,
-          newApplications: 12,
-          interviews: 3,
-          filled: 2
+        console.error('Error fetching employer dashboard data:', error);
+        // Fallback to zeros if all API calls fail
+        setDashboardData({
+          activeJobs: 0,
+          totalApplications: 0,
+          newApplications: 0,
+          jobViews: 0,
+          companyProfile: 30
         });
       } finally {
         setLoading(false);
       }
     };
+    
+    fetchEmployerDashboardData();
+  }, [user]);
 
-    fetchDashboardStats();
-  }, []);
+  if (loading) {
+    return (
+      <Box 
+        display="flex" 
+        justifyContent="center" 
+        alignItems="center" 
+        minHeight="60vh"
+      >
+        <CircularProgress sx={{ color: '#FFD700' }} />
+      </Box>
+    );
+  }
+
+  const isCompanyProfileIncomplete = dashboardData.companyProfile < 90;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Grid container spacing={3}>
-        {/* Welcome Header */}
-        <Grid item xs={12}>
-          <WelcomeHeader userType="employer" />
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#0a0a0a', py: 4 }}>
+      <Container maxWidth="lg">
+        {/* Welcome Section */}
+        <Box mb={4}>
+          <Typography 
+            variant="h3" 
+            sx={{ 
+              color: '#FFFFFF', 
+              fontWeight: 'bold', 
+              mb: 1,
+              background: 'linear-gradient(90deg, #FFD700, #009639)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}
+          >
+            Welcome back, {user?.firstName}!
+          </Typography>
+          <Typography variant="h6" sx={{ color: 'text.secondary' }}>
+            Find your next great hire with JamDung Jobs
+          </Typography>
+        </Box>
+
+        {/* Company Profile Alert */}
+        {isCompanyProfileIncomplete && (
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mb: 4, 
+              backgroundColor: 'rgba(0, 150, 57, 0.1)',
+              border: '1px solid rgba(0, 150, 57, 0.3)',
+              color: '#009639'
+            }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={() => navigate('/employer/profile')}
+                sx={{ color: '#009639' }}
+              >
+                Complete Now
+              </Button>
+            }
+          >
+            Your company profile is {dashboardData.companyProfile}% complete. 
+            Complete it to attract better candidates!
+          </Alert>
+        )}
+
+        {/* Dashboard Stats */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              title="Active Job Listings"
+              value={dashboardData.activeJobs}
+              icon={<WorkIcon sx={{ fontSize: 40 }} />}
+              onClick={() => navigate('/employer/jobs')}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              title="New Applications"
+              value={dashboardData.newApplications}
+              subtitle="This week"
+              icon={<PeopleIcon sx={{ fontSize: 40 }} />}
+              color="#009639"
+              onClick={() => navigate('/employer/applications')}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              title="Total Applications"
+              value={dashboardData.totalApplications}
+              subtitle="All time"
+              icon={<TrendingUpIcon sx={{ fontSize: 40 }} />}
+              color="#4CAF50"
+              onClick={() => navigate('/employer/applications')}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              title="Job Views"
+              value={dashboardData.jobViews}
+              subtitle="This month"
+              icon={<VisibilityIcon sx={{ fontSize: 40 }} />}
+              color="#FF6B35"
+              onClick={() => navigate('/employer/analytics')}
+            />
+          </Grid>
         </Grid>
+
+        {/* Quick Actions */}
+        <Typography variant="h5" sx={{ color: '#FFFFFF', mb: 3, fontWeight: 600 }}>
+          Quick Actions
+        </Typography>
         
-        {/* Key Metrics */}
-        <Grid item xs={12} md={6} lg={3}>
-          <StatsCard 
-            title="Active Job Posts" 
-            value={dashboardStats.activeJobs} 
-            icon={WorkIcon}
-            trend="+12%"
-            color="primary"
-          />
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={4}>
+            <QuickActionCard
+              title="Post New Job"
+              description="Create a job listing to find your next great hire"
+              icon={<AddIcon sx={{ fontSize: 48 }} />}
+              onClick={() => navigate('/employer/jobs')}
+              primary
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <QuickActionCard
+              title="Review Applications"
+              description="View and manage candidate applications"
+              icon={<PeopleIcon sx={{ fontSize: 48 }} />}
+              onClick={() => navigate('/employer/applications')}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <QuickActionCard
+              title="Company Profile"
+              description="Update your company information and branding"
+              icon={<BusinessIcon sx={{ fontSize: 48 }} />}
+              onClick={() => navigate('/employer/profile')}
+            />
+          </Grid>
         </Grid>
-        <Grid item xs={12} md={6} lg={3}>
-          <StatsCard 
-            title="New Applications" 
-            value={dashboardStats.newApplications} 
-            icon={PersonAddIcon}
-            trend="+25%"
-            color="success"
-          />
+
+        {/* Additional Actions */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <QuickActionCard
+              title="View Analytics"
+              description="Track your hiring performance and job post effectiveness"
+              icon={<AnalyticsIcon sx={{ fontSize: 48 }} />}
+              onClick={() => navigate('/employer/analytics')}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <QuickActionCard
+              title="Billing & Subscription"
+              description="Manage your subscription and billing information"
+              icon={<SettingsIcon sx={{ fontSize: 48 }} />}
+              onClick={() => navigate('/employer/billing')}
+            />
+          </Grid>
         </Grid>
-        <Grid item xs={12} md={6} lg={3}>
-          <StatsCard 
-            title="Interviews Scheduled" 
-            value={dashboardStats.interviews} 
-            icon={EventIcon}
-            color="info"
-          />
-        </Grid>
-        <Grid item xs={12} md={6} lg={3}>
-          <StatsCard 
-            title="Positions Filled" 
-            value={dashboardStats.filled} 
-            icon={CheckCircleIcon}
-            trend="+8%"
-            color="warning"
-          />
-        </Grid>
+
+        {/* Recent Activity */}
+        <Typography variant="h5" sx={{ color: '#FFFFFF', mb: 3, fontWeight: 600 }}>
+          Recent Activity
+        </Typography>
         
-        {/* Main Dashboard Content */}
-        <Grid item xs={12} lg={8}>
-          <RecentApplicationsWidget />
-          <JobPostingPerformance />
-        </Grid>
-        
-        <Grid item xs={12} lg={4}>
-          <NotificationsPanel />
-          <QuickActions userType="employer" />
-          
-          <UpcomingInterviews />
-        </Grid>
-      </Grid>
-    </Container>
+        <DashboardCard>
+          <CardContent>
+            <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>
+              No recent activity. Start by posting your first job or reviewing applications!
+            </Typography>
+          </CardContent>
+        </DashboardCard>
+      </Container>
+    </Box>
   );
 };
 

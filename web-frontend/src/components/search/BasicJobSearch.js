@@ -28,6 +28,14 @@ import { formatDistanceToNow } from 'date-fns';
 import api from '../../utils/api';
 import { logError, logDev } from '../../utils/loggingUtils';
 import { useJobAnalytics } from '../../hooks/usePlausible';
+// Search helper utilities available for future UX improvements
+// import { 
+//   useDebounceSearch, 
+//   useDropdownFocus, 
+//   useKeyboardNavigation,
+//   getSearchAriaAttributes,
+//   searchUtils
+// } from '../../utils/searchHelpers';
 
 /**
  * Basic Job Search Component
@@ -43,7 +51,7 @@ const BasicJobSearch = ({
   maxWidth = 'lg'
 }) => {
   const navigate = useNavigate();
-  const { trackJobSearch, trackJobView } = useJobAnalytics();
+  const { trackJobSearch } = useJobAnalytics();
 
   // Search state
   const [query, setQuery] = useState(initialQuery);
@@ -384,7 +392,8 @@ const BasicJobSearch = ({
           <Typography 
             variant="h6" 
             sx={{ 
-              color: 'text.secondary',
+              color: 'text.primary',
+              opacity: 0.8,
               maxWidth: 600,
               mx: 'auto'
             }}
@@ -551,7 +560,7 @@ const BasicJobSearch = ({
                 backgroundColor: 'rgba(0, 166, 81, 0.05)',
                 borderTop: '1px solid rgba(0, 166, 81, 0.1)'
               }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                <Typography variant="caption" sx={{ color: 'text.primary', opacity: 0.7, fontSize: '0.75rem' }}>
                   💡 Use ↑↓ arrow keys to navigate, Enter to select, Esc to close
                 </Typography>
               </Box>
@@ -637,7 +646,7 @@ const BasicJobSearch = ({
           <Typography variant="body2" sx={{ color: 'text.primary', mb: 1 }}>
             💡 <strong>Search Tips:</strong>
           </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+          <Typography variant="body2" sx={{ color: 'text.primary', opacity: 0.9, lineHeight: 1.6 }}>
             • Start typing any job title - suggestions will appear automatically<br/>
             • Use arrow keys (↑↓) to navigate suggestions, Enter to select<br/>
             • Add a location to find jobs near you (Kingston, Montego Bay, etc.)<br/>
@@ -670,7 +679,7 @@ const BasicJobSearch = ({
               )}
             </Typography>
             {totalResults > RESULTS_PER_PAGE && (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              <Typography variant="body2" sx={{ color: 'text.primary', opacity: 0.7 }}>
                 Page {currentPage} of {Math.ceil(totalResults / RESULTS_PER_PAGE)}
               </Typography>
             )}
@@ -780,7 +789,7 @@ const BasicJobSearch = ({
             <Typography variant="h6" sx={{ mb: 2 }}>
               No jobs found{query && ` for "${query}"`}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+            <Typography variant="body2" sx={{ color: 'text.primary', opacity: 0.8, mb: 3 }}>
               Try different keywords or check your spelling
             </Typography>
             <Button

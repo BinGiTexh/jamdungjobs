@@ -10,7 +10,6 @@ import {
   MenuItem,
   Chip,
   IconButton,
-  Typography,
   Paper,
   styled,
   Fade,
@@ -77,15 +76,6 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
 
 const salaryOptions = Array.from({ length: 20 }, (_, i) => (i + 2) * 10000); // 20k to 200k
 
-const StyledChip = styled(Chip)(({ theme }) => ({
-  margin: theme.spacing(0.5),
-  backgroundColor: 'rgba(255, 215, 0, 0.1)',
-  color: '#FFD700',
-  border: '1px solid rgba(255, 215, 0, 0.3)',
-  '&:hover': {
-    backgroundColor: 'rgba(255, 215, 0, 0.2)'
-  }
-}));
 
 const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
   const [builderOpen, setBuilderOpen] = useState(false);
@@ -260,10 +250,6 @@ const JobListingForm = ({ initialData, onSubmit, onCancel }) => {
     setBuilderOpen(false);
   };
 
-  const handleCloseBuilder = (description) => {
-    setBuilderOpen(false);
-    setFormData(prev => ({ ...prev, description }));
-  };
 
   return (
     <>

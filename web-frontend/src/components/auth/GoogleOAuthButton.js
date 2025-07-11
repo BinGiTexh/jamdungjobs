@@ -109,6 +109,10 @@ const GoogleOAuthButton = ({
   };
 
   const isButtonDisabled = disabled || !isGoogleLoaded || isLoading;
+  
+  // Check if Google OAuth is configured
+  const isGoogleConfigured = process.env.REACT_APP_GOOGLE_CLIENT_ID && 
+                           process.env.REACT_APP_GOOGLE_CLIENT_ID !== '';
 
   return (
     <Button
@@ -126,7 +130,9 @@ const GoogleOAuthButton = ({
       {...props}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        {isLoading ? 'Signing in...' : text}
+        {isLoading ? 'Signing in...' : 
+         !isGoogleConfigured ? 'Google OAuth Not Configured' : 
+         text}
       </Box>
     </Button>
   );

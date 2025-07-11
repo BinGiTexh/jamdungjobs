@@ -108,14 +108,14 @@ const Register = () => {
 
       const registrationData = {
         ...rest,
-        first_name: firstName,
-        last_name: lastName,
+        firstName: firstName,
+        lastName: lastName,
         // Only include company fields for employers to avoid sending undefined
         ...(formData.role === 'EMPLOYER' && {
-          company_name: companyName,
-          company_website: companyWebsite,
-          company_location: companyLocation,
-          company_description: companyDescription
+          companyName: companyName,
+          companyWebsite: companyWebsite,
+          companyLocation: companyLocation,
+          companyDescription: companyDescription
         })
       };
 

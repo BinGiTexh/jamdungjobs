@@ -40,6 +40,7 @@ const EmployerBillingPage = () => {
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [autoRenew, setAutoRenew] = useState(true);
   const [error, setError] = useState('');
@@ -150,11 +151,19 @@ const EmployerBillingPage = () => {
     }
   };
 
-  const handleUpgrade = async (planId) => {
+  const handleSelectPlan = (planId) => {
+    setSelectedPlan(planId);
+    setUpgradeDialogOpen(false);
+    setConfirmDialogOpen(true);
+  };
+
+  const handleUpgrade = async () => {
+    if (!selectedPlan) return;
+    
     try {
       setError('');
       const response = await axios.post('http://localhost:5000/api/employer/upgrade', {
-        planId: planId
+        planId: selectedPlan
       }, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}` }
       });
@@ -164,7 +173,8 @@ const EmployerBillingPage = () => {
       } else {
         setSuccess('Plan upgraded successfully!');
         fetchBillingData();
-        setUpgradeDialogOpen(false);
+        setConfirmDialogOpen(false);
+        setSelectedPlan(null);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to upgrade plan');
@@ -207,10 +217,10 @@ const EmployerBillingPage = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#1A1A1A', mb: 2 }}>
+        <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#FFD700', mb: 2 }}>
           Billing & Subscription
         </Typography>
-        <Typography variant="h6" sx={{ color: '#666', maxWidth: 600, mx: 'auto' }}>
+        <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.8)', maxWidth: 600, mx: 'auto' }}>
           Manage your subscription, billing preferences, and payment history
         </Typography>
       </Box>
@@ -300,10 +310,13 @@ const EmployerBillingPage = () => {
           </Card>
 
           {/* Plan Features */}
-          <Card sx={{ bgcolor: '#f8f9fa' }}>
+          <Card sx={{ 
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%)',
+            border: '1px solid rgba(255, 215, 0, 0.2)'
+          }}>
             <CardHeader
               title="Your Plan Features"
-              titleTypographyProps={{ color: '#1A1A1A' }}
+              titleTypographyProps={{ color: '#FFD700', fontWeight: 600 }}
             />
             <CardContent>
               <List>
@@ -312,7 +325,10 @@ const EmployerBillingPage = () => {
                     <ListItemIcon>
                       <CheckIcon sx={{ color: currentPlan.color }} />
                     </ListItemIcon>
-                    <ListItemText primary={feature} />
+                    <ListItemText 
+                      primary={feature} 
+                      primaryTypographyProps={{ color: 'rgba(255, 255, 255, 0.9)' }}
+                    />
                   </ListItem>
                 ))}
               </List>
@@ -391,8 +407,14 @@ const EmployerBillingPage = () => {
         onClose={() => setUpgradeDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%)',
+            border: '1px solid rgba(255, 215, 0, 0.2)'
+          }
+        }}
       >
-        <DialogTitle sx={{ textAlign: 'center', color: '#1A1A1A' }}>
+        <DialogTitle sx={{ textAlign: 'center', color: '#FFD700', fontWeight: 600 }}>
           Choose Your Plan
         </DialogTitle>
         <DialogContent>
@@ -408,7 +430,7 @@ const EmployerBillingPage = () => {
                       boxShadow: 3
                     }
                   }}
-                  onClick={() => setSelectedPlan(plan.id)}
+                  onClick={() => handleSelectPlan(plan.id)}
                 >
                   {plan.popular && (
                     <Chip
@@ -457,19 +479,88 @@ const EmployerBillingPage = () => {
           <Button onClick={() => setUpgradeDialogOpen(false)}>
             Cancel
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%)',
+            border: '1px solid rgba(255, 215, 0, 0.2)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: '#FFD700', fontWeight: 600 }}>
+          Confirm Plan Upgrade
+        </DialogTitle>
+        <DialogContent>
+          {selectedPlan && (
+            <Box>
+              <Typography variant="h6" sx={{ color: '#FFD700', mb: 2 }}>
+                Upgrade to {plans.find(p => p.id === selectedPlan)?.name} Plan
+              </Typography>
+              
+              <Alert severity="info" sx={{ mb: 3, backgroundColor: 'rgba(255, 215, 0, 0.1)', color: '#FFD700' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                  Important Billing Information:
+                </Typography>
+                <Typography variant="body2" component="div">
+                  • Your new plan will take effect immediately<br/>
+                  • You'll be charged ${plans.find(p => p.id === selectedPlan)?.price}/month starting today<br/>
+                  • Your next billing date will be {new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}<br/>
+                  • You can cancel or change your plan anytime
+                </Typography>
+              </Alert>
+
+              <Typography variant="subtitle1" sx={{ color: '#FFD700', mb: 1, fontWeight: 600 }}>
+                Plan Features:
+              </Typography>
+              <List dense>
+                {plans.find(p => p.id === selectedPlan)?.features.map((feature, index) => (
+                  <ListItem key={index} sx={{ py: 0.5, pl: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <CheckIcon sx={{ color: '#4CAF50', fontSize: 20 }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={feature} 
+                      primaryTypographyProps={{ 
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        fontSize: '0.9rem'
+                      }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setConfirmDialogOpen(false)}
+            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+          >
+            Cancel
+          </Button>
           <Button
             variant="contained"
-            onClick={() => selectedPlan && handleUpgrade(selectedPlan)}
-            disabled={!selectedPlan}
+            onClick={handleUpgrade}
+            disabled={loading}
             sx={{
-              bgcolor: '#FFD700',
-              color: '#1A1A1A',
+              background: 'linear-gradient(90deg, #FFD700, #009639)',
+              color: '#000000',
+              fontWeight: 600,
+              px: 3,
               '&:hover': {
-                bgcolor: 'rgba(255, 215, 0, 0.8)'
+                background: 'linear-gradient(90deg, #009639, #FFD700)',
               }
             }}
           >
-            Upgrade Plan
+            {loading ? <CircularProgress size={20} /> : 'Confirm Upgrade'}
           </Button>
         </DialogActions>
       </Dialog>

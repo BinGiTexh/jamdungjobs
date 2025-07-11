@@ -24,8 +24,8 @@ import ApplicationsPage from './pages/ApplicationsPage';
 import JobApplyPage from './pages/JobApplyPage';
 import JobDetailsPage from './pages/JobDetailsPage';
 import EmployerApplicationsPage from './pages/EmployerApplicationsPage';
-import EmployerPostJobPage from './pages/EmployerPostJobPage';
-import ProfilePage from './components/profile/ProfilePage';
+import EmployerPostJobPageNew from './pages/EmployerPostJobPageNew';
+import EnhancedProfilePage from './components/profile/EnhancedProfilePage';
 import ResumeBuilderPage from './components/candidate/ResumeBuilderPage';
 import AboutUs from './components/AboutUs';
 import DashboardRedirect from './components/DashboardRedirect';
@@ -39,8 +39,9 @@ import EmployerAnalyticsPage from './pages/EmployerAnalyticsPage';
 // Utils
 import { logDev } from './utils/logger';
 
-// Protected Route Component
+// Route Protection Components
 import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
 
 // Simple Register Page wrapper
 const RegisterPage = () => {
@@ -81,8 +82,12 @@ function App() {
             
             <main style={{ flex: 1 }}>
               <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<HomePage />} />
+                {/* Public Routes - redirect authenticated users to dashboard */}
+                <Route path="/" element={
+                  <PublicRoute>
+                    <HomePage />
+                  </PublicRoute>
+                } />
                 <Route path="/demo" element={<HomePageDemo />} />
                 <Route path="/search" element={
                   <SmartJobDiscovery 
@@ -90,8 +95,16 @@ function App() {
                     onClearFilters={() => console.warn('🧹 Filters cleared')}
                   />
                 } />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/login" element={
+                  <PublicRoute>
+                    <LoginPage />
+                  </PublicRoute>
+                } />
+                <Route path="/register" element={
+                  <PublicRoute>
+                    <RegisterPage />
+                  </PublicRoute>
+                } />
                 <Route path="/jobs" element={<JobSearchPage />} />
                 <Route path="/search/jobs" element={<UniversalJobSearch showFilters={true} variant="full" />} />
                 <Route path="/search/basic" element={<BasicSearchPage />} />
@@ -100,7 +113,11 @@ function App() {
                 <Route path="/jobs-demo" element={<JobSearchDemo />} />
                 <Route path="/jobs/:jobId" element={<JobDetailsPage />} />
                 <Route path="/jobs/:jobId/apply" element={<JobApplyPage />} />
-                <Route path="/about" element={<AboutUs />} />
+                <Route path="/about" element={
+                  <PublicRoute>
+                    <AboutUs />
+                  </PublicRoute>
+                } />
                 <Route path="/feature-demo" element={<FeatureDemo />} />
                 <Route path="/industries" element={<IndustryDiscoveryPage />} />
 
@@ -127,7 +144,7 @@ function App() {
                   path="/employer/jobs"
                   element={
                     <ProtectedRoute requiredRole="EMPLOYER">
-                      <EmployerPostJobPage />
+                      <EmployerPostJobPageNew />
                     </ProtectedRoute>
                   }
                 />
@@ -143,7 +160,7 @@ function App() {
                   path="/employer/profile"
                   element={
                     <ProtectedRoute requiredRole="EMPLOYER">
-                      <ProfilePage />
+                      <EnhancedProfilePage />
                     </ProtectedRoute>
                   }
                 />
@@ -177,7 +194,7 @@ function App() {
                   path="/profile"
                   element={
                     <ProtectedRoute requiredRole="JOBSEEKER">
-                      <ProfilePage />
+                      <EnhancedProfilePage />
                     </ProtectedRoute>
                   }
                 />

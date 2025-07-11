@@ -9,8 +9,15 @@ import { logDev, logError } from '../utils/loggingUtils';
 // Google OAuth configuration
 const GOOGLE_CONFIG = {
   // This will be set via environment variable for Docker
-  clientId: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+  clientId: process.env.REACT_APP_GOOGLE_CLIENT_ID || '',
   scope: 'email profile'
+};
+
+// Check if Google Client ID is configured
+const isGoogleConfigured = () => {
+  return GOOGLE_CONFIG.clientId && 
+         GOOGLE_CONFIG.clientId !== '' && 
+         GOOGLE_CONFIG.clientId !== 'YOUR_GOOGLE_CLIENT_ID';
 };
 
 /**
@@ -75,9 +82,22 @@ export const useGoogleAuth = () => {
   }, []);
 
   /**
-   * Handle Google Sign In
+   * Handle Google Sign In with FedCM support
    */
-  const signInWithGoogle = useCallback((onSuccess, onError) => {
+  const signInWithGoogle = useCallback(async (onSuccess, onError) => {
+    // Check if Google OAuth is properly configured
+    if (!isGoogleConfigured()) {
+      const error = new Error('Google OAuth is not configured. Please set REACT_APP_GOOGLE_CLIENT_ID environment variable.');
+      logError('Google OAuth not configured', error, {
+        module: 'useGoogleAuth',
+        function: 'signInWithGoogle',
+        hasClientId: !!GOOGLE_CONFIG.clientId,
+        clientIdValue: GOOGLE_CONFIG.clientId ? `${GOOGLE_CONFIG.clientId.substring(0, 20)}...` : 'empty'
+      });
+      onError?.(error);
+      return;
+    }
+
     if (!isGoogleLoaded || !window.google?.accounts?.id) {
       const error = new Error('Google OAuth not loaded');
       logError('Google OAuth not available', error, {
@@ -93,12 +113,50 @@ export const useGoogleAuth = () => {
     setIsLoading(true);
 
     try {
-      // Configure the callback for this specific sign-in
+      // First try FedCM if supported
+      if (window.IdentityCredential && navigator.credentials) {
+        try {
+          logDev('info', 'Attempting FedCM authentication');
+          
+          const credential = await navigator.credentials.get({
+            identity: {
+              providers: [{
+                configURL: 'https://accounts.google.com/gsi/fedcm.json',
+                clientId: GOOGLE_CONFIG.clientId
+              }]
+            }
+          });
+
+          if (credential) {
+            logDev('info', 'FedCM authentication successful');
+            
+            // Decode the JWT token to get user info
+            const userInfo = parseGoogleJWT(credential.token);
+            
+            onSuccess?.({
+              googleToken: credential.token,
+              userInfo
+            });
+            setIsLoading(false);
+            return;
+          }
+        } catch (fedcmError) {
+          logError('FedCM failed, falling back to popup', fedcmError, {
+            module: 'useGoogleAuth',
+            function: 'signInWithGoogle.fedcm'
+          });
+          // Continue to fallback
+        }
+      }
+
+      // Fallback to traditional popup method
+      logDev('info', 'Using traditional Google Sign-In popup');
+      
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CONFIG.clientId,
         callback: async (response) => {
           try {
-            logDev('info', 'Google OAuth response received');
+            logDev('info', 'Google OAuth popup response received');
             
             // Decode the JWT token to get user info
             const userInfo = parseGoogleJWT(response.credential);
@@ -123,20 +181,21 @@ export const useGoogleAuth = () => {
             setIsLoading(false);
           }
         },
-        auto_select: false
+        auto_select: false,
+        cancel_on_tap_outside: true
       });
 
-      // Prompt the user to sign in
+      // Use popup method
       window.google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback to popup if prompt doesn't work
+          // Show popup manually
           window.google.accounts.id.renderButton(
             document.createElement('div'),
             {
               theme: 'outline',
               size: 'large',
               type: 'standard',
-              text: 'continue_with',
+              text: 'signin_with',
               shape: 'rectangular'
             }
           );

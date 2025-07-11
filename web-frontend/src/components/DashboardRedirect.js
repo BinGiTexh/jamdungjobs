@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
-import JobseekerDashboard from './dashboard/JobseekerDashboard';
+import JobSeekerDashboard from './dashboard/JobSeekerDashboard';
 import EmployerDashboard from './dashboard/EmployerDashboard';
 
 /**
@@ -40,10 +40,10 @@ const DashboardRedirect = () => {
     return <EmployerDashboard />;
   } else if (user.role === 'JOBSEEKER') {
     console.log('👤 Rendering Jobseeker Dashboard');
-    return <JobseekerDashboard />;
+    return <JobSeekerDashboard />;
   } else {
     console.log('❓ Unknown role, rendering Jobseeker Dashboard as fallback');
-    return <JobseekerDashboard />;
+    return <JobSeekerDashboard />;
   }
 };
 

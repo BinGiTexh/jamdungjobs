@@ -287,6 +287,58 @@ module.exports = (prisma) => {
   );
 
   /**
+   * @route PATCH /api/notifications/mark-all-read
+   * @description Mark all notifications as read for the authenticated user
+   * @access Private
+   */
+  router.patch('/mark-all-read',
+    authenticateJWT,
+    notificationsRateLimit,
+    async (req, res) => {
+      const startTime = Date.now();
+      const requestId = req.id;
+
+      try {
+        // Update all unread notifications for the user
+        const result = await prisma.notification.updateMany({
+          where: {
+            recipientId: req.user.id,
+            status: 'UNREAD'
+          },
+          data: {
+            status: 'READ'
+          }
+        });
+
+        logger.info('All notifications marked as read', {
+          requestId,
+          userId: req.user.id,
+          updatedCount: result.count,
+          duration: Date.now() - startTime
+        });
+
+        res.json({
+          success: true,
+          message: `${result.count} notifications marked as read`,
+          updatedCount: result.count
+        });
+      } catch (error) {
+        logger.error('Error marking all notifications as read', {
+          requestId,
+          userId: req.user.id,
+          error: error.message,
+          stack: error.stack
+        });
+        res.status(500).json({
+          success: false,
+          message: 'Error marking notifications as read',
+          requestId
+        });
+      }
+    }
+  );
+
+  /**
    * @route DELETE /api/notifications/:id
    * @description Dismiss a notification
    * @access Private

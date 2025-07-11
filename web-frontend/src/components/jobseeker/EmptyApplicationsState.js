@@ -240,7 +240,8 @@ const EmptyApplicationsState = () => {
                         variant="body2" 
                         sx={{ 
                           color: 'text.primary',
-                          lineHeight: 1.6
+                          lineHeight: 1.6,
+                          fontWeight: 500
                         }}
                       >
                         {tip}
@@ -256,8 +257,11 @@ const EmptyApplicationsState = () => {
           <Box sx={{ textAlign: 'center', mt: 6 }}>
             <Typography 
               variant="body1" 
-              color="text.secondary" 
-              sx={{ mb: 2 }}
+              sx={{ 
+                mb: 2,
+                color: 'text.primary',
+                opacity: 0.8
+              }}
             >
               Need help getting started? Check out our career resources.
             </Typography>

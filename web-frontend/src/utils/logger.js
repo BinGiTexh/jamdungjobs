@@ -24,11 +24,11 @@ export const logDev = (level = 'info', message = '', data = {}) => {
       console.warn(`[${timestamp}] WARN:`, message, data);
       break;
     case 'debug':
-      console.debug(`[${timestamp}] DEBUG:`, message, data);
+      console.debug(`[${timestamp}] DEBUG:`, message, data); // eslint-disable-line no-console
       break;
     case 'info':
     default:
-      console.warn(`[${timestamp}] INFO:`, message, data);
+      console.warn(`[${timestamp}] INFO:`, message, data); // eslint-disable-line no-console
       break;
   }
 };

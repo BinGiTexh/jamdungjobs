@@ -11,8 +11,14 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 
-// JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || "local_development_secret_32_characters_minimum";
+// JWT configuration - NEVER use hardcoded secrets in production
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error('🚨 SECURITY ERROR: JWT_SECRET environment variable is required');
+  console.error('Set JWT_SECRET in your .env file or environment variables');
+  process.exit(1);
+}
 
 // Import routes and middleware
 const { body, validationResult } = require('express-validator');
@@ -47,25 +53,86 @@ const prisma = global.prisma || new PrismaClient({
 });
 if (!global.prisma) global.prisma = prisma;
 
-// Basic middleware
-app.use(cors());
-app.use(express.json());
+// CORS configuration for production security and OAuth
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001', 
+      'https://staging-jobs.bingitech.io',
+      'https://jobs.bingitech.io',
+      // Google OAuth domains
+      'https://accounts.google.com',
+      'https://oauth.google.com'
+    ];
+    
+    // Allow any localhost port for development
+    if (origin.startsWith('http://localhost:') && process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    console.warn('🚨 CORS blocked origin:', origin);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With', 
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'X-HTTP-Method-Override'
+  ],
+  exposedHeaders: ['X-Total-Count'],
+  maxAge: 86400 // 24 hours
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-// Initialize upload directories
+// Initialize upload and image directories
 const uploadDirs = ["profile-photos", "resumes"].map(dir => 
   path.join(__dirname, "uploads", dir)
 );
 
-uploadDirs.forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+const imageDirs = ["generated"].map(dir => 
+  path.join(__dirname, "images", dir)
+);
+
+// Create directories if they don't exist
+[...uploadDirs, ...imageDirs].forEach(dir => {
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`📁 Created directory: ${dir}`);
+    }
+  } catch (error) {
+    console.warn(`⚠️  Could not create directory ${dir}: ${error.message}`);
+    // Continue without failing - the directory might be created later or mounted
   }
 });
 
 // Serve static files and directory listing
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/uploads", serveIndex(path.join(__dirname, "uploads"), {
+  icons: true,
+  view: "details"
+}));
+
+// Serve generated images
+app.use("/images", express.static(path.join(__dirname, "images")));
+app.use("/images", serveIndex(path.join(__dirname, "images"), {
   icons: true,
   view: "details"
 }));

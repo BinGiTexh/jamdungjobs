@@ -183,8 +183,29 @@ const LoginPage = () => {
             )}
             
             {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  mb: 3,
+                  backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                  color: '#ffcdd2',
+                  border: '1px solid rgba(211, 47, 47, 0.3)',
+                  '& .MuiAlert-icon': {
+                    color: '#ef5350'
+                  }
+                }}
+              >
                 {error}
+                {error.includes('Invalid email or password') && (
+                  <Box sx={{ mt: 1, fontSize: '0.875rem', opacity: 0.8 }}>
+                    💡 Tip: Make sure you're using the correct email address and password. If you forgot your password, contact support.
+                  </Box>
+                )}
+                {error.includes('Unable to connect') && (
+                  <Box sx={{ mt: 1, fontSize: '0.875rem', opacity: 0.8 }}>
+                    💡 Tip: Check your internet connection and try refreshing the page.
+                  </Box>
+                )}
               </Alert>
             )}
             
@@ -309,6 +330,24 @@ const LoginPage = () => {
                     {isEmployerRedirect ? 'Sign up as an employer' : 'Sign up'}
                   </Link>
                 </Typography>
+                
+                {/* Development Helper - No Credentials */}
+                {process.env.NODE_ENV === 'development' && (
+                  <Box sx={{ 
+                    mt: 3, 
+                    p: 2, 
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)', 
+                    borderRadius: 1,
+                    border: '1px solid rgba(255, 215, 0, 0.3)'
+                  }}>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 215, 0, 0.9)', fontWeight: 600 }}>
+                      🧪 Development Mode
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.8)', display: 'block', mt: 1 }}>
+                      Contact your development team for test account credentials
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </form>
           </Box>

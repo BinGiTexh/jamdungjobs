@@ -25,6 +25,7 @@ import api from '../../utils/api';
 import { _buildApiUrl } from '../../config';
 import { useAuth } from '../../context/AuthContext';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
+import { calculateProfileCompletion } from '../../utils/profileCompletion';
 
 const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
   const { currentUser } = useAuth();
@@ -140,43 +141,19 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
   };
 
   const calculateProfileCompleteness = (profile) => {
-    const missingFields = [];
-    let completedFields = 0;
-    let totalFields = 0;
-
-    // Check required fields – support snake_case too
-    const requiredFields = [
-      { name: 'resume', value: profile.resumes && profile.resumes.length > 0 },
-      { name: 'phoneNumber', value: profile.phoneNumber },
-      { name: 'skills', value: profile.skills && profile.skills.length > 0 },
-      { name: 'education', value: profile.education && profile.education.length > 0 },
-      { 
-        name: 'experience', 
-        value: Array.isArray(profile.experience) 
-          ? profile.experience.length > 0 
-          : (typeof profile.experience === 'string' && profile.experience.trim().length > 0) 
-      }
-    ];
-
-    requiredFields.forEach(field => {
-      totalFields++;
-      if (field.value) {
-        completedFields++;
-      } else {
-        missingFields.push(field.name);
-      }
-    });
-
-    const percentage = Math.round((completedFields / totalFields) * 100);
+    // Use the standardized profile completion utility
+    const completionData = calculateProfileCompletion(profile);
+    
     setProfileCompleteness({
-      percentage,
-      missingFields
+      percentage: completionData.percentage,
+      missingFields: completionData.missingFields
     });
     
     // Log profile completeness in development
     logDev('debug', 'Profile completeness calculated', {
-      percentage,
-      missingFields,
+      percentage: completionData.percentage,
+      missingFields: completionData.missingFields,
+      completedFields: completionData.completedFields,
       userId: currentUser?.id
     });
   };

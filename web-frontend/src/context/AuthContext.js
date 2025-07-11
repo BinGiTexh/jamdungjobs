@@ -88,13 +88,15 @@ export function AuthProvider({ children }) {
 
         const userData = await response.json();
         console.log('✅ AuthContext: Token validation successful', {
-          userId: userData.id,
-          userRole: userData.role,
-          userEmail: userData.email
+          userId: userData.user?.id || userData.id,
+          userRole: userData.user?.role || userData.role,
+          userEmail: userData.user?.email || userData.email
         });
         logDev('debug', 'Token validation successful');
-        setUser(userData);
-        storage.setUser(userData);
+        // Handle both nested and flat response structures
+        const user = userData.user || userData;
+        setUser(user);
+        storage.setUser(user);
         setError(null);
       } catch (err) {
         console.error('❌ AuthContext: Token validation failed:', err.message);
@@ -134,7 +136,7 @@ export function AuthProvider({ children }) {
       const response = await api.post('/api/auth/login', { email, password });
       const { data } = response;
 
-      if (!response.status === 200) {
+      if (response.status !== 200) {
         const errorMsg = data?.message || 'Login failed';
         logError('Login failed', new Error(errorMsg), {
           module: 'AuthContext',
@@ -162,8 +164,51 @@ export function AuthProvider({ children }) {
       console.log('💾 AuthContext: User state updated after login');
       return data.user;
     } catch (err) {
-      setError(err.message);
-      throw err;
+      console.error('❌ AuthContext: Login error:', err);
+      
+      // Extract user-friendly error message
+      let userFriendlyMessage = 'Login failed. Please try again.';
+      
+      if (err.response) {
+        // Server responded with error status
+        const { status, data } = err.response;
+        
+        if (status === 401) {
+          if (data?.code === 'INVALID_CREDENTIALS') {
+            userFriendlyMessage = 'Invalid email or password. Please check your credentials and try again.';
+          } else {
+            userFriendlyMessage = 'Invalid email or password. Please check your credentials and try again.';
+          }
+        } else if (status === 400) {
+          if (data?.code === 'MISSING_CREDENTIALS') {
+            userFriendlyMessage = 'Please enter both email and password.';
+          } else {
+            userFriendlyMessage = data?.message || 'Please check your input and try again.';
+          }
+        } else if (status === 429) {
+          userFriendlyMessage = 'Too many login attempts. Please wait a moment and try again.';
+        } else if (status >= 500) {
+          userFriendlyMessage = 'Server error. Please try again in a few moments.';
+        } else {
+          userFriendlyMessage = data?.message || 'Login failed. Please try again.';
+        }
+      } else if (err.request) {
+        // Network error - no response received
+        userFriendlyMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+      } else if (err.message && err.message.includes('timeout')) {
+        userFriendlyMessage = 'Login request timed out. Please try again.';
+      }
+      
+      logError('Login failed', err, {
+        module: 'AuthContext',
+        function: 'login',
+        status: err.response?.status || 'no_response',
+        userMessage: userFriendlyMessage,
+        email: email ? `${email.substring(0, 3)}...` : 'none'
+      });
+      
+      setError(userFriendlyMessage);
+      throw new Error(userFriendlyMessage);
     } finally {
       setLoading(false);
     }
@@ -183,7 +228,7 @@ export function AuthProvider({ children }) {
       const response = await api.post('/api/auth/register', userData);
       const { data } = response;
 
-      if (response.status !== 200) {
+      if (response.status !== 201 && response.status !== 200) {
         const errorMsg = data?.message || 'Registration failed';
         logError('Registration failed', new Error(errorMsg), {
           module: 'AuthContext',
@@ -196,19 +241,51 @@ export function AuthProvider({ children }) {
       }
 
       // Store token and user data
-      storage.setToken(data.data.token);
-      storage.setUser(data.data.user);
-      setUser(data.data.user);
+      storage.setToken(data.token);
+      storage.setUser(data.user);
+      setUser(data.user);
       
       logDev('info', 'Registration successful', { 
-        userId: data.data.user.id, 
-        role: data.data.user.role 
+        userId: data.user.id, 
+        role: data.user.role 
       });
       
-      return data.data.user;
+      return data.user;
     } catch (err) {
-      setError(err.message);
-      throw err;
+      // Extract user-friendly error message for registration
+      let userFriendlyMessage = 'Registration failed. Please try again.';
+      
+      if (err.response) {
+        // Server responded with error status
+        const { status, data } = err.response;
+        
+        if (status === 400) {
+          if (data?.code === 'USER_EXISTS') {
+            userFriendlyMessage = 'An account with this email already exists. Please try logging in instead.';
+          } else if (data?.code === 'INVALID_INPUT') {
+            userFriendlyMessage = data?.message || 'Please check your input and try again.';
+            if (data?.errors && Array.isArray(data.errors)) {
+              userFriendlyMessage = data.errors.join(', ');
+            }
+          } else {
+            userFriendlyMessage = data?.message || 'Please check your input and try again.';
+          }
+        } else if (status === 429) {
+          userFriendlyMessage = 'Too many registration attempts. Please wait a moment and try again.';
+        } else if (status >= 500) {
+          userFriendlyMessage = 'Server error. Please try again in a few moments.';
+        } else {
+          userFriendlyMessage = data?.message || 'Registration failed. Please try again.';
+        }
+      } else if (err.request) {
+        // Network error - no response received
+        userFriendlyMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+      } else if (err.message && err.message.includes('timeout')) {
+        userFriendlyMessage = 'Registration request timed out. Please try again.';
+      }
+      
+      setError(userFriendlyMessage);
+      throw new Error(userFriendlyMessage);
     } finally {
       setLoading(false);
     }
@@ -296,7 +373,7 @@ export function AuthProvider({ children }) {
       });
       const { data } = response;
 
-      if (!response.status === 200) {
+      if (response.status !== 200) {
         const errorMsg = data?.message || 'Google login failed';
         logError('Google login failed', new Error(errorMsg), {
           module: 'AuthContext',
@@ -356,16 +433,16 @@ export function AuthProvider({ children }) {
       }
 
       // Store token and user data
-      storage.setToken(data.data.token);
-      storage.setUser(data.data.user);
-      setUser(data.data.user);
+      storage.setToken(data.token);
+      storage.setUser(data.user);
+      setUser(data.user);
       
       logDev('info', 'Google registration successful', { 
-        userId: data.data.user.id, 
-        role: data.data.user.role 
+        userId: data.user.id, 
+        role: data.user.role 
       });
       
-      return data.data.user;
+      return data.user;
     } catch (err) {
       setError(err.message);
       throw err;

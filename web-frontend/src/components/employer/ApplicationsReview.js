@@ -34,6 +34,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { buildAssetUrl } from '../../config';
 import { logDev, logError } from '../../utils/loggingUtils';
 
 const ApplicationsReview = ({ jobId }) => {
@@ -100,7 +101,11 @@ const ApplicationsReview = ({ jobId }) => {
 
   const handleDownloadResume = async (applicationId, resumeUrl) => {
     try {
-      const response = await axios.get(resumeUrl, {
+      // Build the full URL for the resume download
+      const fullResumeUrl = buildAssetUrl(resumeUrl);
+      logDev('debug', 'Downloading resume from employer view', { applicationId, resumeUrl, fullResumeUrl });
+      
+      const response = await axios.get(fullResumeUrl, {
         responseType: 'blob'
       });
       

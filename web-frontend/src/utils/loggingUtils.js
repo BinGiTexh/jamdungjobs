@@ -17,10 +17,10 @@ export const logDev = (level, ...args) => {
     const logLevel = validLevels.includes(level) ? level : 'log';
     
     // Use console.log as fallback for debug level since it might not exist in all browsers
-    if (logLevel === 'debug' && typeof console.debug !== 'function') {
-      console.log(`[DEBUG]`, ...args);
+    if (logLevel === 'debug' && typeof console.debug !== 'function') { // eslint-disable-line no-console
+      console.log('[DEBUG]', ...args); // eslint-disable-line no-console
     } else {
-      console[logLevel](...args);
+      console[logLevel](...args); // eslint-disable-line no-console
     }
   }
 };

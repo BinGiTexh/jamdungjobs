@@ -12,7 +12,6 @@ import {
   Chip
 } from '@mui/material';
 import { styled } from '@mui/system';
-
 // Import our new components
 import JobShareButton from '../components/common/JobShareButton';
 import RecentlyViewedJobs, { trackJobView } from '../components/common/RecentlyViewedJobs';
@@ -105,6 +104,7 @@ const FeatureDemo = () => {
 
   const handleTrackJobView = (job) => {
     trackJobView(job);
+    // eslint-disable-next-line no-console
     console.log(`Tracked view for: ${job.title}`);
   };
 

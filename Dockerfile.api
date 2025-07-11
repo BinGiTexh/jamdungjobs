@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     openssl \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /app/uploads/profile-photos /app/uploads/resumes
+    && mkdir -p /app/uploads/profile-photos /app/uploads/resumes /app/images/generated
 
 # Configure npm for minimal install
 RUN echo "optional=false" >> .npmrc \
@@ -23,7 +23,8 @@ COPY backend/prisma ./prisma
 # Install dependencies efficiently
 RUN npm ci --no-optional \
     && npm cache clean --force \
-    && chown -R node:node /app
+    && chown -R node:node /app \
+    && chmod -R 755 /app/uploads /app/images
 
 # Switch to non-root user
 USER node
@@ -39,4 +40,4 @@ HEALTHCHECK --interval=30s --timeout=3s \
 EXPOSE 5000
 
 # Start development server with migration support
-CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push --accept-data-loss && npx prisma generate && npm run dev"]
+CMD ["sh", "-c", "mkdir -p /app/uploads/profile-photos /app/uploads/resumes /app/images/generated && npx prisma migrate deploy || npx prisma db push --accept-data-loss && npx prisma generate && npm run dev"]

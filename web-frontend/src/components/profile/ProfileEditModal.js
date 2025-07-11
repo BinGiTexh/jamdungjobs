@@ -31,6 +31,7 @@ import { useAuth } from '../../context/AuthContext';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 import JamaicaLocationProfileAutocomplete from '../common/JamaicaLocationProfileAutocomplete';
 import ResumeViewer from './ResumeViewer';
+// Phone input focus issue resolved with uncontrolled input approach
 
 const ProfileEditModal = ({ open, onClose, onSave }) => {
   const { user, updateUser } = useAuth();
@@ -41,6 +42,7 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
   const [profileData, setProfileData] = useState(null);
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeViewerOpen, setResumeViewerOpen] = useState(false);
+  const [originalEmail, setOriginalEmail] = useState('');
   
   const [formData, setFormData] = useState({
     // Personal Information
@@ -118,6 +120,7 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         const data = await response.json();
         const profileInfo = data.data || data;
         setProfileData(profileInfo);
+        setOriginalEmail(profileInfo.email || ''); // Store original email
         
         // Initialize form data
         if (user?.role === 'JOBSEEKER') {
@@ -182,12 +185,46 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
       [field]: value
     }));
   };
+  
+  // Phone input focus issue is now handled by PhoneInputFixed component
 
   const handleSkillsChange = (newSkills) => {
     setFormData(prev => ({
       ...prev,
       skills: newSkills
     }));
+  };
+
+  // Handle email update separately if email has changed
+  const updateEmailIfChanged = async () => {
+    if (formData.email && formData.email !== originalEmail) {
+      console.log('Email changed, updating separately:', formData.email);
+      try {
+        const emailResponse = await fetch('http://localhost:5000/api/users/me/email', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('jamdung_auth_token')}`
+          },
+          body: JSON.stringify({ email: formData.email })
+        });
+
+        if (emailResponse.ok) {
+          console.log('Email updated successfully');
+          setOriginalEmail(formData.email); // Update original email
+        } else {
+          const emailError = await emailResponse.json();
+          console.error('Email update failed:', emailError);
+          setError(`Email update failed: ${emailError.message || 'Unknown error'}`);
+          return false;
+        }
+      } catch (emailErr) {
+        console.error('Email update error:', emailErr);
+        setError('Failed to update email. Please try again.');
+        return false;
+      }
+    }
+    return true;
   };
 
   // Handle resume upload
@@ -262,26 +299,29 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         ? 'http://localhost:5000/api/employer/profile'
         : 'http://localhost:5000/api/users/me';
 
+      console.log('=== PROFILE SAVE DEBUG ===');
+      console.log('User role:', user?.role);
+      console.log('Form data:', formData);
+
+      // For JOBSEEKER: Use /api/users/me for basic user fields only
+      // For EMPLOYER: Use /api/employer/profile for full profile
       let updateData;
       
       if (user?.role === 'JOBSEEKER') {
+        // Backend expects flat fields for user profile
         updateData = {
           firstName: formData.firstName,
           lastName: formData.lastName,
           phoneNumber: formData.phoneNumber,
           location: formData.location,
           bio: formData.bio,
-          candidateProfile: {
-            jobTitle: formData.jobTitle,
-            experienceLevel: formData.experienceLevel,
-            skills: formData.skills,
-            salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : null,
-            salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : null,
-            education: formData.education,
-            experience: formData.experience,
-            location: formData.location
-          }
+          title: formData.jobTitle // Backend expects 'title' not 'jobTitle'
         };
+        
+        // Note: Email updates are handled by /api/users/me/email endpoint separately
+        
+        // Candidate-specific fields will be handled by jobseeker routes separately
+        console.log('JOBSEEKER payload:', updateData);
       } else {
         updateData = {
           firstName: formData.firstName,
@@ -299,6 +339,9 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         };
       }
 
+      console.log('Endpoint:', endpoint);
+      console.log('Payload being sent:', JSON.stringify(updateData, null, 2));
+
       const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
@@ -310,6 +353,13 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
 
       if (response.ok) {
         const updatedData = await response.json();
+        
+        // Update email separately if it has changed
+        const emailUpdateSuccess = await updateEmailIfChanged();
+        if (!emailUpdateSuccess) {
+          return; // Stop if email update failed
+        }
+        
         setSuccess('Profile updated successfully!');
         
         // Update user context if needed
@@ -318,7 +368,8 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
             ...user,
             firstName: formData.firstName,
             lastName: formData.lastName,
-            phoneNumber: formData.phoneNumber
+            phoneNumber: formData.phoneNumber,
+            email: formData.email // Include updated email
           });
         }
         
@@ -343,7 +394,16 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         } else if (response.status === 401) {
           errorMessage = 'Your session has expired. Please log in again.';
         } else if (response.status === 400) {
-          errorMessage = errorData.message || 'Invalid profile information. Please check your inputs.';
+          console.error('Server validation error:', errorData);
+          console.error('Failed fields:', errorData.errors);
+          
+          // Show specific field errors if available
+          if (errorData.errors && Array.isArray(errorData.errors)) {
+            const fieldErrors = errorData.errors.map(err => `${err.field}: ${err.message}`).join(', ');
+            errorMessage = `Validation failed: ${fieldErrors}`;
+          } else {
+            errorMessage = errorData.message || 'Invalid profile information. Please check your inputs.';
+          }
         } else if (response.status >= 500) {
           errorMessage = 'Server error. Please try again in a few moments.';
         } else if (errorData.message) {
@@ -441,18 +501,28 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                   <TextField
                     fullWidth
                     label="First Name"
-                    value={formData.firstName}
-                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    defaultValue={formData.firstName}
+                    onBlur={(e) => handleInputChange('firstName', e.target.value)}
                     required
+                    autoComplete="given-name"
+                    inputProps={{
+                      style: { fontSize: '16px' } // Prevent iOS zoom
+                    }}
+                    key="firstname-input-uncontrolled" // Stable key
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Last Name"
-                    value={formData.lastName}
-                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    defaultValue={formData.lastName}
+                    onBlur={(e) => handleInputChange('lastName', e.target.value)}
                     required
+                    autoComplete="family-name"
+                    inputProps={{
+                      style: { fontSize: '16px' } // Prevent iOS zoom
+                    }}
+                    key="lastname-input-uncontrolled" // Stable key
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -460,17 +530,28 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                     fullWidth
                     label="Email"
                     type="email"
-                    value={formData.email}
-                    disabled
-                    helperText="Email cannot be changed"
+                    defaultValue={formData.email}
+                    onBlur={(e) => handleInputChange('email', e.target.value)}
+                    autoComplete="email"
+                    inputProps={{
+                      style: { fontSize: '16px' } // Prevent iOS zoom
+                    }}
+                    key="email-input-uncontrolled" // Stable key
+                    helperText="Update your email address if needed"
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Phone Number"
-                    value={formData.phoneNumber}
-                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                    defaultValue={formData.phoneNumber}
+                    onBlur={(e) => handleInputChange('phoneNumber', e.target.value)}
+                    type="tel"
+                    autoComplete="tel"
+                    inputProps={{
+                      style: { fontSize: '16px' } // Prevent iOS zoom
+                    }}
+                    key="phone-input-uncontrolled" // Stable key
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -487,9 +568,13 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                     label="Bio"
                     multiline
                     rows={4}
-                    value={formData.bio}
-                    onChange={(e) => handleInputChange('bio', e.target.value)}
+                    defaultValue={formData.bio}
+                    onBlur={(e) => handleInputChange('bio', e.target.value)}
                     placeholder="Tell us about yourself..."
+                    inputProps={{
+                      style: { fontSize: '16px' } // Prevent iOS zoom
+                    }}
+                    key="bio-input-uncontrolled" // Stable key
                   />
                 </Grid>
               </Grid>
@@ -503,8 +588,13 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                     <TextField
                       fullWidth
                       label="Current/Desired Job Title"
-                      value={formData.jobTitle}
-                      onChange={(e) => handleInputChange('jobTitle', e.target.value)}
+                      defaultValue={formData.jobTitle}
+                      onBlur={(e) => handleInputChange('jobTitle', e.target.value)}
+                      autoComplete="organization-title"
+                      inputProps={{
+                        style: { fontSize: '16px' } // Prevent iOS zoom
+                      }}
+                      key="jobtitle-input-uncontrolled" // Stable key
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -532,22 +622,56 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Minimum Salary (JMD)"
-                      type="number"
-                      value={formData.salaryMin}
-                      onChange={(e) => handleInputChange('salaryMin', e.target.value)}
-                    />
+                    <FormControl fullWidth>
+                      <InputLabel>Minimum Salary (JMD)</InputLabel>
+                      <Select
+                        value={formData.salaryMin}
+                        onChange={(e) => handleInputChange('salaryMin', e.target.value)}
+                        label="Minimum Salary (JMD)"
+                      >
+                        <MenuItem value="">Not specified</MenuItem>
+                        <MenuItem value="50000">$50,000 JMD</MenuItem>
+                        <MenuItem value="75000">$75,000 JMD</MenuItem>
+                        <MenuItem value="100000">$100,000 JMD</MenuItem>
+                        <MenuItem value="150000">$150,000 JMD</MenuItem>
+                        <MenuItem value="200000">$200,000 JMD</MenuItem>
+                        <MenuItem value="250000">$250,000 JMD</MenuItem>
+                        <MenuItem value="300000">$300,000 JMD</MenuItem>
+                        <MenuItem value="400000">$400,000 JMD</MenuItem>
+                        <MenuItem value="500000">$500,000 JMD</MenuItem>
+                        <MenuItem value="600000">$600,000 JMD</MenuItem>
+                        <MenuItem value="750000">$750,000 JMD</MenuItem>
+                        <MenuItem value="1000000">$1,000,000 JMD</MenuItem>
+                        <MenuItem value="1500000">$1,500,000 JMD</MenuItem>
+                        <MenuItem value="2000000">$2,000,000+ JMD</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Maximum Salary (JMD)"
-                      type="number"
-                      value={formData.salaryMax}
-                      onChange={(e) => handleInputChange('salaryMax', e.target.value)}
-                    />
+                    <FormControl fullWidth>
+                      <InputLabel>Maximum Salary (JMD)</InputLabel>
+                      <Select
+                        value={formData.salaryMax}
+                        onChange={(e) => handleInputChange('salaryMax', e.target.value)}
+                        label="Maximum Salary (JMD)"
+                      >
+                        <MenuItem value="">Not specified</MenuItem>
+                        <MenuItem value="75000">$75,000 JMD</MenuItem>
+                        <MenuItem value="100000">$100,000 JMD</MenuItem>
+                        <MenuItem value="150000">$150,000 JMD</MenuItem>
+                        <MenuItem value="200000">$200,000 JMD</MenuItem>
+                        <MenuItem value="250000">$250,000 JMD</MenuItem>
+                        <MenuItem value="300000">$300,000 JMD</MenuItem>
+                        <MenuItem value="400000">$400,000 JMD</MenuItem>
+                        <MenuItem value="500000">$500,000 JMD</MenuItem>
+                        <MenuItem value="600000">$600,000 JMD</MenuItem>
+                        <MenuItem value="750000">$750,000 JMD</MenuItem>
+                        <MenuItem value="1000000">$1,000,000 JMD</MenuItem>
+                        <MenuItem value="1500000">$1,500,000 JMD</MenuItem>
+                        <MenuItem value="2000000">$2,000,000 JMD</MenuItem>
+                        <MenuItem value="3000000">$3,000,000+ JMD</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
@@ -555,9 +679,13 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                       label="Education"
                       multiline
                       rows={3}
-                      value={formData.education}
-                      onChange={(e) => handleInputChange('education', e.target.value)}
+                      defaultValue={formData.education}
+                      onBlur={(e) => handleInputChange('education', e.target.value)}
                       placeholder="Your educational background..."
+                      inputProps={{
+                        style: { fontSize: '16px' } // Prevent iOS zoom
+                      }}
+                      key="education-input-uncontrolled" // Stable key
                     />
                   </Grid>
                   <Grid item xs={12}>
@@ -566,9 +694,13 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                       label="Work Experience"
                       multiline
                       rows={4}
-                      value={formData.experience}
-                      onChange={(e) => handleInputChange('experience', e.target.value)}
+                      defaultValue={formData.experience}
+                      onBlur={(e) => handleInputChange('experience', e.target.value)}
                       placeholder="Describe your work experience..."
+                      inputProps={{
+                        style: { fontSize: '16px' } // Prevent iOS zoom
+                      }}
+                      key="experience-input-uncontrolled" // Stable key
                     />
                   </Grid>
                   
@@ -700,18 +832,29 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                     <TextField
                       fullWidth
                       label="Company Name"
-                      value={formData.companyName}
-                      onChange={(e) => handleInputChange('companyName', e.target.value)}
+                      defaultValue={formData.companyName}
+                      onBlur={(e) => handleInputChange('companyName', e.target.value)}
                       required
+                      autoComplete="organization"
+                      inputProps={{
+                        style: { fontSize: '16px' } // Prevent iOS zoom
+                      }}
+                      key="companyname-input-uncontrolled" // Stable key
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
                       label="Company Website"
-                      value={formData.companyWebsite}
-                      onChange={(e) => handleInputChange('companyWebsite', e.target.value)}
+                      defaultValue={formData.companyWebsite}
+                      onBlur={(e) => handleInputChange('companyWebsite', e.target.value)}
                       placeholder="https://..."
+                      type="url"
+                      autoComplete="url"
+                      inputProps={{
+                        style: { fontSize: '16px' } // Prevent iOS zoom
+                      }}
+                      key="companywebsite-input-uncontrolled" // Stable key
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -744,9 +887,13 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
                       label="Company Description"
                       multiline
                       rows={4}
-                      value={formData.companyDescription}
-                      onChange={(e) => handleInputChange('companyDescription', e.target.value)}
+                      defaultValue={formData.companyDescription}
+                      onBlur={(e) => handleInputChange('companyDescription', e.target.value)}
                       placeholder="Describe your company..."
+                      inputProps={{
+                        style: { fontSize: '16px' } // Prevent iOS zoom
+                      }}
+                      key="companydescription-input-uncontrolled" // Stable key
                     />
                   </Grid>
                 </Grid>

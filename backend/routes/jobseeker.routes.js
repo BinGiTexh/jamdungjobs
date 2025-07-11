@@ -21,7 +21,7 @@ const validateProfileUpdate = (data) => {
     errors.push('Experience must be an array');
   }
 
-  if (data.phone_number && !data.phone_number.match(/^\+?[\d\s-()]+$/)) {
+  if (data.phoneNumber && !data.phoneNumber.match(/^\+?[\d\s-()]+$/)) {
     errors.push('Invalid phone number format');
   }
 
@@ -54,12 +54,24 @@ const createJobseekerRouter = (prisma) => {
         });
       }
 
-      // Remove sensitive data
+      // Remove sensitive data and normalize field names
       const { passwordHash, ...userWithoutPassword } = profile;
+      
+      // Normalize field names for frontend compatibility
+      const normalizedProfile = {
+        ...userWithoutPassword,
+        firstName: userWithoutPassword.first_name,
+        lastName: userWithoutPassword.last_name,
+        phoneNumber: userWithoutPassword.phone_number,
+        // Keep original field names for backward compatibility
+        first_name: userWithoutPassword.first_name,
+        last_name: userWithoutPassword.last_name,
+        phone_number: userWithoutPassword.phone_number
+      };
 
       res.json({
         success: true,
-        data: userWithoutPassword
+        data: normalizedProfile
       });
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -80,18 +92,18 @@ const createJobseekerRouter = (prisma) => {
   router.put('/profile', authenticateJWT, async (req, res) => {
     try {
       const {
-        first_name,
-        last_name,
+        firstName,
+        lastName,
         bio,
         location,
-        phone_number,
+        phoneNumber,
         title,
         skills,
         education,
         experience,
-        resume_url,
-        photo_url,
-        resume_file_name
+        resumeUrl,
+        photoUrl,
+        resumeFileName
       } = req.body;
 
       // Validate update data
@@ -126,11 +138,11 @@ const createJobseekerRouter = (prisma) => {
 
       // Build dynamic update objects only with provided non-empty values
       const userUpdateData = {};
-      if (first_name) userUpdateData.firstName = first_name;
-      if (last_name) userUpdateData.lastName = last_name;
+      if (firstName) userUpdateData.firstName = firstName;
+      if (lastName) userUpdateData.lastName = lastName;
       if (bio !== undefined && bio !== '') userUpdateData.bio = bio;
       if (location !== undefined && location !== '') userUpdateData.location = location;
-      if (phone_number) userUpdateData.phoneNumber = phone_number;
+      if (phoneNumber) userUpdateData.phoneNumber = phoneNumber;
       if (title !== undefined && title !== '') userUpdateData.title = title;
 
       const candidateUpdateData = {};
@@ -138,9 +150,9 @@ const createJobseekerRouter = (prisma) => {
       if (Array.isArray(education) && education.length) candidateUpdateData.education = education;
       if (Array.isArray(experience) && experience.length) candidateUpdateData.experience = experience;
       if (bio !== undefined && bio !== '') candidateUpdateData.bio = bio;
-      if (resume_url) candidateUpdateData.resumeUrl = resume_url;
-      if (photo_url) candidateUpdateData.photoUrl = photo_url;
-      if (resume_file_name) candidateUpdateData.resumeFileName = resume_file_name;
+      if (resumeUrl !== undefined && resumeUrl !== '') candidateUpdateData.resumeUrl = resumeUrl;
+      if (photoUrl !== undefined && photoUrl !== '') candidateUpdateData.photoUrl = photoUrl;
+      if (resumeFileName !== undefined && resumeFileName !== '') candidateUpdateData.resumeFileName = resumeFileName;
 
       // Update profile using transaction
       const result = await prisma.$transaction(async (tx) => {
@@ -187,7 +199,7 @@ const createJobseekerRouter = (prisma) => {
     }
   });
 
-  // Configure multer storage for photo uploads (reuse same directory as other uploads)
+  // Configure multer storage for photo uploads with enhanced error handling
   const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       const dir = path.join(__dirname, '..', 'uploads');
@@ -197,22 +209,100 @@ const createJobseekerRouter = (prisma) => {
       cb(null, dir);
     },
     filename: function (req, file, cb) {
-      const uniqueName = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
+      // Sanitize filename more thoroughly
+      const ext = path.extname(file.originalname).toLowerCase();
+      const name = path.basename(file.originalname, ext)
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .substring(0, 50); // Limit length
+      const uniqueName = `${Date.now()}-${name}${ext}`;
       cb(null, uniqueName);
     }
   });
 
   const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+    limits: { 
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+      files: 1 // Only allow single file
+    },
+    fileFilter: function (req, file, cb) {
+      // Log upload attempt for debugging
+      console.log('📄 File upload attempt:', {
+        fieldname: file.fieldname,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
+      });
+      cb(null, true); // Accept all files here, validate per endpoint
+    }
   });
 
   // POST /api/jobseeker/profile/photo – upload profile picture
-  router.post('/profile/photo', authenticateJWT, upload.single('photo'), async (req, res) => {
+  router.post('/profile/photo', authenticateJWT, (req, res, next) => {
+    upload.single('photo')(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        console.error('Multer error:', err);
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            success: false,
+            message: 'File too large. Maximum size is 5MB.',
+            code: 'FILE_TOO_LARGE'
+          });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({
+            success: false,
+            message: 'Too many files. Only one file allowed.',
+            code: 'TOO_MANY_FILES'
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'File upload error',
+          code: 'UPLOAD_ERROR',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+      }
+      if (err) {
+        console.error('Upload error:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Internal server error during upload',
+          code: 'SERVER_ERROR'
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
+        return res.status(400).json({
+          success: false,
+          message: 'No file uploaded. Please select a photo to upload.',
+          code: 'NO_FILE'
+        });
       }
+
+      // Validate image file type
+      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
+      const fileExt = path.extname(req.file.originalname).toLowerCase();
+
+      if (!allowedMimeTypes.includes(req.file.mimetype) || !allowedExtensions.includes(fileExt)) {
+        // Remove uploaded invalid file
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid file type. Only JPEG, PNG, and GIF images are allowed.',
+          code: 'INVALID_FILE_TYPE'
+        });
+      }
+
+      console.log('✅ Valid photo uploaded:', {
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
 
       // Build relative URL to serve the image
       const photoUrl = `/uploads/${req.file.filename}`;
@@ -224,10 +314,26 @@ const createJobseekerRouter = (prisma) => {
         update: { photoUrl }
       });
 
-      return res.json({ success: true, photoUrl });
+      res.json({
+        success: true,
+        message: 'Photo uploaded successfully',
+        photoUrl,
+        filename: req.file.filename
+      });
     } catch (error) {
-      console.error('Error uploading profile photo:', error);
-      return res.status(500).json({ success: false, message: 'Error uploading photo' });
+      console.error('💥 Error uploading profile photo:', error);
+      
+      // Clean up uploaded file if database operation failed
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      
+      res.status(500).json({
+        success: false,
+        message: 'Error uploading photo',
+        code: 'SERVER_ERROR',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
@@ -237,11 +343,50 @@ const createJobseekerRouter = (prisma) => {
    * @access  Private – Jobseeker
    * Front-end expects fields: resumeUrl, resumeFileName
    */
-  router.post('/profile/resume', authenticateJWT, upload.single('resume'), async (req, res) => {
+  router.post('/profile/resume', authenticateJWT, (req, res, next) => {
+    upload.single('resume')(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        console.error('Resume upload multer error:', err);
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            success: false,
+            message: 'Resume file too large. Maximum size is 5MB.',
+            code: 'FILE_TOO_LARGE'
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Resume upload error',
+          code: 'UPLOAD_ERROR',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+      }
+      if (err) {
+        console.error('Resume upload error:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Internal server error during resume upload',
+          code: 'SERVER_ERROR'
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
+        return res.status(400).json({
+          success: false,
+          message: 'No resume file uploaded. Please select a PDF, DOC, or DOCX file.',
+          code: 'NO_FILE'
+        });
       }
+
+      console.log('📄 Resume upload attempt:', {
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      });
 
       // Validate MIME type (accept PDF, DOC, DOCX)
       const allowedMimeTypes = [
@@ -249,12 +394,26 @@ const createJobseekerRouter = (prisma) => {
         'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       ];
+
+      const allowedExtensions = ['.pdf', '.doc', '.docx'];
+      const fileExt = path.extname(req.file.originalname).toLowerCase();
       
-      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      if (!allowedMimeTypes.includes(req.file.mimetype) || !allowedExtensions.includes(fileExt)) {
         // Remove uploaded invalid file
         fs.unlinkSync(req.file.path);
-        return res.status(400).json({ success: false, message: 'Only PDF, DOC, and DOCX files are allowed' });
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid file type. Only PDF, DOC, and DOCX files are allowed for resumes.',
+          code: 'INVALID_FILE_TYPE',
+          allowedTypes: ['PDF', 'DOC', 'DOCX']
+        });
       }
+
+      console.log('✅ Valid resume uploaded:', {
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
 
       const resumeUrl = `/uploads/${req.file.filename}`;
       const resumeFileName = req.file.originalname;
@@ -266,10 +425,27 @@ const createJobseekerRouter = (prisma) => {
         update: { resumeUrl, resumeFileName }
       });
 
-      return res.json({ success: true, resumeUrl, resumeFileName });
+      res.json({
+        success: true,
+        message: 'Resume uploaded successfully',
+        resumeUrl,
+        resumeFileName,
+        fileSize: req.file.size
+      });
     } catch (error) {
-      console.error('Error uploading resume:', error);
-      return res.status(500).json({ success: false, message: 'Error uploading resume' });
+      console.error('💥 Error uploading resume:', error);
+      
+      // Clean up uploaded file if database operation failed
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      
+      res.status(500).json({
+        success: false,
+        message: 'Error uploading resume',
+        code: 'SERVER_ERROR',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 

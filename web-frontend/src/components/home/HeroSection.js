@@ -104,7 +104,7 @@ const HeroSection = () => {
 
   const handleJobSeekerAction = () => {
     if (user) {
-      navigate(user.role === 'JOBSEEKER' ? '/candidate/dashboard' : '/jobs');
+      navigate(user.role === 'JOBSEEKER' ? '/dashboard' : '/jobs');
     } else {
       navigate('/jobs');
     }
@@ -112,7 +112,7 @@ const HeroSection = () => {
 
   const handleEmployerAction = () => {
     if (user) {
-      navigate(user.role === 'EMPLOYER' ? '/employer/dashboard' : '/employer/post-job');
+      navigate(user.role === 'EMPLOYER' ? '/employer/dashboard' : '/employer/jobs');
     } else {
       navigate('/login', { state: { employerRedirect: true } });
     }

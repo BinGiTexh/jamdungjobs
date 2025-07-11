@@ -8,13 +8,33 @@ yarn-error.log*
 logs/
 coverage/
 
-# Environment files
+# Environment files - NEVER commit these
 .env
 .env.local
 .env.*.local
 .env.development
 .env.test
 .env.production
+*.env
+.env.*
+
+# Security sensitive files - NEVER commit these
+*.key
+*.pem
+*.p12
+*.pfx
+config/secrets.*
+**/credentials.*
+**/keys/*
+auth/
+secrets/
+private/
+backup/
+dumps/
+*_INSECURE*
+*.backup
+credentials.json
+secrets.json
 
 # Docker
 docker-volumes/

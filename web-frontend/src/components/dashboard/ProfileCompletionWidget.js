@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import ProfileEditModal from '../profile/ProfileEditModal';
 import api from '../../utils/api';
 import { logDev, logError } from '../../utils/loggingUtils';
+import { calculateProfileCompletion } from '../../utils/profileCompletion';
 
 const ProfileCompletionWidget = () => {
   const { } = useAuth();
@@ -98,37 +99,38 @@ const ProfileCompletionWidget = () => {
     fetchProfileData();
   }, []);
   
+  // Use the standardized profile completion utility
+  const completionData = calculateProfileCompletion(profileData);
+  const completionPercentage = completionData.percentage;
+  
+  // Map the completion data to the widget format
   const completionItems = [
     { 
       key: 'basicInfo', 
       label: 'Basic Information', 
-      completed: !!(profileData?.firstName && profileData?.lastName && profileData?.email && profileData?.phoneNumber) 
+      completed: completionData.completedFields.includes('Basic Information')
     },
     { 
       key: 'resume', 
       label: 'Resume Upload', 
-      completed: !!(profileData?.resumes && profileData?.resumes.length > 0) 
+      completed: completionData.completedFields.includes('Resume Upload')
     },
     { 
       key: 'skills', 
-      label: 'Skills & Experience', 
-      completed: !!(profileData?.skills && profileData?.skills.length > 0) 
+      label: 'Skills', 
+      completed: completionData.completedFields.includes('Skills')
     },
     { 
       key: 'education', 
       label: 'Education', 
-      completed: !!(profileData?.education && profileData?.education.length > 0) 
+      completed: completionData.completedFields.includes('Education')
     },
     { 
       key: 'experience', 
       label: 'Work Experience', 
-      completed: !!(profileData?.experience && 
-        ((Array.isArray(profileData.experience) && profileData.experience.length > 0) ||
-         (typeof profileData.experience === 'string' && profileData.experience.trim().length > 0))) 
+      completed: completionData.completedFields.includes('Work Experience')
     }
   ];
-  
-  const completionPercentage = (completionItems.filter(item => item.completed).length / completionItems.length) * 100;
 
   if (loading) {
     return (

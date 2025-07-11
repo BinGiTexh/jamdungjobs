@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
+const { OAuth2Client } = require('google-auth-library');
 
 // Field validation
 const validateRegistration = (data) => {
@@ -16,11 +18,11 @@ const validateRegistration = (data) => {
     errors.push('Password must be at least 8 characters long');
   }
 
-  if (!data.first_name || data.first_name.trim().length === 0) {
+  if (!data.firstName || data.firstName.trim().length === 0) {
     errors.push('First name is required');
   }
 
-  if (!data.last_name || data.last_name.trim().length === 0) {
+  if (!data.lastName || data.lastName.trim().length === 0) {
     errors.push('Last name is required');
   }
 
@@ -28,15 +30,31 @@ const validateRegistration = (data) => {
     errors.push('Valid role (JOBSEEKER or EMPLOYER) is required');
   }
 
+  // Employer-specific validation
+  if (data.role === 'EMPLOYER') {
+    if (!data.companyName || data.companyName.trim().length === 0) {
+      errors.push('Company name is required for employers');
+    }
+  }
+
   return errors;
 };
 
-// JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || "local_development_secret_32_characters_minimum";
+// JWT configuration - NEVER use hardcoded secrets in production
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error('🚨 SECURITY ERROR: JWT_SECRET environment variable is required');
+  console.error('Set JWT_SECRET in your .env file or environment variables');
+  process.exit(1);
+}
 
 // Initialize Prisma client - reuse existing instance if available
 const prisma = global.prisma || new PrismaClient();
 if (!global.prisma) global.prisma = prisma;
+
+// Initialize Google OAuth client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
  * @route   POST /api/auth/register
@@ -45,16 +63,23 @@ if (!global.prisma) global.prisma = prisma;
  */
 router.post('/register', async (req, res) => {
   try {
+    console.log('📝 Registration request received:', {
+      email: req.body.email,
+      role: req.body.role,
+      hasCompanyName: !!req.body.company_name,
+      requestBody: JSON.stringify(req.body, null, 2)
+    });
+
     const {
       email,
       password,
-      first_name,
-      last_name,
+      firstName,
+      lastName,
       role,
-      company_name,
-      company_website,
-      company_location,
-      company_description,
+      companyName,
+      companyWebsite,
+      companyLocation,
+      companyDescription,
       skills,
       bio
     } = req.body;
@@ -88,40 +113,52 @@ router.post('/register', async (req, res) => {
 
     // Create user with related data in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create user
+      // Create user first
       const user = await tx.user.create({
         data: {
           email,
           passwordHash,
-          firstName: first_name,
-          lastName: last_name,
+          firstName,
+          lastName,
           role,
           bio: bio || null
         }
       });
 
-      if (role === 'EMPLOYER' && company_name) {
-        await tx.company.create({
+      console.log('✅ User created:', { userId: user.id, role: user.role });
+
+      if (role === 'EMPLOYER' && companyName) {
+        console.log('🏢 Creating company for employer...');
+        const company = await tx.company.create({
           data: {
-            name: company_name,
-            website: company_website,
-            location: company_location,
-            description: company_description,
-            employees: {
-              connect: { id: user.id }
-            }
+            name: companyName,
+            website: companyWebsite || null,
+            location: companyLocation || null,
+            description: companyDescription || null
           }
         });
+        
+        console.log('✅ Company created:', { companyId: company.id });
+        
+        // Update user with company reference
+        await tx.user.update({
+          where: { id: user.id },
+          data: { companyId: company.id }
+        });
+        
+        console.log('✅ User linked to company');
       }
 
-      if (role === 'JOBSEEKER' && skills) {
+      if (role === 'JOBSEEKER') {
+        console.log('👤 Creating candidate profile...');
         await tx.candidateProfile.create({
           data: {
             userId: user.id,
-            skills: skills,
+            skills: skills || null,
             bio: bio || null
           }
         });
+        console.log('✅ Candidate profile created');
       }
 
       return user;
@@ -148,12 +185,36 @@ router.post('/register', async (req, res) => {
       user: userWithoutPassword
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('💥 Registration error:', error);
+    
+    // Handle Prisma specific errors
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already exists',
+        code: 'DUPLICATE_EMAIL',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+    
+    if (error.code === 'P2003') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reference in data',
+        code: 'INVALID_REFERENCE',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error during registration',
       code: 'SERVER_ERROR',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      } : undefined
     });
   }
 });
@@ -412,6 +473,166 @@ router.get('/validate', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error validating token',
+      code: 'SERVER_ERROR',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/google
+ * @desc    Google OAuth FedCM authentication
+ * @access  Public
+ */
+router.post('/google', async (req, res) => {
+  try {
+    const { credential, role = 'JOBSEEKER' } = req.body;
+
+    console.log('🔐 Google OAuth FedCM login attempt:', {
+      hasCredential: !!credential,
+      role,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google credential is required',
+        code: 'MISSING_CREDENTIAL'
+      });
+    }
+
+    if (!['JOBSEEKER', 'EMPLOYER'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be JOBSEEKER or EMPLOYER',
+        code: 'INVALID_ROLE'
+      });
+    }
+
+    // Verify Google credential
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+      payload = ticket.getPayload();
+      
+      console.log('✅ Google credential verified:', {
+        email: payload.email,
+        name: `${payload.given_name} ${payload.family_name}`,
+        verified: payload.email_verified
+      });
+    } catch (verifyError) {
+      console.error('❌ Google credential verification failed:', verifyError);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid Google credential',
+        code: 'INVALID_GOOGLE_CREDENTIAL',
+        details: process.env.NODE_ENV === 'development' ? verifyError.message : undefined
+      });
+    }
+
+    if (!payload.email_verified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Google email not verified',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+
+    // Check if user exists
+    let user = await prisma.user.findUnique({
+      where: { email: payload.email },
+      include: {
+        candidateProfile: true,
+        company: true
+      }
+    });
+
+    if (user) {
+      console.log('🔄 Existing user login via Google:', {
+        userId: user.id,
+        email: user.email,
+        role: user.role
+      });
+    } else {
+      // Create new user
+      console.log('➕ Creating new user from Google OAuth:', {
+        email: payload.email,
+        role,
+        name: `${payload.given_name} ${payload.family_name}`
+      });
+
+      user = await prisma.user.create({
+        data: {
+          email: payload.email,
+          firstName: payload.given_name || '',
+          lastName: payload.family_name || '',
+          role,
+          // Generate a random password hash for OAuth users
+          passwordHash: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
+        },
+        include: {
+          candidateProfile: true,
+          company: true
+        }
+      });
+
+      // Create candidate profile for job seekers
+      if (role === 'JOBSEEKER') {
+        await prisma.candidateProfile.create({
+          data: {
+            userId: user.id,
+            photoUrl: payload.picture || null
+          }
+        });
+      }
+
+      console.log('✅ New user created successfully:', {
+        userId: user.id,
+        email: user.email,
+        role: user.role
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role 
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Remove sensitive data
+    const { passwordHash, ...userWithoutPassword } = user;
+
+    console.log('🎉 Google OAuth login successful:', {
+      userId: user.id,
+      role: user.role,
+      isNewUser: !user.createdAt || (Date.now() - new Date(user.createdAt).getTime()) < 60000
+    });
+
+    res.json({
+      success: true,
+      message: 'Google authentication successful',
+      token,
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('💥 Google OAuth error:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    res.status(500).json({
+      success: false,
+      message: 'Google authentication failed',
       code: 'SERVER_ERROR',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });

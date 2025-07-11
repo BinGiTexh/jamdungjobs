@@ -15,7 +15,7 @@ const BasicSearchPage = () => {
   return (
     <Box sx={{ 
       minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
+      backgroundColor: 'background.default',
       pt: 2
     }}>
       <BasicJobSearch 

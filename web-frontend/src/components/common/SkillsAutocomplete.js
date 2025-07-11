@@ -4,235 +4,171 @@ import {
   TextField,
   Chip,
   Box,
-  Typography,
-  CircularProgress,
-  Paper
+  CircularProgress
 } from '@mui/material';
-import CodeIcon from '@mui/icons-material/Code';
-import axios from 'axios';
-import { buildApiUrl } from '../../config';
+import { styled } from '@mui/material/styles';
+import api from '../../utils/axiosConfig';
 
-// Function to log only in development environment
-const logDev = (level, ...args) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console[level](...args);
+const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    color: theme.palette.mode === 'dark' ? '#FFFFFF' : '#1A1A1A',
+    backgroundColor: theme.palette.mode === 'dark' ? '#2D2D2D' : '#FFFFFF',
+    '& fieldset': {
+      borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 215, 0, 0.3)' : 'rgba(0, 107, 47, 0.3)'
+    },
+    '&:hover fieldset': {
+      borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 215, 0, 0.5)' : 'rgba(0, 107, 47, 0.5)'
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: theme.palette.mode === 'dark' ? '#FFD700' : '#006B2F'
+    }
+  },
+  '& .MuiInputLabel-root': {
+    color: theme.palette.mode === 'dark' ? 'rgba(255, 215, 0, 0.7)' : 'rgba(0, 107, 47, 0.7)'
+  },
+  '& .MuiChip-root': {
+    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 215, 0, 0.2)' : 'rgba(0, 107, 47, 0.1)',
+    color: theme.palette.mode === 'dark' ? '#FFD700' : '#006B2F',
+    border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 215, 0, 0.3)' : 'rgba(0, 107, 47, 0.3)'}`,
+    '& .MuiChip-deleteIcon': {
+      color: theme.palette.mode === 'dark' ? '#FFD700' : '#006B2F',
+      '&:hover': {
+        color: theme.palette.mode === 'dark' ? '#FFF' : '#004D21'
+      }
+    }
   }
-};
+}));
 
-// Common tech skills and frameworks
-const commonSkills = [
-  // Programming Languages
-  'JavaScript', 'Python', 'Java', 'C++', 'Ruby', 'PHP', 'Swift', 'Kotlin', 'Go',
-  // Frontend
-  'React', 'Vue.js', 'Angular', 'HTML5', 'CSS3', 'TypeScript', 'Next.js', 'Gatsby',
-  // Backend
-  'Node.js', 'Django', 'Ruby on Rails', 'Spring Boot', 'Express.js', 'FastAPI',
-  // Database
-  'MongoDB', 'PostgreSQL', 'MySQL', 'Redis', 'Elasticsearch',
-  // Cloud & DevOps
-  'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'Jenkins', 'GitLab CI',
-  // Mobile
-  'React Native', 'Flutter', 'iOS', 'Android',
-  // Other
-  'Git', 'REST API', 'GraphQL', 'Machine Learning', 'AI', 'Data Science',
-  // Soft Skills
-  'Project Management', 'Team Leadership', 'Agile', 'Scrum', 'Communication',
-  // Jamaican-specific skills
-  'Caribbean Tourism', 'Hospitality Management', 'Jamaican Accounting Standards',
-  'Jamaican Tax Law', 'Jamaican Business Law', 'Caribbean Marketing',
-  'Patois', 'Cultural Tourism', 'Caribbean Cuisine', 'Reggae Production',
-  'Jamaican Agriculture', 'Caribbean Logistics', 'Island Sustainability',
-  'Tropical Agriculture', 'Caribbean Healthcare', 'Jamaican Education System'
-];
-
-export const SkillsAutocomplete = ({
-  value = [],
-  onChange,
-  label = 'Skills',
-  placeholder = 'Select skills',
-  multiple = true,
-  freeSolo = false,
-  required = false,
-  helperText = '',
+export const SkillsAutocomplete = ({ 
+  value = [], 
+  onChange, 
+  placeholder = "Select your skills...",
+  maxTags = 10,
   error = false,
-  openOnFocus = true
+  helperText = "",
+  required = false,
+  ...props 
 }) => {
-  const [options, setOptions] = useState([]);
+  const [skillsOptions, setSkillsOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
-  
-  // Fetch skills from API or use common skills
+
+  // Fetch skills from API
   useEffect(() => {
     const fetchSkills = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        // Try to fetch from API first
-        // Use correct API prefix to avoid 404
-        const response = await axios.get(buildApiUrl('/api/skills'));
-        if (response.data && Array.isArray(response.data)) {
-          setOptions(response.data.map(skill => typeof skill === 'string' ? skill : skill.name));
+        const response = await api.get('/api/skills');
+        if (response.data && response.data.success) {
+          setSkillsOptions(response.data.data || []);
+        } else {
+          // Fallback skills if API fails
+          setSkillsOptions([
+            'JavaScript', 'React', 'Node.js', 'Python', 'Java', 'CSS', 'HTML',
+            'SQL', 'Git', 'Project Management', 'Communication', 'Leadership',
+            'Customer Service', 'Digital Marketing', 'Graphic Design'
+          ]);
         }
       } catch (error) {
-        // Fall back to common skills if API fails
-        logDev('debug', 'Using default skills list');
-        setOptions(commonSkills);
+        console.error('Error fetching skills:', error);
+        // Fallback skills if API fails
+        setSkillsOptions([
+          'JavaScript', 'React', 'Node.js', 'Python', 'Java', 'CSS', 'HTML',
+          'SQL', 'Git', 'Project Management', 'Communication', 'Leadership',
+          'Customer Service', 'Digital Marketing', 'Graphic Design'
+        ]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchSkills();
   }, []);
-  
-  // Filter options based on input
-  const getFilteredOptions = () => {
-    if (!inputValue) return options;
-    
-    return options.filter(option => {
-      const skillName = typeof option === 'string' ? option : option.name;
-      return skillName.toLowerCase().includes(inputValue.toLowerCase());
-    });
-  };
-  
-  // Calculate skill match score (for future use in job matching)
-  const _calculateSkillMatch = (jobSkills, userSkills) => {
-    if (!jobSkills || !userSkills || jobSkills.length === 0 || userSkills.length === 0) {
-      return 0;
+
+  // Handle value changes
+  const handleChange = (event, newValue) => {
+    // Limit the number of selected skills
+    if (newValue.length <= maxTags) {
+      onChange(newValue);
     }
-    
-    const matchedSkills = jobSkills.filter(skill => 
-      userSkills.some(userSkill => 
-        userSkill.toLowerCase() === skill.toLowerCase()
-      )
-    );
-    
-    return (matchedSkills.length / jobSkills.length) * 100;
   };
 
+  // Convert array to ensure compatibility with different data formats
+  const normalizedValue = Array.isArray(value) ? value : 
+    (typeof value === 'string' ? value.split(',').map(s => s.trim()).filter(Boolean) : []);
+
   return (
-    <Autocomplete
-      multiple={multiple}
-      freeSolo={freeSolo}
-      openOnFocus={openOnFocus}
-      autoHighlight
-      options={getFilteredOptions()}
-      value={value}
-      isOptionEqualToValue={(option, value) => {
-        if (!option || !value) return false;
-        if (typeof option === 'string' && typeof value === 'string') return option === value;
-        return option === value || (option.name && value.name && option.name === value.name);
-      }}
-      onChange={(event, newValue) => {
-        onChange(newValue);
-      }}
+    <StyledAutocomplete
+      multiple
+      options={skillsOptions}
+      value={normalizedValue}
+      onChange={handleChange}
       inputValue={inputValue}
-      onInputChange={(event, newInputValue) => {
-        setInputValue(newInputValue);
-      }}
+      onInputChange={(event, newInputValue) => setInputValue(newInputValue)}
+      filterSelectedOptions
+      loading={loading}
+      limitTags={5}
+      disableCloseOnSelect
+      getOptionLabel={(option) => option}
       renderInput={(params) => (
         <TextField
           {...params}
-          label={label}
-          placeholder={placeholder}
-          required={required}
+          label="Skills"
+          placeholder={normalizedValue.length === 0 ? placeholder : "Add more skills..."}
           error={error}
-          helperText={helperText}
+          helperText={
+            helperText || 
+            (normalizedValue.length >= maxTags ? `Maximum ${maxTags} skills allowed` : 
+             `${normalizedValue.length}/${maxTags} skills selected`)
+          }
+          required={required}
           InputProps={{
             ...params.InputProps,
-            startAdornment: (
+            endAdornment: (
               <>
-                {loading ? <CircularProgress color="inherit" size={20} sx={{ mr: 1 }} /> : <CodeIcon sx={{ mr: 1, color: '#FFD700' }} />}
-                {params.InputProps.startAdornment}
+                {loading && <CircularProgress size={20} sx={{ color: '#FFD700' }} />}
+                {params.InputProps.endAdornment}
               </>
-            ),
-            sx: {
-              color: 'white',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 215, 0, 0.5)',
-                borderWidth: '2px'
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 215, 0, 0.8)'
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#FFD700',
-                borderWidth: '2px'
-              }
-            }
-          }}
-          InputLabelProps={{
-            sx: { color: '#FFD700', fontWeight: 500 }
-          }}
-          FormHelperTextProps={{
-            sx: { color: 'rgba(255, 215, 0, 0.7)' }
+            )
           }}
         />
       )}
       renderTags={(tagValue, getTagProps) =>
-        tagValue.map((option, index) => {
-          const tagProps = getTagProps({ index });
-          const { key, ...chipProps } = tagProps; // Extract key to pass separately
-          return (
-            <Chip
-              key={key}
-              label={option}
-              {...chipProps}
-              sx={{
-                backgroundColor: 'rgba(44, 85, 48, 0.8)',
-                color: '#FFD700',
-                fontWeight: 500,
-                border: '1px solid rgba(255, 215, 0, 0.5)',
-                '& .MuiChip-deleteIcon': {
-                  color: '#FFD700',
-                  '&:hover': {
-                    color: '#FFFFFF'
-                  }
-                }
-              }}
-            />
-          );
-        })
+        tagValue.map((option, index) => (
+          <Chip
+            variant="outlined"
+            label={option}
+            {...getTagProps({ index })}
+            key={option}
+            size="small"
+          />
+        ))
       }
-      renderOption={(props, option) => (
-        <li {...props}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <CodeIcon sx={{ mr: 1, fontSize: 20, color: '#FFD700' }} />
-            <Typography variant="body2" sx={{ color: '#FFFFFF' }}>{typeof option === 'string' ? option : option.name}</Typography>
+      renderOption={(props, option) => {
+        const { key, ...otherProps } = props;
+        return (
+          <Box
+            component="li"
+            key={key}
+            {...otherProps}
+            sx={{
+              color: 'text.primary',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 215, 0, 0.1)'
+              },
+              '&[aria-selected="true"]': {
+                backgroundColor: 'rgba(0, 107, 47, 0.1)',
+                color: '#006B2F'
+              }
+            }}
+          >
+            {option}
           </Box>
-        </li>
-      )}
-      PaperComponent={(props) => (
-        <Paper 
-          elevation={3} 
-          {...props} 
-          sx={{ 
-            ...props.sx,
-            borderRadius: 2,
-            backgroundColor: 'rgba(20, 20, 20, 0.95)',
-            border: '1px solid rgba(255, 215, 0, 0.3)',
-            maxHeight: '300px',
-            overflowY: 'auto',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-          }} 
-        />
-      )}
-      filterOptions={(options, params) => {
-        const filtered = options.filter(option => {
-          const skillName = typeof option === 'string' ? option : option.name;
-          return skillName.toLowerCase().includes(params.inputValue.toLowerCase());
-        });
-        
-        // Add the current input as an option if it's not in the list
-        if (params.inputValue !== '' && freeSolo && !filtered.some(option => {
-          const skillName = typeof option === 'string' ? option : option.name;
-          return skillName.toLowerCase() === params.inputValue.toLowerCase();
-        })) {
-          filtered.push(params.inputValue);
-        }
-        
-        return filtered;
+        );
       }}
+      {...props}
     />
   );
 };
+
+export default SkillsAutocomplete;

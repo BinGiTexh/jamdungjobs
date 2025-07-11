@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   Container,
@@ -187,6 +187,18 @@ const ProfilePage = () => {
       [name]: value
     }));
   };
+  
+  // Special handler for phone input to prevent focus loss
+  const handlePhoneChange = useCallback((e) => {
+    const { value } = e.target;
+    // Use RAF to defer state update and maintain focus
+    requestAnimationFrame(() => {
+      setFormData(prev => ({
+        ...prev,
+        phone: value
+      }));
+    });
+  }, []);
 
   // Handle skill selection changes
   const handleSkillsChange = (newSkills) => {
@@ -354,13 +366,13 @@ const ProfilePage = () => {
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
         
-        // Use backend expected field names with underscores
+        // Use backend expected field names in camelCase (now consistent across all endpoints)
         const userUpdateData = {
-          first_name: firstName,
-          last_name: lastName,
+          firstName: firstName,
+          lastName: lastName,
           bio: formData.bio,
           location: formData.address,
-          phone_number: formData.phone
+          phoneNumber: formData.phone
         };
 
         const userResponse = await axios.put('http://localhost:5000/api/users/me', userUpdateData, {
@@ -370,7 +382,7 @@ const ProfilePage = () => {
           }
         });
 
-        // Then, update candidate profile information
+        // Then, update candidate profile information using camelCase
         const candidateProfileData = {
           bio: formData.bio,
           location: formData.address,
@@ -396,10 +408,12 @@ const ProfilePage = () => {
             role: user?.role
           });
           
-          // Merge the updated data
+          // Merge the updated data - handle both wrapped and unwrapped responses
+          const userData = userResponse.data.data || userResponse.data;
+          const profileData = profileResponse.data.data || profileResponse.data;
           const updatedData = {
-            ...userResponse.data.data,
-            candidateProfile: profileResponse.data.data
+            ...userData,
+            candidateProfile: profileData
           };
           
           setProfileData(updatedData);
@@ -681,9 +695,14 @@ const ProfilePage = () => {
                     name="phone"
                     type="tel"
                     value={formData.phone}
-                    onChange={handleInputChange}
+                    onChange={handlePhoneChange}
                     placeholder="Enter your phone number"
                     sx={textFieldSx}
+                    autoComplete="tel"
+                    inputProps={{
+                      style: { fontSize: '16px' } // Prevent iOS zoom
+                    }}
+                    key="phone-input" // Add stable key
                   />
                 </Grid>
 
