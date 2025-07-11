@@ -8,7 +8,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
   IconButton,
   Paper,
   styled,
