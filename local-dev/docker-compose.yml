@@ -90,11 +90,12 @@ services:
       - NODE_ENV=development
     volumes:
       - ../web-frontend:/app:delegated
+      - frontend_node_modules:/app/node_modules
       - ../web-frontend/public:/app/public
       - ../web-frontend/.env:/app/.env
     command: >
       sh -c "cd /app && 
-             npm install && 
+             npm install --legacy-peer-deps && 
              chmod +x scripts/docker-start.sh && 
              ./scripts/docker-start.sh"
     depends_on:
