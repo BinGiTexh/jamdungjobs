@@ -16,7 +16,6 @@ import {
   DialogContent,
   DialogActions,
   Avatar,
-  Tooltip,
   CircularProgress,
   TextField,
   Select,
@@ -26,10 +25,7 @@ import {
 
 // Icons
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
 import EmailIcon from '@mui/icons-material/Email';
-import PersonIcon from '@mui/icons-material/Person';
 import WorkIcon from '@mui/icons-material/Work';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { logError } from '../../utils/loggingUtils';
@@ -49,7 +45,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   }
 }));
 
-const StatusChip = styled(Chip)(({ status, theme }) => {
+const StatusChip = styled(Chip)(({ status }) => {
   const statusColors = {
     PENDING: { bg: 'rgba(255, 152, 0, 0.1)', color: '#FFA726' },
     REVIEWING: { bg: 'rgba(33, 150, 243, 0.1)', color: '#42A5F5' },

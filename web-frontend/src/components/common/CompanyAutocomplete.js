@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaBuilding } from 'react-icons/fa';
 import { logDev, logError } from '../../utils/loggingUtils';
 import { BaseAutocomplete } from './BaseAutocomplete';

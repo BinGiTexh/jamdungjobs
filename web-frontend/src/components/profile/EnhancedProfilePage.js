@@ -28,11 +28,11 @@ import {
   Image as ImageIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
+import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import SkillsAutocomplete from '../common/SkillsAutocomplete';
-import ResumeViewer from './ResumeViewer';
 import { logDev, logError, sanitizeForLogging } from '../../utils/loggingUtils';
-import axios from 'axios';
+import ResumeViewer from './ResumeViewer';
 
 // Enhanced styling with Jamaica theme
 const ProfileContainer = styled(Container)(() => ({

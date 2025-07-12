@@ -25,8 +25,8 @@ import {
   Visibility as VisibilityIcon,
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const EmployerAnalyticsPage = () => {
   const { _user } = useAuth();

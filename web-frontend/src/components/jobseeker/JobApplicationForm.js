@@ -634,9 +634,9 @@ const JobApplicationForm = ({ jobId, jobTitle, onSuccess, onCancel }) => {
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           '&.Mui-focused fieldset': {
-                            borderColor: '#2C5530',
-                          },
-                        },
+                            borderColor: '#2C5530'
+                          }
+                        }
                       }}
                     >
                       {applicationSourceOptions.map((option) => (

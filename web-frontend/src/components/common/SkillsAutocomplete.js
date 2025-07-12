@@ -42,10 +42,10 @@ const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
 export const SkillsAutocomplete = ({ 
   value = [], 
   onChange, 
-  placeholder = "Select your skills...",
+  placeholder = 'Select your skills...',
   maxTags = 10,
   error = false,
-  helperText = "",
+  helperText = '',
   required = false,
   ...props 
 }) => {
@@ -114,7 +114,7 @@ export const SkillsAutocomplete = ({
         <TextField
           {...params}
           label="Skills"
-          placeholder={normalizedValue.length === 0 ? placeholder : "Add more skills..."}
+          placeholder={normalizedValue.length === 0 ? placeholder : 'Add more skills...'}
           error={error}
           helperText={
             helperText || 

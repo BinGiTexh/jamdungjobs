@@ -14,8 +14,8 @@ import {
   ArrowForward as ArrowIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import IndustryCard from './IndustryCard';
 import { getGrowingIndustries } from '../../data/industryStats';
+import IndustryCard from './IndustryCard';
 
 const IndustryStatsSection = () => {
   const navigate = useNavigate();

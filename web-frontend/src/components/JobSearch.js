@@ -31,6 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { logDev, logError, sanitizeForLogging } from '../utils/loggingUtils';
+import useEmailCapture from '../hooks/useEmailCapture';
 import { JobTitleInput } from './common/JobTitleInput';
 import { JamaicaLocationAutocomplete } from './common/JamaicaLocationAutocomplete';
 import { SkillsAutocomplete } from './common/SkillsAutocomplete';
@@ -40,7 +41,6 @@ import QuickApplyModal from './jobseeker/QuickApplyModal';
 import Seo from './common/Seo';
 import EmailCaptureModal from './search/EmailCaptureModal';
 import NoResultsWithAlerts from './search/NoResultsWithAlerts';
-import useEmailCapture from '../hooks/useEmailCapture';
 
 // Styled components for Jamaican theme
 const StyledContainer = styled(Container)(({ theme }) => ({

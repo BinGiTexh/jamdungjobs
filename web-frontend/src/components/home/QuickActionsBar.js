@@ -92,7 +92,7 @@ const QuickActionsBar = ({ onQuickAction, userLocation }) => {
                     color: isDarkMode ? action.color : muiTheme.palette.text.primary,
                     transform: 'translateY(-2px)',
                     boxShadow: isDarkMode 
-                      ? `0 4px 12px rgba(76, 175, 80, 0.3)` 
+                      ? '0 4px 12px rgba(76, 175, 80, 0.3)' 
                       : `0 4px 12px ${action.color}20`
                   },
                   '&:active': {

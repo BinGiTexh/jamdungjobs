@@ -35,8 +35,8 @@ import { useNavigate } from 'react-router-dom';
 const EnhancedRoleSelection = ({
   onRoleSelect,
   showBackButton = true,
-  title = "Welcome to JamDung Jobs! ",
-  subtitle = "Choose your path to get started",
+  title = 'Welcome to JamDung Jobs! ',
+  subtitle = 'Choose your path to get started',
   variant = 'modal' // 'modal', 'page', 'inline'
 }) => {
   const theme = useTheme();
@@ -48,7 +48,7 @@ const EnhancedRoleSelection = ({
   const roles = {
     jobseeker: {
       title: "I'm Looking for Work",
-      subtitle: "Find your next opportunity in Jamaica",
+      subtitle: 'Find your next opportunity in Jamaica',
       icon: PersonIcon,
       color: theme.palette.primary.main,
       gradient: 'linear-gradient(135deg, #009639, #4CAF50)',
@@ -68,7 +68,7 @@ const EnhancedRoleSelection = ({
     },
     employer: {
       title: "I'm Hiring Talent",
-      subtitle: "Find the best candidates in Jamaica",
+      subtitle: 'Find the best candidates in Jamaica',
       icon: BusinessIcon,
       color: theme.palette.secondary.main,
       gradient: 'linear-gradient(135deg, #FFD700, #FFA000)',

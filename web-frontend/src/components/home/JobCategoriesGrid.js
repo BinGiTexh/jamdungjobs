@@ -137,7 +137,7 @@ const JobCategoriesGrid = ({ onCategorySelect }) => {
                   transform: 'translateY(-4px)',
                   backgroundColor: muiTheme.palette.action.hover,
                   boxShadow: isDarkMode 
-                    ? `0 8px 24px rgba(76, 175, 80, 0.2)` 
+                    ? '0 8px 24px rgba(76, 175, 80, 0.2)' 
                     : `0 8px 24px ${category.color}20`
                 },
                 '&:active': {

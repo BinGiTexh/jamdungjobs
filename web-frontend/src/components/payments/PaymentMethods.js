@@ -24,7 +24,6 @@ import {
   CreditCard as CreditCardIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   Security as SecurityIcon
@@ -42,7 +41,6 @@ const PaymentMethods = ({ customerId }) => {
     loading, 
     error, 
     addPaymentMethod,
-    updatePaymentMethod,
     deletePaymentMethod,
     setDefaultPaymentMethod
   } = usePaymentMethods(customerId);

@@ -20,8 +20,8 @@ import {
   Edit as EditIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import { styled } from '@mui/material/styles';
+import { useAuth } from '../../context/AuthContext';
 import { calculateProfileCompletion } from '../../utils/profileCompletion';
 import ProfileCompletionPrompt from '../onboarding/ProfileCompletionPrompt';
 import OnboardingTour from '../onboarding/OnboardingTour';

@@ -21,8 +21,8 @@ import {
   Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import { styled } from '@mui/material/styles';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 
 const DashboardCard = styled(Card)(() => ({

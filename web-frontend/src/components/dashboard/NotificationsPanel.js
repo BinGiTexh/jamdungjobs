@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNotifications } from '../../context/NotificationContext';
 import {
   Card,
   CardHeader,
@@ -31,6 +30,7 @@ import {
   MarkEmailRead as MarkEmailReadIcon
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
+import { useNotifications } from '../../context/NotificationContext';
 
 const NotificationsPanel = () => {
   const { 

@@ -11,9 +11,6 @@ import {
   InputAdornment,
   Button,
   Drawer,
-  List,
-  ListItem,
-  ListItemText,
   Slider,
   FormGroup,
   FormControlLabel,
@@ -28,8 +25,6 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
 const JobCard = ({ job }) => {
-  const theme = useTheme();
-  
   return (
     <Card 
       sx={{ 

@@ -45,23 +45,23 @@ const EmptyApplicationsState = ({
       case 'error':
         return {
           icon: <SearchIcon sx={{ fontSize: 64, color: theme.palette.primary.main, mb: 2 }} />,
-          title: "Ready to Start Your Job Search Journey?",
-          subtitle: "Your applications will appear here once you start applying to jobs.",
-          tip: "💡 Complete your profile to get better job recommendations"
+          title: 'Ready to Start Your Job Search Journey?',
+          subtitle: 'Your applications will appear here once you start applying to jobs.',
+          tip: '💡 Complete your profile to get better job recommendations'
         };
       case 'loading-error':
         return {
           icon: <TrendingUpIcon sx={{ fontSize: 64, color: theme.palette.primary.main, mb: 2 }} />,
-          title: "Discover Amazing Job Opportunities",
+          title: 'Discover Amazing Job Opportunities',
           subtitle: "Jamaica's job market is growing! Start exploring positions that match your skills.",
-          tip: "🌟 Tip: Set up job alerts to never miss the perfect opportunity"
+          tip: '🌟 Tip: Set up job alerts to never miss the perfect opportunity'
         };
       default:
         return {
           icon: <SearchIcon sx={{ fontSize: 64, color: theme.palette.primary.main, mb: 2 }} />,
-          title: "Ready to Find Your Dream Job?",
-          subtitle: "Your job applications will appear here once you start applying.",
-          tip: "💡 Tip: Complete your profile to get better job recommendations"
+          title: 'Ready to Find Your Dream Job?',
+          subtitle: 'Your job applications will appear here once you start applying.',
+          tip: '💡 Tip: Complete your profile to get better job recommendations'
         };
     }
   };
@@ -115,7 +115,7 @@ const EmptyApplicationsState = ({
                 px: 3,
                 py: 1.5,
                 '&:hover': {
-                  background: `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.secondary.dark} 90%)`,
+                  background: `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.secondary.dark} 90%)`
                 }
               }}
             >

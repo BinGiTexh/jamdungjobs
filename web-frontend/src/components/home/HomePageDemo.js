@@ -16,11 +16,10 @@ import WorkIcon from '@mui/icons-material/Work';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-
-import OptimizedHeroSection from './OptimizedHeroSection';
 import EnhancedRoleSelection from '../auth/EnhancedRoleSelection';
 import MobileOptimizedNav from '../navigation/MobileOptimizedNav';
 import Seo from '../common/Seo';
+import OptimizedHeroSection from './OptimizedHeroSection';
 
 // Styled components
 const StyledContainer = styled(Container)(({ theme }) => ({

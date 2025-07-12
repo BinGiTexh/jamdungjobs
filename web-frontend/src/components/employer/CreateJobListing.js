@@ -11,7 +11,6 @@ import {
   Select,
   MenuItem,
   Grid,
-  Box,
   Typography,
   styled
 } from '@mui/material';
@@ -25,7 +24,7 @@ const DEFAULT_SKILLS = [
   'JavaScript','Python','React','Node.js','Project Management','Customer Service','Sales','Marketing','Accounting','AWS','SQL','Communication','Leadership','Teamwork','Problem Solving'
 ];
 
-const StyledButton = styled(Button)(({ theme }) => ({
+const StyledButton = styled(Button)(() => ({
   backgroundColor: '#FFD700',
   color: '#000000',
   '&:hover': {
@@ -33,7 +32,7 @@ const StyledButton = styled(Button)(({ theme }) => ({
   }
 }));
 
-const StyledDialog = styled(Dialog)(({ theme }) => ({
+const StyledDialog = styled(Dialog)(() => ({
   '& .MuiDialog-paper': {
     backgroundColor: '#1a1a1a',
     color: '#FFFFFF',

@@ -11,14 +11,12 @@ import {
   Select,
   MenuItem,
   Grid,
-  Box,
-  Typography,
   styled
 } from '@mui/material';
 import { JamaicaLocationAutocomplete } from '../common/JamaicaLocationAutocomplete';
 import { SkillsAutocomplete } from '../common/SkillsAutocomplete';
 
-const StyledButton = styled(Button)(({ theme }) => ({
+const StyledButton = styled(Button)(() => ({
   backgroundColor: '#FFD700',
   color: '#000000',
   '&:hover': {
@@ -26,7 +24,7 @@ const StyledButton = styled(Button)(({ theme }) => ({
   }
 }));
 
-const StyledDialog = styled(Dialog)(({ theme }) => ({
+const StyledDialog = styled(Dialog)(() => ({
   '& .MuiDialog-paper': {
     backgroundColor: '#1a1a1a',
     color: '#FFFFFF',

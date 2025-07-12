@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   Box,
   Card,
@@ -25,12 +25,10 @@ import {
   CheckCircle as CheckIcon,
   Cancel as CancelIcon,
   Upgrade as UpgradeIcon,
-  Schedule as ScheduleIcon,
-  Payment as PaymentIcon,
   Star as StarIcon,
   Verified as VerifiedIcon
 } from '@mui/icons-material';
-import { format, fromUnixTime, addMonths } from 'date-fns';
+import { format, fromUnixTime } from 'date-fns';
 import { ThemeContext } from '../../context/ThemeContext';
 import { useSubscription } from '../../hooks/usePayment';
 import { formatCurrency, SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUS } from '../../config/stripe.config';
@@ -114,14 +112,6 @@ const SubscriptionDashboard = ({ customerId }) => {
     );
   };
 
-  const getAvailableUpgrades = () => {
-    const currentPlan = getCurrentPlan();
-    if (!currentPlan) return [];
-    
-    return Object.values(SUBSCRIPTION_PLANS).filter(plan => 
-      plan.prices.USD > currentPlan.prices.USD
-    );
-  };
 
   const calculateDaysRemaining = () => {
     if (!subscription?.current_period_end) return 0;

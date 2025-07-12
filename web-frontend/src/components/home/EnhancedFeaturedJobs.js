@@ -109,7 +109,7 @@ const EnhancedFeaturedJobs = ({ featuredJobs, onJobSelect }) => {
                   transform: 'translateY(-4px)',
                   backgroundColor: muiTheme.palette.action.hover,
                   boxShadow: isDarkMode 
-                    ? `0 8px 24px rgba(76, 175, 80, 0.2)` 
+                    ? '0 8px 24px rgba(76, 175, 80, 0.2)' 
                     : `0 8px 24px ${jamaicanColors.green}15`
                 },
                 '&:active': {

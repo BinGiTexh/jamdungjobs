@@ -64,7 +64,7 @@ const MobileOptimizedNav = ({
   const trigger = useScrollTrigger({
     target: window,
     disableHysteresis: true,
-    threshold: 100,
+    threshold: 100
   });
 
   // Navigation items based on user role
@@ -132,7 +132,7 @@ const MobileOptimizedNav = ({
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
-      behavior: 'smooth',
+      behavior: 'smooth'
     });
   };
 

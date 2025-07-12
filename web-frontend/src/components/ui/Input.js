@@ -2,12 +2,9 @@ import React from 'react';
 import {
   TextField as MuiTextField,
   InputAdornment,
-  FormControl,
-  InputLabel,
-  Select as MuiSelect,
   MenuItem,
   Chip,
-  Box,
+  Box
 } from '@mui/material';
 import { useTheme } from '../../context/ThemeContext';
 import { useResponsive, getTouchTargetSize } from '../../utils/responsive';
@@ -40,10 +37,10 @@ const Input = ({
           ...touchTargets,
           '& input': {
             fontSize: isMobile ? '1rem' : undefined,
-            padding: { xs: '12px 16px', sm: '10px 14px' },
-          },
+            padding: { xs: '12px 16px', sm: '10px 14px' }
+          }
         },
-        ...props.sx,
+        ...props.sx
       }
     };
   };
@@ -56,22 +53,22 @@ const Input = ({
       sx: {
         '& .MuiOutlinedInput-root': {
           '& fieldset': {
-            borderColor: isDarkMode ? jamaicanColors.gold : jamaicanColors.green,
+            borderColor: isDarkMode ? jamaicanColors.gold : jamaicanColors.green
           },
           '&:hover fieldset': {
-            borderColor: isDarkMode ? jamaicanColors.goldLight : jamaicanColors.lightGreen,
+            borderColor: isDarkMode ? jamaicanColors.goldLight : jamaicanColors.lightGreen
           },
           '&.Mui-focused fieldset': {
             borderColor: isDarkMode ? jamaicanColors.gold : jamaicanColors.green,
-            borderWidth: 2,
-          },
+            borderWidth: 2
+          }
         },
         '& .MuiInputLabel-root': {
           '&.Mui-focused': {
-            color: isDarkMode ? jamaicanColors.gold : jamaicanColors.green,
-          },
+            color: isDarkMode ? jamaicanColors.gold : jamaicanColors.green
+          }
         },
-        ...props.sx,
+        ...props.sx
       }
     };
   };
@@ -106,7 +103,7 @@ const Input = ({
     ...getAdornments(),
     ...(touchOptimized ? getTouchOptimizedProps() : {}),
     ...(jamaican ? getJamaicanStyling() : {}),
-    ...props,
+    ...props
   };
 
   return <MuiTextField {...inputProps} />;
@@ -134,11 +131,11 @@ export const Select = ({
           sx: {
             '& .MuiMenuItem-root': {
               minHeight: { xs: 48, sm: 44 },
-              fontSize: isMobile ? '1rem' : undefined,
-            },
-          },
-        },
-      },
+              fontSize: isMobile ? '1rem' : undefined
+            }
+          }
+        }
+      }
     };
   };
 
@@ -163,7 +160,7 @@ export const Select = ({
       SelectProps={{
         multiple,
         renderValue: renderValue || (multiple ? defaultRenderValue : undefined),
-        ...(touchOptimized ? getTouchOptimizedProps() : {}),
+        ...(touchOptimized ? getTouchOptimizedProps() : {})
       }}
       {...props}
     >
@@ -172,7 +169,7 @@ export const Select = ({
           key={option.value || option} 
           value={option.value || option}
           sx={{
-            minHeight: touchOptimized ? { xs: 48, sm: 44 } : undefined,
+            minHeight: touchOptimized ? { xs: 48, sm: 44 } : undefined
           }}
         >
           {option.label || option}

@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   Box,
   Card,
@@ -31,8 +31,6 @@ import {
   Verified as VerifiedIcon
 } from '@mui/icons-material';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -44,10 +42,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from 'recharts';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { ThemeContext } from '../../context/ThemeContext';
 import { useAnalytics } from '../../hooks/usePayment';
 import { formatCurrency } from '../../config/stripe.config';

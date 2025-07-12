@@ -23,8 +23,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import EmailCaptureModal from './EmailCaptureModal';
 import useEmailCapture from '../../hooks/useEmailCapture';
+import EmailCaptureModal from './EmailCaptureModal';
 
 /**
  * Enhanced Empty Search State Component

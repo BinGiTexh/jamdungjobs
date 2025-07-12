@@ -20,8 +20,8 @@ import {
   Work as WorkIcon,
   Dashboard as DashboardIcon
 } from '@mui/icons-material';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const UserProfileMenu = () => {
   const { user, logout } = useAuth();
@@ -169,8 +169,8 @@ const UserProfileMenu = () => {
               border: '1px solid rgba(255, 215, 0, 0.2)',
               borderBottom: 'none',
               borderRight: 'none'
-            },
-          },
+            }
+          }
         }}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}

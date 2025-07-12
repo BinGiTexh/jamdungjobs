@@ -31,8 +31,8 @@ import {
   CreditCard as CardIcon,
   Business as BusinessIcon
 } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const EmployerBillingPage = () => {
   const { _user } = useAuth();
@@ -277,11 +277,11 @@ const EmployerBillingPage = () => {
                           onChange={toggleAutoRenew}
                           sx={{
                             '& .MuiSwitch-thumb': {
-                              backgroundColor: '#FFD700',
+                              backgroundColor: '#FFD700'
                             },
                             '& .Mui-checked + .MuiSwitch-track': {
-                              backgroundColor: '#FFD700',
-                            },
+                              backgroundColor: '#FFD700'
+                            }
                           }}
                         />
                       }
@@ -556,7 +556,7 @@ const EmployerBillingPage = () => {
               fontWeight: 600,
               px: 3,
               '&:hover': {
-                background: 'linear-gradient(90deg, #009639, #FFD700)',
+                background: 'linear-gradient(90deg, #009639, #FFD700)'
               }
             }}
           >

@@ -97,7 +97,7 @@ const SavedJobCard = ({ job, onRemove, onApply }) => {
           sx={{
             background: 'linear-gradient(135deg, #009639 0%, #FFD700 100%)',
             '&:hover': {
-              background: 'linear-gradient(135deg, #007a2e 0%, #e6c200 100%)',
+              background: 'linear-gradient(135deg, #007a2e 0%, #e6c200 100%)'
             }
           }}
           onClick={(e) => {
@@ -264,7 +264,7 @@ const SavedJobsSection = () => {
                 mt: 2,
                 background: 'linear-gradient(135deg, #009639 0%, #FFD700 100%)',
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #007a2e 0%, #e6c200 100%)',
+                  background: 'linear-gradient(135deg, #007a2e 0%, #e6c200 100%)'
                 }
               }} 
               onClick={() => navigate('/jobs')}

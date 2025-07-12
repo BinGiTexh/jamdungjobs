@@ -20,9 +20,9 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useResponsive, TOUCH_TARGETS } from '../../utils/responsive';
+import { useNotifications } from '../../context/NotificationContext';
 import { IconButton } from './Button';
 import Typography from './Typography';
-import { useNotifications } from '../../context/NotificationContext';
 
 /**
  * Standardized Navigation Component

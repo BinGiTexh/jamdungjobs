@@ -1,6 +1,6 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
 import JobSeekerDashboard from './dashboard/JobSeekerDashboard';
 import EmployerDashboard from './dashboard/EmployerDashboard';
 

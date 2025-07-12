@@ -172,7 +172,7 @@ const JobCard = ({
           <Box sx={{ flex: 1, mr: 2 }}>
             {/* Job Title */}
             <Typography 
-              variant={isCompact ? "h6" : "h5"} 
+              variant={isCompact ? 'h6' : 'h5'} 
               sx={{ 
                 color: '#FFD700',
                 fontWeight: 600,
@@ -451,7 +451,7 @@ const JobCard = ({
             {/* Apply Button */}
             <Button
               variant="contained"
-              size={isCompact ? "small" : "medium"}
+              size={isCompact ? 'small' : 'medium'}
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(`/jobs/${job.id}/apply`);

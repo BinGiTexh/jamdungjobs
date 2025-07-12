@@ -50,26 +50,26 @@ const OptimizedHeroSection = ({
   // Testimonials data
   const testimonials = [
     {
-      name: "Sarah Johnson",
-      role: "Marketing Manager",
-      company: "Kingston Digital",
-      avatar: "SJ",
-      quote: "Found my dream job in just 2 weeks!",
+      name: 'Sarah Johnson',
+      role: 'Marketing Manager',
+      company: 'Kingston Digital',
+      avatar: 'SJ',
+      quote: 'Found my dream job in just 2 weeks!',
       rating: 5
     },
     {
-      name: "Marcus Brown",
-      role: "Software Developer",
-      company: "Tech Solutions JA",
-      avatar: "MB",
-      quote: "The best platform for tech jobs in Jamaica.",
+      name: 'Marcus Brown',
+      role: 'Software Developer',
+      company: 'Tech Solutions JA',
+      avatar: 'MB',
+      quote: 'The best platform for tech jobs in Jamaica.',
       rating: 5
     },
     {
-      name: "Lisa Campbell",
-      role: "HR Director",
-      company: "Caribbean Corp",
-      avatar: "LC",
+      name: 'Lisa Campbell',
+      role: 'HR Director',
+      company: 'Caribbean Corp',
+      avatar: 'LC',
       quote: "We've hired 15+ amazing candidates here.",
       rating: 5
     }

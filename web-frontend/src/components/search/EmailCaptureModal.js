@@ -147,13 +147,13 @@ const EmailCaptureModal = ({
   const getTriggerMessage = () => {
     switch (trigger) {
       case 'empty_search':
-        return "No jobs found? Let us notify you when new opportunities match your search!";
+        return 'No jobs found? Let us notify you when new opportunities match your search!';
       case 'exit_intent':
-        return "Before you go, get notified about new job opportunities in Jamaica!";
+        return 'Before you go, get notified about new job opportunities in Jamaica!';
       case 'time_based':
-        return "Stay updated with the latest job opportunities in Jamaica!";
+        return 'Stay updated with the latest job opportunities in Jamaica!';
       default:
-        return "Get personalized job alerts delivered to your inbox!";
+        return 'Get personalized job alerts delivered to your inbox!';
     }
   };
 
