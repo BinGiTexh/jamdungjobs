@@ -11,8 +11,7 @@ import {
   Stack,
   Button,
   Grid,
-  Paper,
-  Divider
+  Paper
 } from '@mui/material';
 import { 
   Work,

@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Box, Grid, Typography } from '@mui/material';
-import { useResponsive, TOUCH_TARGETS, getTouchTargetSize } from '../../utils/responsive';
+import { useResponsive, TOUCH_TARGETS } from '../../utils/responsive';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Card from '../ui/Card';

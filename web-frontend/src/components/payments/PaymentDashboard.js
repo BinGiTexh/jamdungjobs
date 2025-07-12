@@ -13,7 +13,6 @@ import {
 import {
   Dashboard as DashboardIcon,
   Payment as PaymentIcon,
-  Subscriptions as SubscriptionsIcon,
   History as HistoryIcon,
   CreditCard as CreditCardIcon,
   Analytics as AnalyticsIcon,

@@ -9,7 +9,7 @@ import {
   useTheme as useMuiTheme
 } from '@mui/material';
 import { useTheme } from '../../context/ThemeContext';
-import { useResponsive, getResponsivePadding, getResponsiveTransitions } from '../../utils/responsive';
+import { getResponsivePadding } from '../../utils/responsive';
 import Button from './Button';
 
 /**
@@ -31,8 +31,6 @@ const Card = ({
 }) => {
   const muiTheme = useMuiTheme();
   const { isDarkMode, jamaicanColors } = useTheme();
-  const { isMobile } = useResponsive();
-  const transitions = getResponsiveTransitions(isMobile);
 
   // Padding mapping using responsive utilities
   const getPadding = () => {

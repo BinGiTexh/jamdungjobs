@@ -18,8 +18,7 @@ import {
   ListItemButton,
   Divider,
   Skeleton,
-  Badge,
-  Tooltip
+  Badge
 } from '@mui/material';
 import {
   TrendingUp,
@@ -36,7 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useTheme } from '../../../context/ThemeContext';
 
-const _SmartSuggestions = ({
+const SmartSuggestions = ({
   trendingSearches = [],
   recentSearches = [],
   quickActions = [],
@@ -55,7 +54,7 @@ const _SmartSuggestions = ({
   /**
    * Handle suggestion click
    */
-  const handleSuggestionClick = useCallback((suggestion, _type) => {
+  const handleSuggestionClick = useCallback((suggestion, type) => {
     if (type === 'search') {
       onSearchSuggestion?.(suggestion);
       console.warn('🔍 Search suggestion clicked:', suggestion);
@@ -88,7 +87,7 @@ const _SmartSuggestions = ({
   /**
    * Render trending searches
    */
-  const _renderTrendingSearches = () => {
+  const renderTrendingSearches = () => {
     if (loading) {
       return (
         <Stack spacing={1}>
@@ -109,8 +108,8 @@ const _SmartSuggestions = ({
 
     return (
       <Stack spacing={1}>
-        {trendingSearches.slice(0, maxItems).map((search, _index) => {
-          const _IconComponent = getSuggestionIcon(search.type);
+        {trendingSearches.slice(0, maxItems).map((search, index) => {
+          const IconComponent = getSuggestionIcon(search.type);
           return (
             <Paper
               key={index}
@@ -168,7 +167,7 @@ const _SmartSuggestions = ({
   /**
    * Render recent searches
    */
-  const _renderRecentSearches = () => {
+  const renderRecentSearches = () => {
     if (loading) {
       return (
         <Stack spacing={1}>
@@ -204,8 +203,8 @@ const _SmartSuggestions = ({
         </Box>
         
         <List dense>
-          {recentSearches.slice(0, maxItems).map((search, _index) => {
-            const _IconComponent = getSuggestionIcon(search.type);
+          {recentSearches.slice(0, maxItems).map((search, index) => {
+            const IconComponent = getSuggestionIcon(search.type);
             return (
               <ListItemButton
                 key={index}
@@ -238,7 +237,7 @@ const _SmartSuggestions = ({
   /**
    * Render quick actions
    */
-  const _renderQuickActions = () => {
+  const renderQuickActions = () => {
     if (loading) {
       return (
         <Grid container spacing={1}>
@@ -261,8 +260,8 @@ const _SmartSuggestions = ({
 
     return (
       <Grid container spacing={2}>
-        {quickActions.slice(0, 6).map((action, _index) => {
-          const _IconComponent = getSuggestionIcon(action.type);
+        {quickActions.slice(0, 6).map((action, index) => {
+          const IconComponent = getSuggestionIcon(action.type);
           return (
             <Grid item xs={6} sm={4} key={index}>
               <Paper
@@ -313,7 +312,7 @@ const _SmartSuggestions = ({
   /**
    * Render smart suggestions
    */
-  const _renderSmartSuggestions = () => {
+  const renderSmartSuggestions = () => {
     if (loading) {
       return (
         <Stack spacing={1}>

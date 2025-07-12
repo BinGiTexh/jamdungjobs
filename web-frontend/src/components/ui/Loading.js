@@ -22,7 +22,7 @@ const Loading = ({
   ...props
 }) => {
   const muiTheme = useMuiTheme();
-  const { isDarkMode, jamaicanColors } = useTheme();
+  const { jamaicanColors } = useTheme();
 
   // Size mapping
   const getSizeProps = () => {

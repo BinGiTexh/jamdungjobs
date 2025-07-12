@@ -9,7 +9,7 @@ import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const ThemeToggle = ({ size = 'medium', showTooltip = true }) => {
-  const { mode, toggleMode, isDark } = useTheme();
+  const { toggleMode, isDark } = useTheme();
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   const handleToggle = () => {

@@ -145,7 +145,7 @@ const StyledChip = styled(Chip)(({ _theme }) => ({
   backgroundColor: 'rgba(255, 215, 0, 0.15)',
   color: '#FFD700',
   fontWeight: 500,
-  margin: "4px",
+  margin: '4px',
   borderRadius: 16,
   border: '1px solid rgba(255, 215, 0, 0.3)'
 }));
@@ -177,7 +177,7 @@ const FileUploadButton = styled(Button)(({ theme }) => ({
   boxShadow: '0 2px 8px rgba(0, 126, 27, 0.25)'
 }));
 
-const StyledTextField = styled(TextField)(({ theme }) => ({
+const StyledTextField = styled(TextField)(() => ({
   '& .MuiOutlinedInput-root': {
     '& fieldset': {
       borderColor: 'rgba(255, 215, 0, 0.3)'
@@ -525,12 +525,6 @@ const CandidateDashboard = () => {
       // Update profile with resume URL from response
       const resumeUrl = getFullUrl(responseData.resumeUrl);
       const resumeFileName = responseData.resumeFileName || selectedFile.name;
-      
-      const updatedProfile = {
-        ...profile,
-        resumeUrl: resumeUrl,
-        resumeFileName: resumeFileName
-      };
       
       logDev('debug', 'Updated profile with resume URL:', {
         resumeUrl,

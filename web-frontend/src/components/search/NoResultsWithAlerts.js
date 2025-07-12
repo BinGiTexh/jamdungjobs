@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   TextField,
-  Alert,
   Chip,
   Grid,
   CircularProgress
@@ -114,7 +113,7 @@ const NoResultsWithAlerts = ({
               sx={{
                 background: 'linear-gradient(135deg, #009639 0%, #FFD700 100%)',
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #007a2e 0%, #e6c200 100%)',
+                  background: 'linear-gradient(135deg, #007a2e 0%, #e6c200 100%)'
                 }
               }}
             >
@@ -173,11 +172,11 @@ const NoResultsWithAlerts = ({
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       '&.Mui-focused fieldset': {
-                        borderColor: '#009639',
+                        borderColor: '#009639'
                       }
                     },
                     '& .MuiInputLabel-root.Mui-focused': {
-                      color: '#009639',
+                      color: '#009639'
                     }
                   }}
                 />
@@ -189,7 +188,7 @@ const NoResultsWithAlerts = ({
                     minWidth: 120,
                     background: 'linear-gradient(135deg, #009639 0%, #FFD700 100%)',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #007a2e 0%, #e6c200 100%)',
+                      background: 'linear-gradient(135deg, #007a2e 0%, #e6c200 100%)'
                     }
                   }}
                 >
@@ -229,7 +228,7 @@ const NoResultsWithAlerts = ({
                   cursor: 'pointer',
                   '&:hover': {
                     backgroundColor: '#009639',
-                    color: 'white',
+                    color: 'white'
                   },
                   transition: 'all 0.2s ease-in-out'
                 }}
@@ -247,7 +246,7 @@ const NoResultsWithAlerts = ({
               color: '#009639',
               '&:hover': {
                 borderColor: '#007a2e',
-                backgroundColor: 'rgba(0, 150, 57, 0.04)',
+                backgroundColor: 'rgba(0, 150, 57, 0.04)'
               }
             }}
           >

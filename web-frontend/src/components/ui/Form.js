@@ -7,7 +7,6 @@ import {
   Alert,
   useTheme as useMuiTheme
 } from '@mui/material';
-import { useTheme } from '../../context/ThemeContext';
 import Button from './Button';
 import Typography from './Typography';
 
@@ -32,9 +31,8 @@ const Form = ({
   ...props
 }) => {
   const muiTheme = useMuiTheme();
-  const { isDarkMode } = useTheme();
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+  const [_errors, setErrors] = useState({});
+  const [_touched, setTouched] = useState({});
 
   const handleSubmit = async (event) => {
     event.preventDefault();
