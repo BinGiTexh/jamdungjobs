@@ -42,14 +42,8 @@ const ProtectedRoute = ({ children, requiredRole, redirectTo = '/login' }) => {
   const { user, isAuthenticated, loading, error } = useAuth();
   const location = useLocation();
 
-  console.log('🔐 ProtectedRoute Check:', {
-    isAuthenticated,
-    loading,
-    error,
-    user: user ? { id: user.id, role: user.role, email: user.email } : null,
-    requiredRole,
-    currentPath: location.pathname
-  });
+  // ProtectedRoute Check:
+  // isAuthenticated, loading, error, user, requiredRole, currentPath
 
   // Handle loading state
   if (loading) {
@@ -90,7 +84,7 @@ const ProtectedRoute = ({ children, requiredRole, redirectTo = '/login' }) => {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    console.log('🚫 Not authenticated, redirecting to:', redirectTo);
+    // Not authenticated, redirecting to login
     return (
       <Navigate
         to={redirectTo}
@@ -102,11 +96,8 @@ const ProtectedRoute = ({ children, requiredRole, redirectTo = '/login' }) => {
 
   // Check role if required
   if (requiredRole && user?.role !== requiredRole) {
-    console.log('🚫 Role mismatch:', {
-      userRole: user?.role,
-      requiredRole,
-      redirectingTo: '/dashboard'
-    });
+    // Role mismatch - userRole: user?.role, requiredRole
+    // Redirecting to dashboard
     return (
       <Navigate
         to="/dashboard"
@@ -116,7 +107,7 @@ const ProtectedRoute = ({ children, requiredRole, redirectTo = '/login' }) => {
     );
   }
 
-  console.log('✅ Access granted to protected route');
+  // Access granted to protected route
   // Render protected content if authenticated and authorized
   return children;
 };

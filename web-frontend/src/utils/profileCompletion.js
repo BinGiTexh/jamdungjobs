@@ -9,10 +9,10 @@
  * @returns {Object} - { percentage: number, completedFields: Array, missingFields: Array }
  */
 export const calculateProfileCompletion = (profileData) => {
-  console.log('🔍 calculateProfileCompletion called with:', profileData);
+  // calculateProfileCompletion called with: profileData
   
   if (!profileData) {
-    console.log('❌ No profile data provided');
+    // No profile data provided
     return {
       percentage: 0,
       completedFields: [],
@@ -140,18 +140,7 @@ export const calculateProfileCompletion = (profileData) => {
   const percentage = Math.round((completedFields.length / completionItems.length) * 100);
 
   // Debug logging
-  console.log('📊 Profile completion calculation:', {
-    completionItems: completionItems.map(item => ({
-      key: item.key,
-      label: item.label,
-      completed: item.completed,
-      fields: item.fields,
-      debug: item.debug
-    })),
-    completedFields: completedFields.map(item => item.label),
-    missingFields: missingFields.map(item => item.label),
-    percentage
-  });
+  // Profile completion calculation: completionItems, completedFields, missingFields, percentage
 
   return {
     percentage,

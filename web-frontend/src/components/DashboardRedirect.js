@@ -12,11 +12,8 @@ import JobSeekerDashboard from './dashboard/JobSeekerDashboard';
 const DashboardRedirect = () => {
   const { user, loading } = useAuth();
 
-  console.log('🔄 DashboardRedirect - User info:', {
-    role: user?.role,
-    email: user?.email,
-    loading
-  });
+  // User info logged for debugging:
+  // role: user?.role, email: user?.email, loading
 
   if (loading) {
     return (
@@ -36,13 +33,13 @@ const DashboardRedirect = () => {
 
   // Render the appropriate dashboard based on user role
   if (user.role === 'EMPLOYER') {
-    console.log('👔 Rendering Employer Dashboard');
+    // Rendering Employer Dashboard
     return <EmployerDashboard />;
   } else if (user.role === 'JOBSEEKER') {
-    console.log('👤 Rendering Jobseeker Dashboard');
+    // Rendering Jobseeker Dashboard
     return <JobSeekerDashboard />;
   } else {
-    console.log('❓ Unknown role, rendering Jobseeker Dashboard as fallback');
+    // Unknown role, rendering Jobseeker Dashboard as fallback
     return <JobSeekerDashboard />;
   }
 };

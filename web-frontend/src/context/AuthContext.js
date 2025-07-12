@@ -44,18 +44,15 @@ export function AuthProvider({ children }) {
   // Initialize authentication state on mount
   useEffect(() => {
     const validateToken = async () => {
-      console.log('🔄 AuthContext: Starting token validation');
+      // Starting token validation
       const token = storage.getToken();
-      const storedUser = storage.getUser();
+      const _storedUser = storage.getUser();
       
-      console.log('🔐 AuthContext: Token check:', {
-        hasToken: !!token,
-        hasStoredUser: !!storedUser,
-        storedUserRole: storedUser?.role
-      });
+      // Token check:
+      // hasToken, hasStoredUser, storedUserRole
       
       if (!token) {
-        console.log('🚫 AuthContext: No token found, user not authenticated');
+        // No token found, user not authenticated
         logDev('debug', 'No token found during initialization, user is not authenticated');
         setUser(null);
         setError(null);
@@ -63,7 +60,7 @@ export function AuthProvider({ children }) {
         return;
       }
       
-      console.log('🔍 AuthContext: Validating token with API');
+      // Validating token with API
       logDev('debug', 'Validating existing auth token');
 
       try {
@@ -87,11 +84,7 @@ export function AuthProvider({ children }) {
         }
 
         const userData = await response.json();
-        console.log('✅ AuthContext: Token validation successful', {
-          userId: userData.user?.id || userData.id,
-          userRole: userData.user?.role || userData.role,
-          userEmail: userData.user?.email || userData.email
-        });
+        // Token validation successful - userId, userRole, userEmail
         logDev('debug', 'Token validation successful');
         // Handle both nested and flat response structures
         const user = userData.user || userData;
@@ -99,7 +92,7 @@ export function AuthProvider({ children }) {
         storage.setUser(user);
         setError(null);
       } catch (err) {
-        console.error('❌ AuthContext: Token validation failed:', err.message);
+        // Token validation failed: err.message
         logError('Token validation failed', err, {
           module: 'AuthContext',
           function: 'validateToken',
@@ -109,14 +102,14 @@ export function AuthProvider({ children }) {
         // Determine specific error type for better user feedback
         const errorType = err.name === 'AbortError' ? 'TIMEOUT' : 
                          err.message?.includes('expired') ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID';
-        console.log('⚠️ AuthContext: Error type:', errorType);
+        // Error type: errorType
         logDev('warn', `Auth token error: ${errorType}`);
         
         storage.clearAll();
         setUser(null);
         setError(errorType === 'TIMEOUT' ? 'Connection timeout. Please try again.' : null);
       } finally {
-        console.log('🏁 AuthContext: Token validation complete, setting loading to false');
+        // Token validation complete, setting loading to false
         setLoading(false);
       }
     };
@@ -126,7 +119,7 @@ export function AuthProvider({ children }) {
 
   // Login handler
   const login = useCallback(async (email, password) => {
-    console.log('🔑 AuthContext: Starting login process');
+    // Starting login process
     setLoading(true);
     setError(null);
     
@@ -147,12 +140,7 @@ export function AuthProvider({ children }) {
         throw new Error(errorMsg);
       }
 
-      console.log('✅ AuthContext: Login successful', {
-        userId: data.user.id,
-        userRole: data.user.role,
-        userEmail: data.user.email,
-        tokenReceived: !!data.token
-      });
+      // Login successful - userId, userRole, userEmail, tokenReceived
       logDev('debug', 'Login successful', { 
         user: sanitizeForLogging(data.user),
         tokenReceived: !!data.token
@@ -161,10 +149,10 @@ export function AuthProvider({ children }) {
       storage.setToken(data.token);
       storage.setUser(data.user);
       setUser(data.user);
-      console.log('💾 AuthContext: User state updated after login');
+      // User state updated after login
       return data.user;
     } catch (err) {
-      console.error('❌ AuthContext: Login error:', err);
+      // Login error
       
       // Extract user-friendly error message
       let userFriendlyMessage = 'Login failed. Please try again.';

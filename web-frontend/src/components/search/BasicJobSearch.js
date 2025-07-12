@@ -159,7 +159,7 @@ const BasicJobSearch = ({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [trackJobSearch]);
 
   // Debounced search effect
   useEffect(() => {

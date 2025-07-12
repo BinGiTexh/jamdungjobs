@@ -44,7 +44,8 @@ const QuickApplyModal = ({ job, onClose, onSuccess }) => {
         jobId: sanitizeForLogging(job.id),
         error: sanitizeForLogging(error)
       });
-      alert(error.message || 'Failed to submit application');
+      // TODO: Show error notification
+      // error.message || 'Failed to submit application'
     } finally {
       setSubmitting(false);
       onClose();
@@ -234,7 +235,8 @@ export const FindJobsModal = ({ isOpen, onClose }) => {
             onClose={() => setShowQuickApply(false)}
             onSuccess={() => {
               setShowQuickApply(false);
-              alert('Application submitted successfully!');
+              // TODO: Show success notification
+              // Application submitted successfully
             }}
           />
         )}

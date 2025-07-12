@@ -161,7 +161,9 @@ const ApplicationsList = () => {
   };
 
   const handleDeleteApplication = async (applicationId) => {
-    if (window.confirm('Are you sure you want to withdraw this application? This action cannot be undone.')) {
+    // TODO: Replace with proper modal confirmation
+    // For now, using native confirm
+    if (window.confirm('Are you sure you want to withdraw this application?')) {
       try {
         await axios.delete(buildApiUrl(`/applications/${applicationId}`));
         // Remove from state

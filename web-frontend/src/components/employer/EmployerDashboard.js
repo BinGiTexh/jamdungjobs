@@ -10,7 +10,6 @@ import {
 } from '@mui/material';
 import { keyframes } from '@mui/material/styles';
 import axios from 'axios';
-
 // Import components
 // Import icons
 import EditIcon from '@mui/icons-material/Edit';

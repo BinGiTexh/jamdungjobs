@@ -172,7 +172,7 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         setError('Failed to load profile data');
       }
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      // Error fetching profile
       setError('Failed to load profile data');
     } finally {
       setLoading(false);
@@ -198,7 +198,7 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
   // Handle email update separately if email has changed
   const updateEmailIfChanged = async () => {
     if (formData.email && formData.email !== originalEmail) {
-      console.log('Email changed, updating separately:', formData.email);
+      // Email changed, updating separately
       try {
         const emailResponse = await fetch('http://localhost:5000/api/users/me/email', {
           method: 'PUT',
@@ -210,16 +210,16 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         });
 
         if (emailResponse.ok) {
-          console.log('Email updated successfully');
+          // Email updated successfully
           setOriginalEmail(formData.email); // Update original email
         } else {
           const emailError = await emailResponse.json();
-          console.error('Email update failed:', emailError);
+          // Email update failed
           setError(`Email update failed: ${emailError.message || 'Unknown error'}`);
           return false;
         }
       } catch (emailErr) {
-        console.error('Email update error:', emailErr);
+        // Email update error
         setError('Failed to update email. Please try again.');
         return false;
       }
@@ -299,9 +299,9 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         ? 'http://localhost:5000/api/employer/profile'
         : 'http://localhost:5000/api/users/me';
 
-      console.log('=== PROFILE SAVE DEBUG ===');
-      console.log('User role:', user?.role);
-      console.log('Form data:', formData);
+      // PROFILE SAVE DEBUG
+      // User role: user?.role
+      // Form data: formData
 
       // For JOBSEEKER: Use /api/users/me for basic user fields only
       // For EMPLOYER: Use /api/employer/profile for full profile
@@ -321,7 +321,7 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         // Note: Email updates are handled by /api/users/me/email endpoint separately
         
         // Candidate-specific fields will be handled by jobseeker routes separately
-        console.log('JOBSEEKER payload:', updateData);
+        // JOBSEEKER payload: updateData
       } else {
         updateData = {
           firstName: formData.firstName,
@@ -339,8 +339,8 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         };
       }
 
-      console.log('Endpoint:', endpoint);
-      console.log('Payload being sent:', JSON.stringify(updateData, null, 2));
+      // Endpoint: endpoint
+      // Payload being sent: updateData
 
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -394,8 +394,8 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         } else if (response.status === 401) {
           errorMessage = 'Your session has expired. Please log in again.';
         } else if (response.status === 400) {
-          console.error('Server validation error:', errorData);
-          console.error('Failed fields:', errorData.errors);
+          // Server validation error: errorData
+          // Failed fields: errorData.errors
           
           // Show specific field errors if available
           if (errorData.errors && Array.isArray(errorData.errors)) {
@@ -413,7 +413,7 @@ const ProfileEditModal = ({ open, onClose, onSave }) => {
         setError(errorMessage);
       }
     } catch (err) {
-      console.error('Error updating profile:', err);
+      // Error updating profile
       
       // Provide user-friendly error messages
       let errorMessage = 'Unable to update profile. Please try again.';

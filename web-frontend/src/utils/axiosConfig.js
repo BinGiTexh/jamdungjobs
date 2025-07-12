@@ -26,7 +26,7 @@ api.interceptors.request.use(
       logDev('debug', 'Token format check', { 
         length: token.length,
         hasBearer: token.startsWith('Bearer '),
-        hasMalformedChars: /[^\w\d\.\-_]/g.test(token.replace('Bearer ', ''))
+        hasMalformedChars: /[^\w\d.\-_]/g.test(token.replace('Bearer ', ''))
       });
       
       // Make sure token is properly formatted with Bearer prefix

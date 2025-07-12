@@ -2,12 +2,10 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import CssBaseline from '@mui/material/CssBaseline';
-
 // Context
 import { AuthProvider } from './context/AuthContext';
 import { ThemeContextProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
-
 // Analytics
 import { usePlausible } from './hooks/usePlausible';
 
@@ -35,10 +33,8 @@ import BasicSearchPage from './pages/BasicSearchPage';
 import SearchTestPage from './pages/SearchTestPage';
 import EmployerBillingPage from './pages/EmployerBillingPage';
 import EmployerAnalyticsPage from './pages/EmployerAnalyticsPage';
-
 // Utils
 import { logDev } from './utils/logger';
-
 // Route Protection Components
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
@@ -91,8 +87,8 @@ function App() {
                 <Route path="/demo" element={<HomePageDemo />} />
                 <Route path="/search" element={
                   <SmartJobDiscovery 
-                    onSearch={(criteria) => console.warn('🔍 Search:', criteria)}
-                    onClearFilters={() => console.warn('🧹 Filters cleared')}
+                    onSearch={(_criteria) => {/* Search criteria */}}
+                    onClearFilters={() => {/* Filters cleared */}}
                   />
                 } />
                 <Route path="/login" element={

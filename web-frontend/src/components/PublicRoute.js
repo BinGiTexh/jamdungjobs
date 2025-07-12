@@ -11,17 +11,12 @@ import { useAuth } from '../context/AuthContext';
  * @param {string} props.redirectTo - Where to redirect authenticated users (default: /dashboard)
  * @returns {React.ReactElement} Public route component
  */
-const PublicRoute = ({ children, redirectTo = '/dashboard' }) => {
+const PublicRoute = ({ children, redirectTo: _redirectTo = '/dashboard' }) => {
   const { isAuthenticated, loading, user } = useAuth();
-  const location = useLocation();
+  const _location = useLocation();
 
-  console.log('🌍 PublicRoute Check:', {
-    isAuthenticated,
-    loading,
-    userRole: user?.role,
-    currentPath: location.pathname,
-    redirectTo
-  });
+  // PublicRoute Check:
+  // isAuthenticated, loading, userRole, currentPath, redirectTo
 
   // Show content during loading
   if (loading) {
@@ -32,7 +27,7 @@ const PublicRoute = ({ children, redirectTo = '/dashboard' }) => {
   if (isAuthenticated && user) {
     const dashboardPath = user.role === 'EMPLOYER' ? '/employer/dashboard' : '/dashboard';
     
-    console.log('🔄 Authenticated user accessing public route, redirecting to:', dashboardPath);
+    // Authenticated user accessing public route, redirecting to dashboard
     
     return (
       <Navigate
@@ -42,7 +37,7 @@ const PublicRoute = ({ children, redirectTo = '/dashboard' }) => {
     );
   }
 
-  console.log('✅ Showing public content to unauthenticated user');
+  // Showing public content to unauthenticated user
   // Show public content for unauthenticated users
   return children;
 };
