@@ -259,7 +259,7 @@ export const validateStripeConfig = () => {
 };
 
 // Export default configuration
-export default {
+const stripeConfig = {
   stripePromise,
   stripeElementsOptions,
   SUPPORTED_PAYMENT_METHODS,
@@ -274,3 +274,5 @@ export default {
   getPaymentMethodIcon,
   validateStripeConfig
 };
+
+export default stripeConfig;

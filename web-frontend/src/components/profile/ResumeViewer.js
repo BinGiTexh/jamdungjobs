@@ -65,7 +65,7 @@ const ResumeViewer = ({
       
       // Debug logging (development only)
       if (process.env.NODE_ENV === 'development') {
-        console.log('ResumeViewer Debug:', {
+        console.log('ResumeViewer Debug:', { // eslint-disable-line no-console
           originalResumeUrl: resumeUrl,
           fullResumeUrl: fullResumeUrl,
           fileName: resumeFileName

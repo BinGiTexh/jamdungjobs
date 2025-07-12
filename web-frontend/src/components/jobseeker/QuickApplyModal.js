@@ -53,7 +53,7 @@ const QuickApplyModal = ({ open, onClose, job, onSuccess }) => {
     if (open) {
       fetchProfileData();
     }
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset transient UI states whenever the modal is reopened
   useEffect(() => {

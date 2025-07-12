@@ -30,7 +30,7 @@ import { LocationAutocomplete } from '../common/LocationAutocomplete';
 // Function to log only in development environment
 const logDev = (level, ...args) => {
   if (process.env.NODE_ENV !== 'production') {
-    console[level](...args);
+    console[level](...args); // eslint-disable-line no-console
   }
 };
 

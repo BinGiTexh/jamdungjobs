@@ -55,7 +55,7 @@ export const JobTitleInput = ({ value, onChange, sx }) => {
     if (value) {
       setInputValue(value);
     }
-  }, []);
+  }, [value]);
 
   return (
     <Autocomplete

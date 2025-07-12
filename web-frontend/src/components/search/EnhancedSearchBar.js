@@ -88,7 +88,7 @@ const EnhancedSearchBar = ({
       setSuggestions([]);
       setShowDropdown(false);
     }
-  }, [query]);
+  }, [query, popularSearches]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle search execution
   const handleSearch = async () => {

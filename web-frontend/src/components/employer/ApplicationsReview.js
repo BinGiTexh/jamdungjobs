@@ -54,7 +54,7 @@ const ApplicationsReview = ({ jobId }) => {
 
   useEffect(() => {
     fetchApplications();
-  }, [jobId]);
+  }, [jobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchApplications = async () => {
     setLoading(true);

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // Test script to debug phone number input focus issue
 // This script will help identify what's causing the focus loss after typing one character
 

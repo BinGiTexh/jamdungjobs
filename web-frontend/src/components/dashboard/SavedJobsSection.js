@@ -184,13 +184,12 @@ const SavedJobsSection = () => {
     setQuickApplyModalOpen(true);
   };
 
-  const handleQuickApplySuccess = (applicationData) => {
+  const handleQuickApplySuccess = () => {
     // Close modal and show success - the modal handles the thank you message
     setQuickApplyModalOpen(false);
     setSelectedJob(null);
     
     // Optional: You could show a toast notification here if desired
-    console.log('Application submitted successfully:', applicationData);
   };
 
   const handleQuickApplyClose = () => {

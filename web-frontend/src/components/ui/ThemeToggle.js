@@ -67,8 +67,7 @@ const ThemeToggle = ({ size = 'medium', showTooltip = true }) => {
       onClick={handleToggle}
       sx={buttonStyles}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      aria-pressed={isDark}
-      role="switch"
+        role="switch"
       size={size}
     >
       {isDark ? (

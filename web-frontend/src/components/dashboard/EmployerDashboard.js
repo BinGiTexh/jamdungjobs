@@ -167,18 +167,6 @@ const EmployerDashboard = () => {
         const profileCompletion = profileResponse.data?.companyProfile ? 90 : 
           (profileResponse.data?.firstName && profileResponse.data?.lastName && profileResponse.data?.email) ? 60 : 30;
         
-        console.log('🏢 Employer Dashboard Data Debug:', {
-          jobsResponse: jobsResponse.data,
-          applicationsResponse: applicationsResponse.data,
-          analyticsResponse: analyticsResponse.data,
-          calculatedMetrics: {
-            activeJobs,
-            totalApplications,
-            newApplications,
-            jobViews,
-            profileCompletion
-          }
-        });
         
         setDashboardData({
           activeJobs,
@@ -189,7 +177,7 @@ const EmployerDashboard = () => {
         });
         
       } catch (error) {
-        console.error('Error fetching employer dashboard data:', error);
+        console.error('Error fetching employer dashboard data:', error); // eslint-disable-line no-console
         // Fallback to zeros if all API calls fail
         setDashboardData({
           activeJobs: 0,

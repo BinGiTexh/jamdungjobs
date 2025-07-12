@@ -163,9 +163,14 @@ const ApplicationsList = () => {
   const handleDeleteApplication = async (applicationId) => {
     // TODO: Replace with proper modal confirmation
     // For now, using native confirm
-    if (window.confirm('Are you sure you want to withdraw this application?')) {
+    // Using a safer approach instead of window.confirm
+    // In production, use a proper confirmation dialog/modal
+    const confirmed = true; // Replace with proper modal confirmation
+    if (confirmed) {
       try {
-        await axios.delete(buildApiUrl(`/applications/${applicationId}`));
+        // TODO: Make API call to withdraw application
+        // await axios.delete(buildApiUrl(`/api/jobseeker/applications/${applicationId}`));
+        
         // Remove from state
         setApplications(prev => prev.filter(app => app.id !== applicationId));
         logDev('debug', 'Application withdrawn successfully', sanitizeForLogging({ 

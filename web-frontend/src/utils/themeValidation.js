@@ -184,7 +184,7 @@ export const THEME_CONSTANTS = {
   TOUCH_TARGET_RECOMMENDED: 48 // Recommended touch target size
 };
 
-export default {
+const themeValidation = {
   validateThemeUsage,
   validateThemeImports,
   validateBreakpointUsage,
@@ -192,3 +192,5 @@ export default {
   getTouchTargetRecommendations,
   THEME_CONSTANTS
 };
+
+export default themeValidation;

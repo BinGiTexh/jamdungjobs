@@ -152,14 +152,6 @@ const JobSeekerDashboard = () => {
         // Calculate profile completion with real profile data
         const profileCompletionData = calculateProfileCompletion(actualProfileData);
         
-        // Debug logging to understand the data structure
-        console.log('🔍 Profile Data Debug:', {
-          fullResponse: profileResponse.data,
-          actualProfileData: actualProfileData,
-          profileCompletionData: profileCompletionData,
-          profileDataKeys: Object.keys(actualProfileData || {}),
-          candidateProfile: actualProfileData?.candidateProfile
-        });
         
         // Set real data or default to 0 if not available
         setDashboardData({
@@ -178,7 +170,7 @@ const JobSeekerDashboard = () => {
         }
         
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error('Error fetching dashboard data:', error); // eslint-disable-line no-console
         // Fallback to basic calculation with available user data
         const profileCompletionData = calculateProfileCompletion(user);
         setDashboardData({

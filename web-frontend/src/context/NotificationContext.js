@@ -95,7 +95,7 @@ export const NotificationProvider = ({ children }) => {
   // Fetch notifications when user changes or component mounts
   useEffect(() => {
     fetchNotifications();
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll for new notifications every 30 seconds for employers
   useEffect(() => {
@@ -106,7 +106,7 @@ export const NotificationProvider = ({ children }) => {
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value = {
     unreadCount,

@@ -72,10 +72,9 @@ const RecentApplicationsWidget = () => {
     navigate(`/employer/applications/${applicationId}/interview`);
   };
 
-  const handleQuickAction = (event, application) => {
+  const handleQuickAction = (event) => {
     event.stopPropagation();
     // Open quick actions menu
-    console.log('Quick actions for application:', application.id);
   };
 
   if (loading) {

@@ -23,7 +23,6 @@ import {
   LinearProgress,
   Fade
 } from '@mui/material';
-
 // Import icons
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import VisibilityIcon from '@mui/icons-material/Visibility';

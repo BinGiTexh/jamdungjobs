@@ -161,7 +161,6 @@ const EmployerPostJobPageNew = () => {
     setIsSubmitting(true);
     try {
       // Here you would integrate with your job posting API
-      console.log('Submitting job:', jobData);
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -174,7 +173,7 @@ const EmployerPostJobPageNew = () => {
         }
       });
     } catch (error) {
-      console.error('Error posting job:', error);
+      console.error('Error posting job:', error); // eslint-disable-line no-console
       setErrors({ submit: 'Failed to post job. Please try again.' });
     } finally {
       setIsSubmitting(false);

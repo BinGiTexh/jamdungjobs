@@ -8,7 +8,6 @@ import { ThemeContextProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 // Analytics
 import { usePlausible } from './hooks/usePlausible';
-
 // Components
 import SimpleMobileNav from './components/navigation/SimpleMobileNav';
 import HomePage from './components/home/HomePage';

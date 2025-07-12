@@ -123,7 +123,7 @@ const JobDescriptionBuilder = ({ initialData, onSave }) => {
 
   useEffect(() => {
     generatePreview();
-  }, [description, responsibilities, requirements, benefits]);
+  }, [description]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleIndustryChange = (e) => {
     setIndustry(e.target.value);

@@ -22,7 +22,6 @@ import {
   FormControl,
   InputLabel
 } from '@mui/material';
-
 // Icons
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EmailIcon from '@mui/icons-material/Email';

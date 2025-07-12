@@ -305,7 +305,7 @@ export const getTrendingSearches = () => [
   { term: 'accountant', count: 76 }
 ];
 
-export default {
+const behaviorTracker = {
   getUserBehavior,
   saveBehaviorData,
   trackSearch,
@@ -314,3 +314,5 @@ export default {
   clearBehaviorData,
   getTrendingSearches
 };
+
+export default behaviorTracker;

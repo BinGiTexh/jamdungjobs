@@ -16,14 +16,15 @@ import {
   RadioButtonUnchecked as RadioButtonUncheckedIcon,
   ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
-import { useAuth } from '../../context/AuthContext';
+// import { useAuth } from '../../context/AuthContext'; // Currently not used
 import ProfileEditModal from '../profile/ProfileEditModal';
 import api from '../../utils/api';
 import { logDev, logError } from '../../utils/loggingUtils';
 import { calculateProfileCompletion } from '../../utils/profileCompletion';
 
 const ProfileCompletionWidget = () => {
-  const { } = useAuth();
+  // useAuth hook is available but not used in this component
+  // const { user } = useAuth(); // Uncomment if needed
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);

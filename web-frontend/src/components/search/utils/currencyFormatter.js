@@ -96,10 +96,12 @@ export const validateSalaryRange = (min, max) => {
   return { isValid: true, error: null };
 };
 
-export default {
+const currencyFormatter = {
   formatJMD,
   parseJMD,
   formatSalaryRange,
   getSalaryPresets,
   validateSalaryRange
 };
+
+export default currencyFormatter;

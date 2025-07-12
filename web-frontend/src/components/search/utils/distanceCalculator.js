@@ -148,7 +148,7 @@ export const getParishTowns = () => ({
   'St. Catherine': ['Spanish Town', 'Portmore', 'Old Harbour', 'Linstead']
 });
 
-export default {
+const distanceCalculator = {
   calculateDistance,
   formatDistance,
   getRadiusOptions,
@@ -157,3 +157,5 @@ export default {
   getParishCoordinates,
   getParishTowns
 };
+
+export default distanceCalculator;
