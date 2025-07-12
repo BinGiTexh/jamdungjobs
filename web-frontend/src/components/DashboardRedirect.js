@@ -1,13 +1,13 @@
 import React from 'react';
 import { CircularProgress, Box } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
-import JobSeekerDashboard from './dashboard/JobSeekerDashboard';
 import EmployerDashboard from './dashboard/EmployerDashboard';
+import JobSeekerDashboard from './dashboard/JobSeekerDashboard';
 
 /**
  * Component that renders the appropriate dashboard based on user role
  * Employers render EmployerDashboard
- * Candidates render JobseekerDashboard
+ * Candidates render JobSeekerDashboard
  */
 const DashboardRedirect = () => {
   const { user, loading } = useAuth();
